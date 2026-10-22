@@ -1,0 +1,1 @@
+damu-speaking build f6feb5b4 2026-10-22 whisper-speed-queue
