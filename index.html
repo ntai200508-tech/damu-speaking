@@ -115,6 +115,7 @@ nav button#nav-mocktest.on{background:#f59e0b;color:#fff;border-color:#f59e0b}
 <header>
 <img id="capyHead" alt="Capy — linh vật damu">
 <div><h1>damu 🩷</h1><div class="sub">Luyện nói IELTS mỗi ngày cùng Capy — nói đi, sai thì damu sửa cho!</div></div>
+<div id="authBox"></div>
 <div class="streak" id="streakBox">🔥 0 ngày</div>
 </header>
 <nav>
@@ -266,6 +267,11 @@ nav button#nav-mocktest.on{background:#f59e0b;color:#fff;border-color:#f59e0b}
 
 <!-- ============ TAB CÀI ĐẶT ============ -->
 <section class="tab" id="tab-settings">
+  <div class="card" id="accountCard">
+    <h2>👤 Tài khoản & đồng bộ đám mây</h2>
+    <div id="accountBody"><p class="small">Đang kiểm tra đăng nhập…</p></div>
+    <p class="small" id="syncStatus"></p>
+  </div>
   <div class="card">
     <h2>🚀 Groq API key (miễn phí, tốc độ cao) — động cơ chấm CHÍNH ⭐</h2>
     <p>Groq là động cơ AI <b>rất nhanh và ổn định</b> mà damu ưu tiên dùng trước để chấm bài. Bạn tạo 1 key Groq <b>miễn phí</b> (bắt đầu bằng <b>gsk_</b>) rồi dán vào đây. Key cũng <b>chỉ lưu trong trình duyệt này</b>, không nằm trong file, không gửi cho ai khác.</p>
@@ -319,6 +325,33 @@ nav button#nav-mocktest.on{background:#f59e0b;color:#fff;border-color:#f59e0b}
 </main>
 <footer>damu 🩷 — Luyện nói IELTS mỗi ngày. Điểm trong app là ước tính để luyện tập, không phải điểm thi chính thức.</footer>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+/* ===== FIREBASE — config that (gia tri cong khai, lay tu firebase-config.json do Nguyen tao) ===== */
+var FIREBASE_CONFIG = {
+  apiKey: "AIzaSyD3e15n4YGgP9FGjDowjXdMdJ1fU0vL4_k",
+  authDomain: "damu-speaking.firebaseapp.com",
+  projectId: "damu-speaking",
+  storageBucket: "damu-speaking.firebasestorage.app",
+  messagingSenderId: "547014739185",
+  appId: "1:547014739185:web:9f67f2376f2a16ce309550",
+  measurementId: "G-0Z77V9NDYZ"
+};
+var FIREBASE_ENABLED = true;
+var fbAuth = null, fbDb = null;
+(function initFirebase(){
+  if (!FIREBASE_ENABLED) return;
+  if (typeof firebase === 'undefined') return;
+  if (location.protocol !== 'https:' && location.protocol !== 'http:') return;
+  try {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    fbAuth = firebase.auth();
+    fbDb = firebase.firestore();
+  } catch (e) { fbAuth = null; fbDb = null; }
+})();
+</script>
 <script>
 var FORECAST={
   "quarter": "Q4 2026 (Sep-Dec)",
@@ -864,7 +897,7 @@ var recog=null,recording=false,recStart=0,recElapsed=0,recInt=null,finalText='';
 var restartCount=0,restartTimer=null,netErrCount=0,stopFinalized=true,stopNote='',recBase=0,recSegStart=0;
 var LANGLS='damuSpeaking.lang';
 function loadLang(){try{var l=localStorage.getItem(LANGLS);if(l==='en-US'||l==='en-GB'||l==='en-AU')return l;}catch(e){}return 'en-US';}
-function saveSpeechLang(){var sel=$('speechLangSel');if(!sel)return;try{localStorage.setItem(LANGLS,sel.value);}catch(e){}if(recording)$('recStatus').textContent='🗣 Đã lưu giọng nghe mới — áp dụng từ lần ghi sau nhé (lần ghi đang chạy vẫn dùng giọng cũ).';}
+function saveSpeechLang(){var sel=$('speechLangSel');if(!sel)return;try{localStorage.setItem(LANGLS,sel.value);}catch(e){}if(recording)$('recStatus').textContent='🗣 Đã lưu giọng nghe mới — áp dụng từ lần ghi sau nhé (lần ghi đang chạy vẫn dùng giọng cũ).';try{fbTouchSettingsUpdatedAt();}catch(e){} scheduleSync();}
 function getSpeechLang(){return loadLang();}
 function fmtTime(s){var m=Math.floor(s/60),ss=Math.floor(s%60);return (m<10?'0':'')+m+':'+(ss<10?'0':'')+ss;}
 function toggleRecord(){if(recording){stopRecord();}else{startRecord();}}
@@ -973,8 +1006,8 @@ var AI_TIMEOUT_MS=18000,AI_GEMINI_TIMEOUT_MS=18000,AI_GEMINI_MAX_MODELS=3,AI_FAL
 var AI_MODELS=['gemini-3.8-flash','gemini-3.7-flash','gemini-3.6-flash','gemini-3.5-flash']; /* như web cũ: chỉ còn là dự phòng khi không liệt kê được model */
 var aiPreferFallback=false,aiGrading=false;
 function aiGetKey(){try{return (localStorage.getItem(AI_KEYLS)||'').trim();}catch(e){return '';}}
-function saveKeyUI(){var k=$('akey').value.trim();if(!k){$('keyNote').textContent='Dán key vào ô trước khi bấm Lưu nhé.';return;}try{localStorage.setItem(AI_KEYLS,k);aiModelCacheClear();aiGfailReset();aiPreferFallback=false;renderAIStatus();$('keyNote').textContent='✅ Đã lưu key vào trình duyệt này. Qua tab Luyện nói và bấm chấm bài thôi!';}catch(e){$('keyNote').textContent='⚠️ Không lưu được key (trình duyệt chặn bộ nhớ?). Tắt chế độ ẩn danh rồi thử lại.';}}
-function clearKeyUI(){try{localStorage.removeItem(AI_KEYLS);}catch(e){}$('akey').value='';aiModelCacheClear();$('keyNote').textContent='Đã xóa key khỏi máy này. App vẫn chấm được bằng AI dự phòng miễn phí (Pollinations).';}
+function saveKeyUI(){var k=$('akey').value.trim();if(!k){$('keyNote').textContent='Dán key vào ô trước khi bấm Lưu nhé.';return;}try{localStorage.setItem(AI_KEYLS,k);aiModelCacheClear();aiGfailReset();aiPreferFallback=false;renderAIStatus();$('keyNote').textContent='✅ Đã lưu key vào trình duyệt này. Qua tab Luyện nói và bấm chấm bài thôi!';}catch(e){$('keyNote').textContent='⚠️ Không lưu được key (trình duyệt chặn bộ nhớ?). Tắt chế độ ẩn danh rồi thử lại.';}try{fbTouchSettingsUpdatedAt();}catch(e){} scheduleSync();}
+function clearKeyUI(){try{localStorage.removeItem(AI_KEYLS);}catch(e){}$('akey').value='';aiModelCacheClear();$('keyNote').textContent='Đã xóa key khỏi máy này. App vẫn chấm được bằng AI dự phòng miễn phí (Pollinations).';try{fbTouchSettingsUpdatedAt();}catch(e){} scheduleSync();}
 function aiKeyHash(k){var h=5381;for(var i=0;i<k.length;i++)h=((h<<5)+h+k.charCodeAt(i))|0;return (h>>>0).toString(36);}
 var aiModelCache=null;
 function aiModelCacheGet(key){if(aiModelCache&&aiModelCache.key===key)return aiModelCache.model;try{var o=JSON.parse(localStorage.getItem(AI_MODELLS)||'null');if(o&&o.kh===aiKeyHash(key)&&Date.now()-o.ts<AI_MODEL_CACHE_TTL){aiModelCache={key:key,model:o.model};return o.model;}}catch(e){}return null;}
@@ -998,8 +1031,8 @@ function aiGfailInfo(){try{var o=JSON.parse(localStorage.getItem('damuSpeaking.g
 /* ===== GROQ: key rieng + breaker RIENG (loi Groq khong ghim Gemini va nguoc lai) ===== */
 var aiGroqLastModel='';
 function aiGetGroqKey(){try{return (localStorage.getItem(GROQ_KEYLS)||'').trim();}catch(e){return '';}}
-function saveGroqKeyUI(){var el=$('groqKey');var k=el?el.value.trim():'';if(!k){$('groqNote').textContent='Dán key Groq vào ô trước khi bấm Lưu nhé.';return;}try{localStorage.setItem(GROQ_KEYLS,k);aiGroqFailReset();renderAIStatus();$('groqNote').textContent='✅ Đã lưu key Groq vào trình duyệt này. Từ giờ damu chấm bằng Groq trước (rất nhanh), Gemini/Pollinations chỉ là dự phòng.';}catch(e){$('groqNote').textContent='⚠️ Không lưu được key (trình duyệt chặn bộ nhớ?). Tắt chế độ ẩn danh rồi thử lại.';}}
-function clearGroqKeyUI(){try{localStorage.removeItem(GROQ_KEYLS);}catch(e){}var el=$('groqKey');if(el)el.value='';renderAIStatus();$('groqNote').textContent='Đã xóa key Groq khỏi máy này. App quay lại thứ tự cũ: Gemini → AI dự phòng.';}
+function saveGroqKeyUI(){var el=$('groqKey');var k=el?el.value.trim():'';if(!k){$('groqNote').textContent='Dán key Groq vào ô trước khi bấm Lưu nhé.';return;}try{localStorage.setItem(GROQ_KEYLS,k);aiGroqFailReset();renderAIStatus();$('groqNote').textContent='✅ Đã lưu key Groq vào trình duyệt này. Từ giờ damu chấm bằng Groq trước (rất nhanh), Gemini/Pollinations chỉ là dự phòng.';}catch(e){$('groqNote').textContent='⚠️ Không lưu được key (trình duyệt chặn bộ nhớ?). Tắt chế độ ẩn danh rồi thử lại.';}try{fbTouchSettingsUpdatedAt();}catch(e){} scheduleSync();}
+function clearGroqKeyUI(){try{localStorage.removeItem(GROQ_KEYLS);}catch(e){}var el=$('groqKey');if(el)el.value='';renderAIStatus();$('groqNote').textContent='Đã xóa key Groq khỏi máy này. App quay lại thứ tự cũ: Gemini → AI dự phòng.';try{fbTouchSettingsUpdatedAt();}catch(e){} scheduleSync();}
 function aiGroqFailGet(){try{var o=JSON.parse(localStorage.getItem('damuSpeaking.groqfail')||'null');if(o&&Date.now()-o.lastFail<10*60*1000)return o.count||0;}catch(e){}return 0;}
 function aiGroqFailSet(c){try{localStorage.setItem('damuSpeaking.groqfail',JSON.stringify({count:c,lastFail:Date.now()}));}catch(e){}}
 function aiGroqFailReset(){try{localStorage.removeItem('damuSpeaking.groqfail');}catch(e){}}
@@ -1928,7 +1961,7 @@ var HINT_MIN_GRADED=3, HINT_WINDOW=5;
 var hintOpen=false, hintLoading=false, hintCache={};
 var HINT_SYS='You are a friendly, patient IELTS Speaking tutor (a teaching assistant, NOT an examiner). You encourage learners, explain answer ideas in Vietnamese and give level-appropriate English examples. You never roast, never mock and never give band scores to the learner. Follow the user instruction exactly and output ONLY the requested JSON.';
 function loadSelfBand(){try{var v=parseFloat(localStorage.getItem(SELFBANDLS));if(v>=3&&v<=8.5&&Math.abs(v*2-Math.round(v*2))<0.001)return v;}catch(e){}return 5.0;}
-function saveSelfBandUI(){var sel=$('selfBandSel');if(!sel)return;try{localStorage.setItem(SELFBANDLS,String(parseFloat(sel.value)));}catch(e){}var n=$('selfBandNote');if(n)n.textContent='✅ Đã lưu band tự khai: '+parseFloat(sel.value).toFixed(1);syncHintBandChip();}
+function saveSelfBandUI(){var sel=$('selfBandSel');if(!sel)return;try{localStorage.setItem(SELFBANDLS,String(parseFloat(sel.value)));}catch(e){}var n=$('selfBandNote');if(n)n.textContent='✅ Đã lưu band tự khai: '+parseFloat(sel.value).toFixed(1);syncHintBandChip();try{fbTouchSettingsUpdatedAt();}catch(e){} scheduleSync();}
 function initSelfBandUI(){var sel=$('selfBandSel');if(sel)sel.value=String(loadSelfBand());}
 function gradedBandList(){var h=loadHist(),out=[];for(var i=0;i<h.length;i++){var b=h[i]&&h[i].band;if(typeof b==='number'&&b>0)out.push(b);}return out;}
 function currentBandInfo(){var list=gradedBandList();
@@ -2111,7 +2144,7 @@ function histFeedbackOf(it){
   return Object.keys(f).length?f:null;
 }
 function pgNormScores(s){if(!s||typeof s!=='object')return null;var out={},any=false;['FC','LR','GRA','P'].forEach(function(k){var v=Number(s[k]);if(isFinite(v)&&v>=0&&v<=9){out[k]=v;any=true;}else out[k]=null;});return any?out:null;}
-function saveHistory(band,tr,wpm,scores,fb){var h=loadHist();h.unshift({date:new Date().toISOString(),part:curPart,question:curQuestion,transcript:tr,words:wordCount(tr),wpm:wpm,band:band,scores:pgNormScores(scores),feedback:histCompactFeedback(fb)});if(h.length>100)h=h.slice(0,100);try{localStorage.setItem(HISTLS,JSON.stringify(h));}catch(e){}touchStreak();}
+function saveHistory(band,tr,wpm,scores,fb){var h=loadHist();h.unshift({date:new Date().toISOString(),part:curPart,question:curQuestion,transcript:tr,words:wordCount(tr),wpm:wpm,band:band,scores:pgNormScores(scores),feedback:histCompactFeedback(fb)});if(h.length>100)h=h.slice(0,100);try{localStorage.setItem(HISTLS,JSON.stringify(h));}catch(e){}touchStreak();scheduleSync();}
 var histOpenIdx=-1, histModelAnswer='';
 function toggleHistDetail(i){histOpenIdx=(histOpenIdx===i?-1:i);renderHistory();}
 function histDetailHtml(it){
@@ -2201,6 +2234,7 @@ async function genStrategy(){
     if(aiIsErrorText(text))throw new Error('badformat|AI trả chiến lược không đọc được');
     if(text.length<60)throw new Error('badformat|AI trả chiến lược quá ngắn, chưa dùng được');
     try{localStorage.setItem(STRATLS,JSON.stringify({text:text,date:new Date().toISOString()}));}catch(e){}
+    scheduleSync();
     stratLoading=false;renderStrategy();
   }catch(e){
     aiLogErr('genStrategy',e);stratLoading=false;renderStrategy();
@@ -2210,7 +2244,7 @@ async function genStrategy(){
 function renderHistory(){renderProgress();renderStrategy();var h=loadHist();renderStreak();if(!h.length){$('histList').innerHTML='<p class="small">Chưa có buổi luyện nào. Qua tab Luyện nói, ghi âm và bấm chấm bài nhé!</p>';return;}
   var html='';for(var i=0;i<h.length;i++){var it=h[i];var d=new Date(it.date);var isMock=(it.type==='mocktest');var hasFb=!!histFeedbackOf(it);html+='<div class="hist"><b>'+esc(d.toLocaleString('vi-VN'))+'</b> — '+(isMock?'🎓 <b>THI THỬ (Mock Test)</b>':'Part '+it.part)+(it.band!=null?' — <b>Band '+Number(it.band).toFixed(1)+'</b>':'')+'<br><i>'+esc(it.question)+'</i><br><span class="small">'+it.words+' từ • '+it.wpm+' từ/phút</span><br>'+esc(it.transcript)+'<br><button class="btn ghost" onclick="toggleHistDetail('+i+')">'+(histOpenIdx===i?'▲ Thu gọn nhận xét':'💬 '+(hasFb?'Xem nhận xét lần này':'Nhận xét lần này'))+'</button>';if(histOpenIdx===i)html+=histDetailHtml(it);html+='</div>';}
   $('histList').innerHTML=html;}
-function clearHistory(){if(!confirm('Xóa toàn bộ lịch sử luyện nói trên trình duyệt này?'))return;try{localStorage.removeItem(HISTLS);}catch(e){}renderHistory();}
+function clearHistory(){if(!confirm('Xóa toàn bộ lịch sử luyện nói trên trình duyệt này?'))return;try{localStorage.removeItem(HISTLS);}catch(e){}try{fbSetHistoryClearedAt(new Date().toISOString());}catch(e){} scheduleSync();renderHistory();}
 
 /* ================= FORECAST + SHADOWING ================= */
 function renderForecast(){$('fcQuarter').textContent=FORECAST.quarter;
@@ -2284,7 +2318,7 @@ function mtRecUIHtml(maxSecs){
     +'<h3>Bản ghi (sửa tay được nếu máy nghe nhầm)</h3><textarea id="mtTranscript" placeholder="Transcript sẽ tự điền vào đây sau khi ghi."></textarea>';
 }
 function mtSyncLangSel(){try{var s=document.getElementById('mtSpeechLangSel');if(s)s.value=loadLang();}catch(e){}}
-function mtSaveLang(){var s=$('mtSpeechLangSel');if(!s)return;try{localStorage.setItem(LANGLS,s.value);}catch(e){}var mainSel=$('speechLangSel');if(mainSel)mainSel.value=s.value;}
+function mtSaveLang(){var s=$('mtSpeechLangSel');if(!s)return;try{localStorage.setItem(LANGLS,s.value);}catch(e){}var mainSel=$('speechLangSel');if(mainSel)mainSel.value=s.value;try{fbTouchSettingsUpdatedAt();}catch(e){} scheduleSync();}
 /* --- Mock recording: same engine pattern as practice (event-level final assembly, NO text de-duplication) --- */
 function mtToggleRecord(){if(mtRecording){mtStopRecord();}else{mtStartRecord();}}
 function mtSyncElapsed(){mtRecElapsed=mtRecBase+(mtRecSegStart?(Date.now()-mtRecSegStart)/1000:0);return mtRecElapsed;}
@@ -2522,7 +2556,7 @@ function saveMockHistory(band,session,avgWpm,totalWords,scores,fb){
   h.unshift({date:new Date().toISOString(),type:'mocktest',part:0,question:'🎓 Thi thử — '+summary,transcript:fullTr.slice(0,2000),words:totalWords,wpm:avgWpm,band:band,scores:pgNormScores(scores),feedback:histCompactFeedback(fb)});
   if(h.length>100)h=h.slice(0,100);
   try{localStorage.setItem(HISTLS,JSON.stringify(h));}catch(e){}
-  touchStreak();
+  touchStreak();scheduleSync();
 }
 async function mtGradeMock(){
   if(mtGrading||!mt)return;mtGrading=true;mt.phase='grading';
@@ -2582,6 +2616,304 @@ function mtResetToIdle(){mtStopAllTimers();mt=null;$('mtMain').style.display='no
 
 
 /* ================= KHỞI TẠO ================= */
+/* ================= FIREBASE SYNC (theo firebase-spec.md muc 1-7) =================
+   Nguyen tac: tang dong bo CHI doc/ghi localStorage qua 13 khoa cu; moi loi goi Firebase
+   deu co guard (!fbAuth/!fbDb/FIREBASE_ENABLED/file://) — loi CDN/config khong hong tinh nang nao.
+   Dang xuat TUYET DOI khong xoa du lieu local. */
+var FB_SYNC_PENDING_LS='damuSpeaking.syncPending';
+var FB_SYNC_UID_LS='damuSpeaking.syncUid';
+var FB_SYNC_KEYS_LS='damuSpeaking.syncKeys';
+var FB_SYNC_META_LS='damuSpeaking.syncMeta';
+var fbCurrentUser=null, fbAuthReady=false, fbLastSyncAt=null, fbAuthMsg='';
+var syncTimer=null, syncInFlight=false;
+function fbIsFileProtocol(){try{return location.protocol==='file:';}catch(e){return false;}}
+function fbSyncKeysEnabled(){try{var v=localStorage.getItem(FB_SYNC_KEYS_LS);return v!=='0';}catch(e){return true;}}
+function fbGetMeta(){try{var o=JSON.parse(localStorage.getItem(FB_SYNC_META_LS)||'null');if(o&&typeof o==='object')return o;}catch(e){}return{historyClearedAt:null,settingsUpdatedAt:null};}
+function fbSetMeta(m){try{localStorage.setItem(FB_SYNC_META_LS,JSON.stringify(m));}catch(e){}}
+function fbTouchSettingsUpdatedAt(){var m=fbGetMeta();m.settingsUpdatedAt=new Date().toISOString();fbSetMeta(m);}
+function fbSetHistoryClearedAt(iso){var m=fbGetMeta();m.historyClearedAt=iso;fbSetMeta(m);}
+function fbEsc(s){if(typeof esc==='function')return esc(s);return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function fbLog(where,err){try{if(typeof aiLogErr==='function')aiLogErr(where,err);}catch(e){}}
+function fbFriendlyErr(err){
+  var code=(err&&err.code)||'';var msg=String((err&&err.message)||err||'');
+  if(code==='permission-denied'||/permission-denied|Missing or insufficient permissions/.test(msg))return 'Chưa đồng bộ được: tài khoản của bạn chưa có quyền truy cập dữ liệu đám mây. Hãy thử đăng xuất rồi đăng nhập lại. Nếu vẫn lỗi, chụp màn hình này gửi cho damu nhé.';
+  if(code==='auth/unauthorized-domain')return 'Tên miền web này chưa được cấp phép đăng nhập. Mở web bằng link chính thức (GitHub Pages) rồi thử lại nhé.';
+  if(code==='auth/popup-closed-by-user')return 'Bạn đã đóng cửa sổ đăng nhập trước khi chọn tài khoản. Bấm Đăng nhập để thử lại nhé.';
+  if(code==='auth/network-request-failed'||code==='unavailable')return 'Mạng đang chập chờn nên chưa đăng nhập/đồng bộ được. Kiểm tra kết nối rồi thử lại — dữ liệu trên máy vẫn an toàn.';
+  return 'Có lỗi khi đăng nhập/đồng bộ. Dữ liệu trên máy vẫn an toàn — thử lại sau ít phút nhé.';
+}
+function fbShowAuthError(err){
+  if(err&&err.code==='auth/cancelled-popup-request')return;
+  fbLog('auth',err);fbAuthMsg=fbFriendlyErr(err);renderAuthBox(fbCurrentUser);renderAccountCard(fbCurrentUser);
+  var ss=$('syncStatus');if(ss)ss.textContent=fbAuthMsg;
+}
+function markSyncPending(){try{localStorage.setItem(FB_SYNC_PENDING_LS,'1');}catch(e){}fbUpdateSyncStatus();}
+function clearSyncPending(){try{localStorage.removeItem(FB_SYNC_PENDING_LS);}catch(e){}}
+function fbSyncPending(){try{return localStorage.getItem(FB_SYNC_PENDING_LS)==='1';}catch(e){return false;}}
+function fbTimeLabel(d){var p=function(n){return('0'+n).slice(-2);};return p(d.getHours())+':'+p(d.getMinutes());}
+function fbUpdateSyncStatus(){
+  var el=$('syncStatus');if(!el)return;
+  if(!fbCurrentUser){el.textContent='';return;}
+  if(typeof navigator!=='undefined'&&navigator.onLine===false){el.textContent='📴 Đang ngoại tuyến — thay đổi được lưu trên máy, sẽ tự đồng bộ khi có mạng';return;}
+  if(fbSyncPending()){el.textContent='⏳ Đang chờ đồng bộ…';return;}
+  if(fbLastSyncAt){el.textContent='☁️ Đã đồng bộ lúc '+fbTimeLabel(fbLastSyncAt);return;}
+  el.textContent='';
+}
+function setLastSyncLabel(){fbLastSyncAt=new Date();fbUpdateSyncStatus();}
+function renderAuthBox(user){
+  var box=$('authBox');if(!box)return;
+  renderAccountCard(user);
+  if(fbIsFileProtocol()){box.style.display='none';box.innerHTML='';return;}
+  if(typeof FIREBASE_ENABLED==='undefined'||!FIREBASE_ENABLED||typeof fbAuth==='undefined'||!fbAuth){box.style.display='none';box.innerHTML='';return;}
+  box.style.display='';
+  if(!fbAuthReady){box.innerHTML='<span class="small" style="color:#fff;opacity:.85">Đang kiểm tra đăng nhập…</span>';return;}
+  if(!user){box.innerHTML='<button class="btn ghost" style="background:rgba(255,255,255,.18);color:#fff;border:1px solid #fff;border-radius:999px;padding:6px 14px" onclick="fbSignIn()">🔑 Đăng nhập bằng Google</button>'+(fbAuthMsg?'<div class="small" style="color:#fff;max-width:260px">'+fbEsc(fbAuthMsg)+'</div>':'');return;}
+  var name=String(user.displayName||user.email||'Bạn');var shortName=name.length>14?name.slice(0,14)+'…':name;
+  var av=user.photoURL?'<img src="'+fbEsc(user.photoURL)+'" alt="" style="width:28px;height:28px;border-radius:50%;vertical-align:middle"> ':'';
+  box.innerHTML='<span style="color:#fff;vertical-align:middle">'+av+'<span style="max-width:120px;display:inline-block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle" title="'+fbEsc(name)+'">'+fbEsc(shortName)+'</span></span> <button class="btn ghost" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.8);border-radius:999px;padding:4px 10px" onclick="fbSignOut()">Đăng xuất</button>';
+}
+function renderAccountCard(user){
+  var body=$('accountBody');if(!body)return;
+  if(fbIsFileProtocol()){body.innerHTML='<p class="small">Bạn đang mở web bằng file trên máy — mở bằng link web (GitHub Pages) mới dùng được Đăng nhập &amp; đồng bộ.</p>';var ss0=$('syncStatus');if(ss0)ss0.textContent='';return;}
+  if(typeof FIREBASE_ENABLED==='undefined'||!FIREBASE_ENABLED||typeof fbAuth==='undefined'||!fbAuth){body.innerHTML='<p class="small">Đồng bộ đám mây chưa được bật trên bản này. App vẫn lưu dữ liệu trên máy này như trước.</p>';return;}
+  if(!fbAuthReady){body.innerHTML='<p class="small">Đang kiểm tra đăng nhập…</p>';return;}
+  if(!user){
+    body.innerHTML='<p class="small">Đăng nhập bằng Google để lịch sử, tiến độ và cài đặt tự đi theo bạn sang mọi thiết bị. Chưa đăng nhập, app vẫn lưu trên máy này như trước.</p><button class="btn big" onclick="fbSignIn()">🔑 Đăng nhập bằng Google</button>'+(fbAuthMsg?'<p class="small">'+fbEsc(fbAuthMsg)+'</p>':'');
+    return;
+  }
+  var av2=user.photoURL?'<img src="'+fbEsc(user.photoURL)+'" alt="" style="width:32px;height:32px;border-radius:50%;vertical-align:middle"> ':'';
+  body.innerHTML='<p>'+av2+'<b>'+fbEsc(user.displayName||'')+'</b><br><span class="small">'+fbEsc(user.email||'')+'</span></p>'
+    +'<label class="small" style="display:block;margin:8px 0"><input type="checkbox" id="syncKeysToggle" onchange="fbToggleSyncKeys(this.checked)" '+(fbSyncKeysEnabled()?'checked':'')+'> Đồng bộ API key lên đám mây</label>'
+    +'<div class="row"><button class="btn ghost" onclick="fbSignOut()">Đăng xuất</button></div>'
+    +(fbAuthMsg?'<p class="small">'+fbEsc(fbAuthMsg)+'</p>':'');
+  fbUpdateSyncStatus();
+}
+function fbSignIn(){
+  if(!fbAuth)return;
+  try{
+    var provider=new firebase.auth.GoogleAuthProvider();
+    fbAuth.signInWithPopup(provider).catch(function(err){
+      if(err&&(err.code==='auth/popup-blocked'||err.code==='auth/cancelled-popup-request')){
+        if(err.code==='auth/popup-blocked'){fbAuth.signInWithRedirect(provider).catch(function(e2){fbShowAuthError(e2);});}
+        return;
+      }
+      fbShowAuthError(err);
+    });
+  }catch(e){fbShowAuthError(e);}
+}
+function fbSignOut(){
+  if(!fbAuth)return;
+  fbCurrentUser=null;
+  try{fbAuth.signOut().catch(function(e){fbLog('auth',e);});}catch(e){fbLog('auth',e);}
+  /* CHI thoat phien — TUYET DOI khong xoa localStorage, khong xoa co syncUid/pending */
+}
+function fbToggleSyncKeys(on){
+  try{localStorage.setItem(FB_SYNC_KEYS_LS,on?'1':'0');}catch(e){}
+  if(!on){pushNow();}else{scheduleSync();}
+}
+function fbRawStrategy(){try{var o=JSON.parse(localStorage.getItem(STRATLS)||'null');if(o&&o.text)return o;}catch(e){}return null;}
+function fbStateFromLocal(){
+  var meta=fbGetMeta();
+  var st=null;try{st=getStreak();}catch(e){st={count:0,lastDay:''};}
+  var hist=[];try{hist=loadHist();}catch(e){hist=[];}
+  var sb=5.0;try{sb=loadSelfBand();}catch(e){}
+  var lg='en-US';try{lg=loadLang();}catch(e){}
+  var gk='',qk='';try{gk=aiGetKey();}catch(e){}try{qk=(typeof aiGetGroqKey==='function')?aiGetGroqKey():'';}catch(e){}
+  return{history:hist,streak:st,strategy:fbRawStrategy(),selfBand:sb,lang:lg,keys:{gemini:gk,groq:qk},historyClearedAt:meta.historyClearedAt||null,settingsUpdatedAt:meta.settingsUpdatedAt||null};
+}
+function fbByteLen(s){try{return new Blob([s]).size;}catch(e){return s.length;}}
+function fbTrimmedState(limit){
+  var s=fbStateFromLocal();
+  if(!fbSyncKeysEnabled())s.keys={gemini:'',groq:''};
+  var h=Array.isArray(s.history)?s.history:[];
+  var trimmed=[];
+  for(var i=0;i<h.length&&i<limit;i++){
+    var it=h[i];var c={};for(var k in it){if(Object.prototype.hasOwnProperty.call(it,k))c[k]=it[k];}
+    if(typeof c.transcript==='string'&&c.transcript.length>1200)c.transcript=c.transcript.slice(0,1200);
+    trimmed.push(c);
+  }
+  s.history=trimmed;
+  return s;
+}
+function collectCloudState(){
+  var limits=[80,60,40,20];var chosen=fbTrimmedState(80);
+  for(var i=0;i<limits.length;i++){
+    var cand=fbTrimmedState(limits[i]);chosen=cand;
+    if(fbByteLen(JSON.stringify(cand))<=900*1024)break;
+  }
+  return chosen;
+}
+function applyStateToLocal(state,uid){
+  if(!state||typeof state!=='object')return;
+  try{
+    if(Array.isArray(state.history))localStorage.setItem(HISTLS,JSON.stringify(state.history.slice(0,100)));
+    if(state.streak&&typeof state.streak==='object')localStorage.setItem(STREAKLS,JSON.stringify(state.streak));
+    if(typeof STRATLS!=='undefined'){if(state.strategy)localStorage.setItem(STRATLS,JSON.stringify(state.strategy));else localStorage.removeItem(STRATLS);}
+    if(typeof SELFBANDLS!=='undefined'&&state.selfBand!=null&&isFinite(Number(state.selfBand)))localStorage.setItem(SELFBANDLS,String(Number(state.selfBand)));
+    if(state.lang&&(state.lang==='en-US'||state.lang==='en-GB'||state.lang==='en-AU'))localStorage.setItem(LANGLS,state.lang);
+    if(state.keys&&fbSyncKeysEnabled()){
+      if(typeof AI_KEYLS!=='undefined'){if(state.keys.gemini)localStorage.setItem(AI_KEYLS,String(state.keys.gemini));else localStorage.removeItem(AI_KEYLS);}
+      if(typeof GROQ_KEYLS!=='undefined'){if(state.keys.groq)localStorage.setItem(GROQ_KEYLS,String(state.keys.groq));else localStorage.removeItem(GROQ_KEYLS);}
+    }
+    var meta=fbGetMeta();
+    if(state.historyClearedAt)meta.historyClearedAt=state.historyClearedAt;
+    if(state.settingsUpdatedAt)meta.settingsUpdatedAt=state.settingsUpdatedAt;
+    fbSetMeta(meta);
+    if(uid)localStorage.setItem(FB_SYNC_UID_LS,uid);
+  }catch(e){fbLog('sync',e);}
+}
+function fbHistKey(it){return String((it&&it.date)||'')+'|'+String((it&&it.question)||'')+'|'+String((it&&it.band!=null)?it.band:'');}
+function fbMergeStates(localS,cloudS){
+  var out={};
+  var seen={},merged=[];
+  var all=[].concat(Array.isArray(localS.history)?localS.history:[],Array.isArray(cloudS.history)?cloudS.history:[]);
+  /* union: duyet local truoc, cloud sau; trung khoa thi giu ban co feedback day du hon */
+  var byKey={};var order=[];
+  all.forEach(function(it){if(!it)return;var kk=fbHistKey(it);if(!byKey[kk]){byKey[kk]=it;order.push(kk);}else{var cur=byKey[kk];var curHas=!!(cur&&cur.feedback);var newHas=!!(it&&it.feedback);if(newHas&&!curHas)byKey[kk]=it;}});
+  order.forEach(function(kk){merged.push(byKey[kk]);});
+  merged.sort(function(a,b){return String(b.date||'').localeCompare(String(a.date||''));});
+  var cleared=[localS.historyClearedAt,cloudS.historyClearedAt].filter(Boolean).sort();
+  var clearedMax=cleared.length?cleared[cleared.length-1]:null;
+  if(clearedMax)merged=merged.filter(function(it){return String(it.date||'')>clearedMax;});
+  out.history=merged.slice(0,100);
+  out.historyClearedAt=clearedMax;
+  var ls=localS.streak||{count:0,lastDay:''},cs=cloudS.streak||{count:0,lastDay:''};
+  if(String(ls.lastDay||'')>String(cs.lastDay||''))out.streak=ls;
+  else if(String(cs.lastDay||'')>String(ls.lastDay||''))out.streak=cs;
+  else out.streak=((ls.count||0)>=(cs.count||0))?ls:cs;
+  var lstr=localS.strategy,cstr=cloudS.strategy;
+  if(lstr&&cstr)out.strategy=(String(lstr.date||'')>=String(cstr.date||''))?lstr:cstr;
+  else out.strategy=lstr||cstr||null;
+  var lUpd=String(localS.settingsUpdatedAt||''),cUpd=String(cloudS.settingsUpdatedAt||'');
+  var winner=(cUpd>lUpd)?cloudS:localS;var loser=(winner===localS)?cloudS:localS;
+  out.selfBand=(winner.selfBand!=null)?winner.selfBand:loser.selfBand;
+  out.lang=winner.lang||loser.lang||'en-US';
+  var wk=winner.keys||{gemini:'',groq:''},lk=loser.keys||{gemini:'',groq:''};
+  out.keys={gemini:wk.gemini||lk.gemini||'',groq:wk.groq||lk.groq||''};
+  out.settingsUpdatedAt=(cUpd>lUpd)?(cloudS.settingsUpdatedAt||null):(localS.settingsUpdatedAt||null);
+  if(!fbSyncKeysEnabled())out.keys={gemini:'',groq:''};
+  return out;
+}
+function mergeStates(localS,cloudS){return fbMergeStates(localS,cloudS);}
+function fbRerenderAfterPull(){
+  try{renderStreak();}catch(e){}
+  try{initSelfBandUI();}catch(e){}
+  try{if(typeof syncHintBandChip==='function')syncHintBandChip();}catch(e){}
+  try{renderAIStatus();}catch(e){}
+  try{var k=aiGetKey();var ake=$('akey');if(ake)ake.value=k||'';}catch(e){}
+  try{var gk2=(typeof aiGetGroqKey==='function')?aiGetGroqKey():'';var ge=$('groqKey');if(ge)ge.value=gk2||'';}catch(e){}
+  try{var lg2=loadLang();var s1=$('speechLangSel');if(s1)s1.value=lg2;var s2=$('mtSpeechLangSel');if(s2)s2.value=lg2;}catch(e){}
+  try{renderHistory();}catch(e){}
+  try{renderAuthBox(fbCurrentUser);}catch(e){}
+}
+function fbLocalHasData(localS){
+  var hasHist=Array.isArray(localS.history)&&localS.history.length>0;
+  var hasStreak=!!(localS.streak&&(localS.streak.count||0)>0);
+  return hasHist||hasStreak;
+}
+function fbBackupLocalForUid(oldUid,localS){
+  if(!oldUid)return;
+  try{localStorage.setItem('damuSpeaking.backup.'+oldUid,JSON.stringify(localS));}catch(e){}
+}
+function fbGetBackup(uid){
+  try{var o=JSON.parse(localStorage.getItem('damuSpeaking.backup.'+uid)||'null');if(o&&typeof o==='object')return o;}catch(e){}return null;
+}
+async function pullAndMerge(){
+  if(!fbAuth||!fbAuth.currentUser||!fbDb)return;
+  var uid=fbAuth.currentUser.uid;
+  try{
+    var snap=await fbDb.collection('users').doc(uid).get();
+    var cloudState=(snap&&snap.exists&&snap.data()&&snap.data().state)?snap.data().state:null;
+    var localS=fbStateFromLocal();
+    var storedUid=null;try{storedUid=localStorage.getItem(FB_SYNC_UID_LS);}catch(e){}
+    /* 4.5 doi tai khoan tren cung may */
+    if(storedUid&&storedUid!==uid&&fbLocalHasData(localS)){
+      fbBackupLocalForUid(storedUid,localS);
+      var backup=fbGetBackup(uid);
+      if(backup&&cloudState){
+        var mergedB=fbMergeStates(backup,cloudState);
+        applyStateToLocal(mergedB,uid);fbRerenderAfterPull();
+        clearSyncPending();await pushNow();
+      }else if(cloudState){
+        applyStateToLocal(cloudState,uid);fbRerenderAfterPull();
+      }else{
+        applyStateToLocal({history:[],streak:{count:0,lastDay:''},strategy:null,selfBand:5.0,lang:'en-US',keys:{gemini:'',groq:''},historyClearedAt:null,settingsUpdatedAt:null},uid);
+        fbRerenderAfterPull();
+        try{localStorage.removeItem('damuSpeaking.backup.'+uid);}catch(e){}
+      }
+      setLastSyncLabel();var sB=$('syncStatus');if(sB)sB.textContent='☁️ Đã đồng bộ dữ liệu từ tài khoản';
+      return;
+    }
+    /* 4.1 chua co tai lieu may */
+    if(!cloudState){
+      try{localStorage.setItem(FB_SYNC_UID_LS,uid);}catch(e){}
+      await pushNow();
+      return;
+    }
+    /* 4.2 may nay chua co du lieu local */
+    var isFresh=!fbLocalHasData(localS)&&!storedUid;
+    if(isFresh){
+      var backup2=fbGetBackup(uid);
+      if(backup2){var merged2=fbMergeStates(backup2,cloudState);applyStateToLocal(merged2,uid);fbRerenderAfterPull();await pushNow();}
+      else{applyStateToLocal(cloudState,uid);fbRerenderAfterPull();}
+      setLastSyncLabel();var s2=$('syncStatus');if(s2)s2.textContent='☁️ Đã đồng bộ dữ liệu từ tài khoản';
+      return;
+    }
+    /* 4.3 ca hai phia deu co du lieu -> merge */
+    var merged=fbMergeStates(localS,cloudState);
+    applyStateToLocal(merged,uid);fbRerenderAfterPull();
+    clearSyncPending();await pushNow();
+    var s3=$('syncStatus');if(s3)s3.textContent='☁️ Đã đồng bộ dữ liệu từ tài khoản';
+    if(fbLastSyncAt)fbUpdateSyncStatus();
+  }catch(e){
+    if(e&&e.code==='invalid-argument'){fbLog('sync',e);return;}
+    fbLog('sync',e);
+    var ss=$('syncStatus');if(ss)ss.textContent=fbFriendlyErr(e);
+  }
+}
+function scheduleSync(){
+  markSyncPending();
+  if(!fbAuth||!fbAuth.currentUser)return;
+  if(syncTimer)clearTimeout(syncTimer);
+  syncTimer=setTimeout(function(){pushNow();},1500);
+}
+async function pushNow(){
+  if(syncInFlight||!fbAuth||!fbAuth.currentUser||!fbDb)return;
+  syncInFlight=true;
+  try{
+    var st=collectCloudState();
+    await fbDb.collection('users').doc(fbAuth.currentUser.uid).set({state:st,updatedAt:firebase.firestore.FieldValue.serverTimestamp()});
+    try{localStorage.setItem(FB_SYNC_UID_LS,fbAuth.currentUser.uid);}catch(e){}
+    clearSyncPending();setLastSyncLabel();
+  }catch(e){
+    if(e&&e.code==='invalid-argument'){fbLog('sync',e);/* qua lon du da trim: giu co pending, khong bao loi do (spec 3.4) */}
+    else{fbLog('sync',e);var ss=$('syncStatus');if(ss&&(e&&(e.code==='permission-denied'||e.code==='unavailable')))ss.textContent=fbFriendlyErr(e);else fbUpdateSyncStatus();}
+  }
+  syncInFlight=false;
+}
+function fbInitSync(){
+  renderAuthBox(null);renderAccountCard(null);
+  if(typeof window!=='undefined'){
+    window.addEventListener('online',function(){fbUpdateSyncStatus();if(fbAuth&&fbAuth.currentUser&&fbSyncPending())pushNow();});
+    window.addEventListener('offline',function(){fbUpdateSyncStatus();});
+  }
+  if(!fbAuth)return;
+  try{
+    var rr=fbAuth.getRedirectResult();
+    if(rr&&typeof rr.catch==='function')rr.catch(function(err){fbShowAuthError(err);});
+  }catch(e){}
+  try{
+    fbAuth.onAuthStateChanged(function(user){
+      fbCurrentUser=user||null;fbAuthReady=true;fbAuthMsg='';
+      renderAuthBox(fbCurrentUser);
+      if(user){
+        pullAndMerge().then(function(){if(fbSyncPending())pushNow();}).catch(function(e){fbLog('sync',e);});
+      }
+    });
+  }catch(e){fbLog('auth',e);}
+}
+fbInitSync();
+
 document.querySelectorAll('nav button').forEach(function(b){b.addEventListener('click',function(){showTab(b.id.replace('nav-',''));});});
 (function init(){
   $('capyHead').src=CAPY_IMG;
