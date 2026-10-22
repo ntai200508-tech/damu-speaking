@@ -1663,7 +1663,8 @@ function extractJSON(t){
   if(_hintParseDepth===0&&!aiIsLimitText(t)){
     var _hs=String(t);
     if(/"sampleAnswer"|sample\s*answer\s*[:\-]|"reasoning"/i.test(_hs)){
-      var _isGrade=/scores/.test(_hs)&&/opening/.test(_hs);var _hp=_isGrade?null:parseHint(_hs);if(_hp&&(isValidHint(_hp)||_hp.sampleAnswer))return _hp;
+      var _isGrade=(/scores/.test(_hs)&&/opening/.test(_hs))||/examinerNote|modelAnswer|criteriaFeedback/.test(_hs); /* phan hoi BO SUNG cham bai (completion) chua cac dau hieu nay: TUYET DOI khong de parser goi y nuot — mau THAT completion2 22/10 bi parseHint tra ve {ideas,phrases,sampleAnswer} khien merge that bai */
+      var _hp=_isGrade?null:parseHint(_hs);if(_hp&&(isValidHint(_hp)||_hp.sampleAnswer))return _hp;
     }
   }
   /* Envelope cua Pollinations ({"role":"assistant","reasoning":"..."}): bo vo, parse TIEP reasoning —
@@ -1680,28 +1681,73 @@ function extractJSON(t){
   tryParse(repaired);tryParse(balanceJSON(repaired));
   var full0=(a>=0)?raw.slice(a):raw;
   tryParse(balanceJSON(repairJSONString(full0)));tryParse(repairJSONString(full0));
-  if(successes.length){successes.sort(function(x,y){return richness(y)-richness(x);});return successes[0];}
+  /* realEnough(o): object parse duoc co it nhat 1 gia tri THAT (diem so / so / boolean /
+     chuoi khong phai placeholder, ke ca nam sau 2 lop long nhau nhu criteriaFeedback.fix
+     hay errors[].wrong). Ban sao SHAPE cua prompt trong reasoning Pollinations (moi gia
+     tri deu la '...' / chu mau — mau THAT 22/10) se KHONG duoc tra ve lam ket qua; parser
+     roi xuong heuristic/prose de trich gia tri that o phia sau reasoning. */
+  function realEnough(o){
+    if(!o||typeof o!=='object')return false;
+    function isRealStr(v){return typeof v==='string'&&!!v.trim()&&!(typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(v));}
+    if(o.scores&&typeof o.scores==='object'){for(var k0 in o.scores){if(isFinite(parseFloat(o.scores[k0])))return true;}}
+    for(var k1 in o){var v1=o[k1];
+      if(typeof v1==='number'&&isFinite(v1))return true;
+      if(typeof v1==='boolean')return true;
+      if(isRealStr(v1))return true;
+      if(Array.isArray(v1)){for(var i1=0;i1<v1.length;i1++){var it=v1[i1];if(isRealStr(it))return true;
+        if(it&&typeof it==='object'){for(var k2 in it){if(isRealStr(it[k2])||typeof it[k2]==='number')return true;}}}}
+      else if(v1&&typeof v1==='object'){for(var k3 in v1){var n1=v1[k3];if(typeof n1==='number'&&isFinite(n1))return true;
+        if(n1&&typeof n1==='object'){for(var k4 in n1){if(isRealStr(n1[k4])||typeof n1[k4]==='number')return true;}}}}
+    }
+    return false;}
+  if(successes.length){successes.sort(function(x,y){return richness(y)-richness(x);});
+    if(realEnough(successes[0]))return successes[0];
+  }
   // Full-object slice incl. unterminated tail, then progressive truncation + balancing
   var full=(a>=0)?raw.slice(a):raw;
   var rf=balanceJSON(repairJSONString(full));
-  try{return JSON.parse(rf);}catch(e3){}
+  try{var _rfp=JSON.parse(rf);if(realEnough(_rfp))return _rfp;}catch(e3){}
   var cur=rf;
   for(var k=0;k<60;k++){
     var cut=Math.max(cur.lastIndexOf(','),cur.lastIndexOf('}'),cur.lastIndexOf(']'));
     if(cut<=0)break;
     cur=cur.slice(0,cut);
-    try{return JSON.parse(balanceJSON(cur));}catch(e4){continue;}
+    try{var _cp=JSON.parse(balanceJSON(cur));if(realEnough(_cp))return _cp;}catch(e4){continue;}
   }
   // Heuristic field extraction as last resort when structure is too broken
   var g={};var any=false;
   var sm=full.match(/"scores"\s*:\s*\{([^}]*)\}/);if(sm){g.scores={};['FC','LR','GRA','P'].forEach(function(key){var mm=sm[1].match(new RegExp('"'+key+'"\\s*:\\s*([0-9.]+)'));if(mm){g.scores[key]=parseFloat(mm[1]);any=true;}});}
-  var om=full.match(/"opening"\s*:\s*"((?:[^"\\]|\\.)*)"/);if(om){g.opening=om[1];any=true;}
-  var pm=full.match(/"praise"\s*:\s*"((?:[^"\\]|\\.)*)"/);if(pm){g.praise=pm[1];any=true;}
-  var em=full.match(/"examinerNote"\s*:\s*"((?:[^"\\]|\\.)*)"/);if(em){g.examinerNote=em[1];any=true;}
-  var mam=full.match(/"modelAnswer"\s*:\s*"((?:[^"\\]|\\.)*)"/);if(mam){g.modelAnswer=mam[1];any=true;}
-  var rnm=full.match(/"rewriteNotes"\s*:\s*"((?:[^"\\]|\\.)*)"/);if(rnm){g.rewriteNotes=rnm[1];any=true;}
-  var mam2=full.match(/(?:^|\n)\s*ModelAnswer\s*:\s*"([^"]{15,})"/i);if(!g.modelAnswer&&mam2){g.modelAnswer=mam2[1];any=true;}
-  var em2=full.match(/(?:^|\n)\s*ExaminerNote\s*:\s*"?([A-Za-z][^"\n]{14,160})"?/i);if(!g.examinerNote&&em2){g.examinerNote=em2[1].trim();any=true;}
+  /* Chon gia tri THAT, bo qua chu MAU cua prompt bi AI nhac lai trong reasoning (mau THAT
+     Pollinations 22/10: reasoning mo dau bang ban sao shape JSON chua '1 sentence in English',
+     'short Band 8 rewrite', 'tip in Vietnamese'... roi MOI soan gia tri that o phia sau —
+     ban cu lay match dau tien nen cham ra toan chu mau). pickReal: quet MOI match, lay gia
+     tri dau tien KHONG phai placeholder (gradeIsPlaceholderText); khong co gia tri that thi
+     de trong de luot bo sung (completeGradeIfNeeded) xin tiep, thay vi dung chu mau lam that. */
+  function pickReal(re,minLen){var m,all=[];while((m=re.exec(full))!==null){all.push(m[1]);}
+    for(var pi=0;pi<all.length;pi++){var v=String(all[pi]||'').trim();if(v.length>=(minLen||1)&&!(typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(v)))return v;}
+    return '';}
+  var omV=pickReal(/"opening"\s*:\s*"((?:[^"\\]|\\.)*)"/g,3);if(omV){g.opening=omV;any=true;}
+  var pmV=pickReal(/"praise"\s*:\s*"((?:[^"\\]|\\.)*)"/g,8);if(pmV){g.praise=pmV;any=true;}
+  var emV=pickReal(/"examinerNote"\s*:\s*"((?:[^"\\]|\\.)*)"/g,15);if(emV){g.examinerNote=emV;any=true;}
+  var mamV=pickReal(/"modelAnswer"\s*:\s*"((?:[^"\\]|\\.)*)"/g,30);if(mamV){g.modelAnswer=mamV;any=true;}
+  var rnm=full.match(/"rewriteNotes"\s*:\s*"((?:[^"\\]|\\.)*)"/);if(rnm&&!(typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(rnm[1]))){g.rewriteNotes=rnm[1];any=true;}
+  var mam2=full.match(/(?:^|\n)\s*ModelAnswer\s*:\s*"([^"]{15,})"/i);if(!g.modelAnswer&&mam2&&!(typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(mam2[1]))){g.modelAnswer=mam2[1];any=true;}
+  var em2=full.match(/(?:^|\n)\s*ExaminerNote\s*:\s*"?([A-Za-z][^"\n]{14,160})"?/i);if(!g.examinerNote&&em2&&!(typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(em2[1]))){g.examinerNote=em2[1].trim();any=true;}
+  /* Ban soan dang van xuoi trong reasoning: 'examinerNote: <vai cau mo ta> Eg "GHI CHU THAT"'
+     / 'modelAnswer: <mo ta> Eg: "BAN NANG THAT"' (mau THAT completion2 22/10) — trich dung
+     doan trong ngoac kep o sau, bo qua phan mo ta meta o truoc. */
+  var em3=full.match(/ExaminerNote\s*:[^"\n]{0,240}?["“]([A-Za-z][^"”\n]{14,300})["”]/i);if(!g.examinerNote&&em3&&!(typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(em3[1]))){g.examinerNote=em3[1].trim();any=true;}
+  var mam3=full.match(/ModelAnswer\s*:[^"\n]{0,240}?["“]([A-Za-z][^"”\n]{29,900})["”]/i);if(!g.modelAnswer&&mam3&&!(typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(mam3[1]))){g.modelAnswer=mam3[1].trim();any=true;}
+  /* criteriaFeedback dang nhap trong reasoning ({"FC":{"errors":[...],"fix":"..."} }):
+     trich tung tieu chi co fix THAT (khong phai 'Vietnamese fix' mau) de muc nhan xet
+     tung tieu chi khong bi mat khi JSON chinh bi cat cut. Reasoning cua Pollinations chua
+     nhieu doan JSON bi escape (\") nen phai bo escape truoc khi quet. */
+  var fullU=full.replace(/\\"/g,'"');
+  var cfHeur={};['FC','LR','GRA','P'].forEach(function(ck){var cre2=new RegExp('"'+ck+'"\\s*:\\s*\\{\\s*"errors"\\s*:\\s*\\[([^\\]]*)\\]\\s*,\\s*"fix"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"','g'),cm2;
+    while((cm2=cre2.exec(fullU))!==null){if(typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(cm2[2]))continue; /* ban echo template o dau reasoning: bo qua, tim ban soan that o sau */
+      var ce=[],cre=/"((?:[^"\\]|\\.)*)"/g,cx;while((cx=cre.exec(cm2[1]))!==null){if(!(typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(cx[1])))ce.push(cx[1]);}cfHeur[ck]={errors:ce,fix:cm2[2]};break;}});
+  if(Object.keys(cfHeur).length){g.criteriaFeedback=cfHeur;any=true;}
+  if(!g.praise){var pmU=fullU.match(/praise\s*:\s*"([^"]{8,200})"/i);if(pmU&&!(typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(pmU[1]))){g.praise=pmU[1].trim();any=true;}}
   function strArr(name){var mm=full.match(new RegExp('"'+name+'"\\s*:\\s*\\[([\\s\\S]*?)\\]'));if(!mm)return null;var items=[],re=/"((?:[^"\\]|\\.)*)"/g,x;while((x=re.exec(mm[1]))!==null)items.push(x[1]);return items;}
   var tips=strArr('tips');if(tips&&tips.length){g.tips=tips;any=true;}
   if(any){g.errors=g.errors||[];g.upgrades=g.upgrades||[];g.tips=g.tips||[];g._repaired=true;return g;}
@@ -1724,7 +1770,7 @@ function extractJSON(t){
   var pok=Object.keys(prose).length;
   if(pok===4)return {opening:'',scores:prose,errors:[],upgrades:[],tips:[],praise:'',examinerNote:'',modelAnswer:'',_prose:true};
   if(pok>=1)return {opening:'',scores:prose,errors:[],upgrades:[],tips:[],praise:'',examinerNote:'',modelAnswer:'',_prose:true,_prosePartial:true};
-  // Plain-text fallback: never die — caller renders the raw AI text as feedback
+  // Plain-text last resort: never die — caller renders the raw AI text as feedback
   return {opening:'',scores:{},errors:[],upgrades:[],tips:[],praise:'',examinerNote:'',modelAnswer:'',_raw:raw,_fallback:true};
 }
 function validateGrade(g){
@@ -1748,15 +1794,111 @@ function validateGrade(g){
   return content>=2||g._prose===true;
 }
 /* ================= GOI BO SUNG PHAN THIEU (completion call) =================
-   Diem hop le (validateGrade dat) nhung thieu truong noi dung -> goi 1 lan prompt NGAN chi xin truong thieu, ghep vao roi moi render. */
-function gradeMissingFields(g){var miss=[];if(!g||typeof g!=='object')return miss;
-  if(!String(g.examinerNote||'').trim())miss.push('examinerNote');
-  if(!String(g.modelAnswer||'').trim())miss.push('modelAnswer');
-  var cf=g.criteriaFeedback,cfBad=(!cf||typeof cf!=='object'||Array.isArray(cf));
-  if(!cfBad){var keys=['FC','LR','GRA','P'];for(var i=0;i<keys.length;i++){var c=cf[keys[i]];if(c==null){cfBad=true;break;}var f=(typeof c==='object')?String(c.fix||'').trim():String(c).trim();var es=(typeof c==='object'&&Array.isArray(c.errors))?c.errors.length:0;if(!f&&!es){cfBad=true;break;}}}
+   Diem hop le (validateGrade dat) nhung thieu muc BAT BUOC -> goi bo sung bang chinh luong
+   aiAsk (giu nguyen thu tu Groq -> Gemini -> Pollinations; 0-key chi Pollinations), prompt
+   chi xin dung muc con thieu, dua tren transcript + cau hoi + diem DA cham (khong cham lai).
+   Ngan sach: cham 1 luot + bo sung TOI DA 2 luot (fixJSON neu da dung cung tinh vao ngan
+   sach nay — xem tham so maxAttempts va cach gradeNow/mtGradeMock truyen vao). */
+/* gradeIsPlaceholderText(v): TRUE neu v la CHU MAU bi AI sao chep nguyen van tu prompt/shape
+   (mau THAT Pollinations 22/10: examinerNote='1 sentence in English', modelAnswer='short
+   Band 8 rewrite', praise='1 sentence in Vietnamese', tips='tip in Vietnamese', fix cua
+   criteriaFeedback='Vietnamese fix' / 'how to improve FC in Vietnamese', wrong='exact
+   phrase') hoac rong/dau '...' — cac gia tri nay PHAI coi nhu THIEU de goi bo sung. */
+function gradeIsPlaceholderText(v){
+  var s=String(v==null?'':v).trim();if(!s)return true;
+  if(/^[\.…]+$/.test(s))return true;
+  if(/^(short text|short|text|n\/a|none|null|intro)$/i.test(s))return true;
+  if(/^1-2\s+(short\s+)?sentences?\s+in\s+(english|vietnamese)/i.test(s))return true;
+  if(/^1\s+(short\s+)?sentence\s+in\s+(english|vietnamese)/i.test(s))return true;
+  if(/^1\s+short\s+line\s+in\s+vietnamese/i.test(s))return true;
+  if(/^short\s+band\s*8\s+rewrite/i.test(s))return true;
+  if(/^band\s*8\s+(upgraded\s+)?rewrite\s+of\s+the\s+learner/i.test(s))return true;
+  if(/^tip\s+in\s+vietnamese$/i.test(s))return true;
+  if(/^(how\s+to\s+improve|vietnamese\s+fix|cach\s+khac\s+phuc)/i.test(s)&&s.length<80)return true;
+  if(/^short\s+evaluation\s+comment/i.test(s))return true;
+  if(/real\s+examiner\s+note\s+in\s+english/i.test(s))return true;
+  if(/^exact\s+(wrong\s+)?phrase/i.test(s))return true;
+  if(/^corrected(\s+version)?$/i.test(s))return true;
+  if(/^short\s+(vietnamese\s+)?reason/i.test(s))return true;
+  if(/^very\s+short\s+reason\s+in\s+vietnamese/i.test(s))return true;
+  /* ECHO VONG 2 (22/10): model yeu sao chep NGUYEN VAN chu huong dan o BAT KY vi tri nao
+     trong gia tri (khong chi o dau chuoi) — bat bang danh sach cum huong dan dac trung.
+     Ap dung cho moi nhanh gan: examinerNote/modelAnswer/rewriteNotes, criteriaFeedback
+     fix VA errors[] cua no, errors wrong/fix/why (mergeExtra + gradeMissingFields deu
+     di qua ham nay). */
+  var low=s.toLowerCase();
+  var echoSubs=['exact phrase copied from the transcript','exact phrase from the transcript','exact wrong phrase from the transcript','copied word-for-word from the transcript','specific fix in vietnamese','specific vietnamese fix','specific fix for fluency','specific fix for vocabulary','specific fix for grammar','specific fix for pronunciation','corrected version','short reason in vietnamese','real examiner note','band 8 rewrite of the learner','1 short line in vietnamese','one exact phrase from','one word from the transcript','word from the transcript','write a real','replace every','cach khac phuc cu the bang tieng viet','how to improve fc in vietnamese','how to improve lr in vietnamese','how to improve gra in vietnamese','how to improve p in vietnamese','real content about this answer','about this specific answer','specific fix in vietnamese for'];
+  for(var ei=0;ei<echoSubs.length;ei++){if(low.indexOf(echoSubs[ei])>=0)return true;}
+  if(/<[^>]{2,60}>/.test(s)&&/(exact|phrase|fix|vietnamese|transcript)/i.test(s))return true; /* con sot dau <...> cua prompt mau */
+  return false;}
+function gradeQuoteText(x){if(x==null)return '';if(typeof x==='string')return x;if(typeof x==='object')return String(x.wrong||x.error||x.text||x.quote||'');return String(x);}
+/* ===== LOC VERBATIM TUNG DONG (sua theo feedback test vong 2, ca RUN2 that) =====
+   Loi cu: gradeMissingFields chi DEM verbatim TONG (co >=1 dong dung la qua) va
+   mergeExtra chi loc placeholder/echo, nen 1 dong loi sach co the CHE cho 1 dong
+   nhiem reasoning cua model (vd dong loi thu 5 RUN2: wrong chua nguyen cau
+   '...very happy" | maybe same as 4? Provide another: "I need relax' — chu
+   reasoning, KHONG phai substring cua transcript) lot qua ca mergeExtra,
+   gradeMissingFields va renderGrade, in thang vao bang loi UI.
+   Nguyen tac moi: MOI dong trich deu phai tu dung duoc — (a) khong phai chu
+   mau/echo, (b) khong nhiem reasoning/meta cua model, (c) khi biet transcript
+   thi phai la substring nguyen van (chuan hoa hoa/thuong + khoang trang) cua
+   transcript. Ap dung TUNG DONG o ca 3 tang: gradeMissingFields (danh dau
+   thieu neu BAT KY dong nao hong), mergeExtra (bo dong hong cua luot bo sung
+   VA lam sach dong hong co san trong g), render/criteriaFeedbackHtml (chi
+   hien dong dung duoc; transcript lay tu g._transcript do gradeMissingFields/
+   completeGradeIfNeeded luu lai, hoac tham so tr truyen thang). */
+function gradeQuotePolluted(v){var s=String(v==null?'':v);if(!s.trim())return true;
+  if(s.indexOf('|')>=0)return true; /* dau phan cach cua format/mau reasoning lot vao gia tri */
+  var low=s.toLowerCase();
+  var subs=['maybe same as','provide another','provide one more','same as the previous','let me think','i will provide','need another example','try another one','another example:'];
+  for(var i=0;i<subs.length;i++){if(low.indexOf(subs[i])>=0)return true;}
+  if(/\bsame as\s*\d/.test(low))return true;
+  if(/\b(provide|give|add)\s+another\b/.test(low))return true;
+  return false;}
+function gradeNormQ(s){return String(s||'').toLowerCase().replace(/\s+/g,' ').trim();}
+function gradeQuoteVerbatim(quote,tr){var q=gradeNormQ(quote);if(!q)return false;var t=gradeNormQ(tr);if(!t)return true;return t.indexOf(q)>=0;}
+function gradeQuoteAcceptable(quote,tr){var q=String(quote==null?'':quote).trim();if(!q)return false;
+  if(gradeIsPlaceholderText(q))return false;
+  if(gradeQuotePolluted(q))return false;
+  if(tr&&!gradeQuoteVerbatim(q,tr))return false;
+  return true;}
+function gradeTrOf(g,explicit){if(explicit)return explicit;if(g&&typeof g==='object'){if(g._transcript)return g._transcript;if(g._tr)return g._tr;}return '';}
+function gradeSanitizeQuotes(g,tr){if(!g||typeof g!=='object')return g;var t=gradeTrOf(g,tr);if(t){try{g._transcript=t;}catch(e){}}
+  if(Array.isArray(g.errors)){g.errors=g.errors.filter(function(e){return e&&gradeQuoteAcceptable(e.wrong,t)&&String(e.fix||'').trim()!==''&&String(e.why||'').trim()!==''&&!gradeIsPlaceholderText(String(e.fix).trim())&&!gradeIsPlaceholderText(String(e.why).trim())&&!gradeQuotePolluted(String(e.fix))&&!gradeQuotePolluted(String(e.why));});}
+  if(g.criteriaFeedback&&typeof g.criteriaFeedback==='object'&&!Array.isArray(g.criteriaFeedback)){['FC','LR','GRA','P'].forEach(function(k){var c=g.criteriaFeedback[k];if(c&&typeof c==='object'&&Array.isArray(c.errors)){c.errors=c.errors.filter(function(x){return gradeQuoteAcceptable(gradeQuoteText(x),t);});}});}
+  return g;}
+/* gradeMissingFields(g, tr, part): cac muc BAT BUOC bi coi la THIEU gom:
+   - examinerNote: rong / placeholder / ngan hon 15 ky tu.
+   - modelAnswer: rong / placeholder / qua ngan (Part 2 < 40 tu, Part khac < 8 tu).
+   - criteriaFeedback: thieu 1 trong 4 tieu chi, fix rong/placeholder/ngan, HOAC (khi co
+     transcript) khong tieu chi nao trich duoc loi NGUYEN VAN tu transcript — van mau chung
+     khong trich loi that bi coi la thieu (dung phan nan cua nguoi dung 11:32 22/10).
+   - errors: rong, co dong thieu cot wrong/fix/why, wrong la placeholder, HOAC khong dong
+     nao trich nguyen van tu transcript (khi co transcript). */
+function gradeMissingFields(g,tr,part){var miss=[];if(!g||typeof g!=='object')return miss;
+  if(tr){try{g._transcript=String(tr);}catch(e){}} /* luu transcript len g de renderGrade/criteriaFeedbackHtml loc verbatim tung dong o tang hien thi */
+  var en=String(g.examinerNote||'').trim();
+  if(!en||gradeIsPlaceholderText(en)||en.length<15)miss.push('examinerNote');
+  var ma=String(g.modelAnswer||'').trim(),maW=ma?ma.split(/\s+/).length:0;
+  if(!ma||gradeIsPlaceholderText(ma)||maW<((part===2)?40:8))miss.push('modelAnswer');
+  var trLow=String(tr||'').toLowerCase();
+  var cf=g.criteriaFeedback,cfBad=(!cf||typeof cf!=='object'||Array.isArray(cf)),cfVerbatim=0,cfPolluted=false;
+  if(!cfBad){var keys=['FC','LR','GRA','P'];for(var i=0;i<keys.length;i++){var c=cf[keys[i]];if(c==null){cfBad=true;break;}
+    var f=(typeof c==='object'&&c!==null)?String(c.fix||'').trim():(typeof c==='string'?String(c).trim():'');
+    if(!f||gradeIsPlaceholderText(f)||f.length<8){cfBad=true;break;}
+    var es=(typeof c==='object'&&c!==null&&Array.isArray(c.errors))?c.errors:[];
+    for(var q=0;q<es.length;q++){var qt=gradeQuoteText(es[q]).trim();
+      if(!qt||!gradeQuoteAcceptable(qt,tr)){cfPolluted=true;} /* LOC TUNG DONG: 1 dong cf hong (khong nguyen van / nhiem reasoning) la ca muc bi coi la thieu, khong de dong sach che cho dong rac */
+      else cfVerbatim++;}
+  }
+    if(!cfBad&&(cfPolluted||(trLow&&cfVerbatim===0)))cfBad=true;}
   if(cfBad)miss.push('criteriaFeedback');
-  var errs=Array.isArray(g.errors)?g.errors:[],eBad=!errs.length;
-  if(!eBad)for(var j=0;j<errs.length;j++){var e=errs[j]||{};if(!String(e.wrong||'').trim()||!String(e.fix||'').trim()||!String(e.why||'').trim()){eBad=true;break;}}
+  var errs=Array.isArray(g.errors)?g.errors:[],eBad=!errs.length,eVerbatim=0;
+  if(!eBad)for(var j=0;j<errs.length;j++){var e=errs[j]||{};var w=String(e.wrong||'').trim();
+    if(!w||!String(e.fix||'').trim()||!String(e.why||'').trim()||gradeIsPlaceholderText(w)){eBad=true;break;}
+    if(!gradeQuoteAcceptable(w,tr)){eBad=true;break;} /* LOC TUNG DONG (ca RUN2): dong wrong khong nguyen van transcript hoac nhiem reasoning thi muc errors bi coi la thieu du cac dong con lai sach — khong con dem verbatim TONG de che */
+    if(trLow&&trLow.indexOf(w.toLowerCase())>=0)eVerbatim++;}
+  if(!eBad&&trLow&&eVerbatim===0)eBad=true;
   if(eBad)miss.push('errors');
   return miss;}
 function buildCompletionPrompt(g,miss,q,part,tr){var parts=[];
@@ -1764,38 +1906,159 @@ function buildCompletionPrompt(g,miss,q,part,tr){var parts=[];
   if(miss.indexOf('modelAnswer')>=0){parts.push('"modelAnswer":"Band 8 upgraded rewrite of the learner own answer: preserve the candidate own ideas and order where coherent, repair logic and coherence gaps, add at most 1-2 missing ideas only where the answer is thin, rewrite the language at Band 8, do NOT invent a different line of argument (Part 1: 2-3 sentences; Part 2: 180-240 words; Part 3: 3-4 sentences)"');parts.push('"rewriteNotes":"1-2 dong tieng Viet: giu lai y gi cua hoc sinh, sua logic o dau, them y gi (neu co)"');}
   if(miss.indexOf('criteriaFeedback')>=0)parts.push('"criteriaFeedback":{"FC":{"errors":["exact phrase from the transcript for FC only"],"fix":"cach khac phuc cu the bang tieng Viet"},"LR":{"errors":["exact phrase from the transcript for LR only"],"fix":"cach khac phuc cu the bang tieng Viet"},"GRA":{"errors":["exact phrase from the transcript for GRA only"],"fix":"cach khac phuc cu the bang tieng Viet"},"P":{"errors":["exact word likely mispronounced"],"fix":"cach khac phuc cu the bang tieng Viet"}}');
   if(miss.indexOf('errors')>=0)parts.push('"errors":[{"wrong":"exact wrong phrase from the transcript","fix":"corrected version","why":"very short reason in Vietnamese"}]');
-  return 'You are damu, an IELTS Speaking examiner. A grading JSON for the answer below already has VALID scores '+JSON.stringify(g.scores||{})+' — do NOT change scores and do NOT re-grade. It is only MISSING these fields: '+miss.join(', ')+'. Return ONLY a valid JSON object (no markdown, no text outside JSON) containing ONLY the missing fields, in EXACTLY this shape: {'+parts.join(',')+'}. Rules: never use a double-quote character inside string values (use single quotes); EVERY errors item MUST have wrong, fix AND why all filled; criteriaFeedback fixes are in Vietnamese and errors quote the transcript exactly; QUOTE-VERBATIM RULE: every wrong value and every criteriaFeedback error MUST be a character-for-character substring of the transcript above - never paraphrase, reconstruct or invent; if an error cannot be quoted exactly, omit it instead of fabricating it; do not repeat one error under two criteria.\nQuestion (Part '+part+'): "'+String(q||'').slice(0,300)+'"\nTranscript: "'+String(tr||'').slice(0,1200)+'"\nExisting partial errors (complete these, do not invent unrelated errors): '+JSON.stringify((g.errors||[]).slice(0,3)).slice(0,600);}
-async function completeGradeIfNeeded(g,res,q,part,tr){
-  var miss=gradeMissingFields(g);if(!miss.length)return g;
-  aiSetStatus('Điểm đã có — đang bổ sung phần còn thiếu ('+miss.join(', ')+')...');
-  function mergeExtra(extra){
+  return 'You are damu, an IELTS Speaking examiner. A grading JSON for the answer below already has VALID scores '+JSON.stringify(g.scores||{})+' — do NOT change scores and do NOT re-grade. It is only MISSING these fields: '+miss.join(', ')+'. Return ONLY a valid JSON object (no markdown, no text outside JSON) containing ONLY the missing fields, in EXACTLY this shape: {'+parts.join(',')+'}. Rules: never use a double-quote character inside string values (use single quotes); EVERY errors item MUST have wrong, fix AND why all filled; criteriaFeedback fixes are in Vietnamese and errors quote the transcript exactly; QUOTE-VERBATIM RULE: every wrong value and every criteriaFeedback error MUST be a character-for-character substring of the transcript above - never paraphrase, reconstruct or invent; if an error cannot be quoted exactly, omit it instead of fabricating it; do not repeat one error under two criteria. ANTI-ECHO RULE: write REAL content about THIS answer only — never copy instruction phrases (such as 1 sentence in English, short Band 8 rewrite, Vietnamese fix) as field values.\nQuestion (Part '+part+'): "'+String(q||'').slice(0,300)+'"\nTranscript: "'+String(tr||'').slice(0,1200)+'"\nExisting partial errors (complete these, do not invent unrelated errors): '+JSON.stringify((g.errors||[]).slice(0,3)).slice(0,600);}
+/* buildCompletionPromptLite: ban RUT GON cua prompt bo sung, danh rieng cho Pollinations
+   (0-key / du phong) — theo mau THAT 22/10: prompt dai khien Pollinations tra envelope
+   reasoning bi cat cut giua chung. Ban lite giu du: diem da cham (cam cham lai), cau hoi,
+   transcript rut gon, chi xin dung muc thieu, nhan manh trich nguyen van + cam sao chep
+   chu huong dan lam gia tri. */
+/* buildCompletionPromptLite — VONG 2 (22/10): DOI CHIEN LUOC cho Pollinations.
+   Bang chung that (completion-v2-samples.txt): (A) few-shot JSON dai -> reasoning bi
+   cat giua chung, khong ra JSON cuoi; (D) model khac (deepseek/mistral) -> 404, API
+   mien phi chi co 'openai'; (B) VAN XUOI theo muc co dau ===MUC=== -> tra SACH, du ca
+   4 muc bang noi dung THAT, trich nguyen van transcript, chi 1.5k ky tu / ~23s.
+   => Lite prompt gio xin VAN XUOI theo muc; parseCompletionProse cat muc va ghep ve
+   dung cau truc JSON ma mergeExtra/gradeMissingFields dang dung. Chi xin muc dang
+   thieu: luot 1 xin tat ca muc thieu, luot 2 (neu con) chi xin muc con thieu — tach
+   luot theo ngan sach san co (tong bo sung <= 2). */
+function buildCompletionPromptLite(g,miss,q,part,tr){
+  var sc=g.scores||{};
+  var secs=[];
+  if(miss.indexOf('examinerNote')>=0)secs.push('===EXAMINER_NOTE===\n(1-2 sentences in English: a real examiner note about THIS answer, mention its actual strengths and weaknesses)');
+  if(miss.indexOf('modelAnswer')>=0){secs.push('===MODEL_ANSWER===\n('+(part===2?'a Band 8 rewrite of the learner answer, 150-200 words':'a Band 8 rewrite of the learner answer, 2-4 sentences')+', keep the learner own ideas and order, fix grammar and vocabulary)');secs.push('===REWRITE_NOTES===\n(1 short line in Vietnamese: what was kept, fixed or added)');}
+  if(miss.indexOf('criteriaFeedback')>=0){
+    secs.push('===FEEDBACK_FC===\nERROR: <one phrase copied word-for-word from the transcript> | FIX: <one specific fix in Vietnamese for fluency and coherence>');
+    secs.push('===FEEDBACK_LR===\nERROR: <one phrase copied word-for-word from the transcript> | FIX: <one specific fix in Vietnamese for vocabulary>');
+    secs.push('===FEEDBACK_GRA===\nERROR: <one phrase copied word-for-word from the transcript> | FIX: <one specific fix in Vietnamese for grammar>');
+    secs.push('===FEEDBACK_P===\nERROR: <one word from the transcript> | FIX: <one specific fix in Vietnamese for pronunciation>');
+  }
+  if(miss.indexOf('errors')>=0)secs.push('===ERRORS===\n(one line per error, 2-3 lines, format: WRONG: <wrong phrase copied word-for-word from the transcript> | FIX: <corrected version> | WHY: <short reason in Vietnamese>)');
+  return 'Scores are FINAL: FC '+sc.FC+', LR '+sc.LR+', GRA '+sc.GRA+', P '+sc.P+' — never change them, never re-grade. Do NOT output JSON. Write PLAIN TEXT using EXACTLY these section markers, each marker on its own line, in this order:\n'+secs.join('\n')+'\nReplace every <...> with REAL content written about THIS answer only — never write the instruction words themselves as content. Question: \''+String(q||'').slice(0,200)+'\' Transcript: \''+String(tr||'').slice(0,900)+'\'';
+}
+/* parseCompletionProse(text): cat phan hoi VAN XUOI theo dau ===MUC=== (chien luoc B)
+   thanh object cung cau truc voi JSON bo sung: {examinerNote, modelAnswer,
+   rewriteNotes, criteriaFeedback:{FC/LR/GRA/P:{errors:[..],fix}}, errors:[{wrong,fix,why}]}.
+   Tra null neu khong thay dau muc nao. Ho tro nhieu dong WRONG trong ===ERRORS===. */
+function parseCompletionProse(t){
+  if(!t)return null;
+  var s=String(t);
+  try{var u=unwrapAIEnvelopeText(s);if(u&&u!==s)s=u;}catch(e){}
+  s=s.replace(/```[a-z]*/gi,'');
+  var names=['EXAMINER_NOTE','MODEL_ANSWER','REWRITE_NOTES','FEEDBACK_FC','FEEDBACK_LR','FEEDBACK_GRA','FEEDBACK_P','ERRORS'];
+  var pos=[];
+  for(var i=0;i<names.length;i++){var re=new RegExp('===\\s*'+names[i]+'\\s*===','g'),m;while((m=re.exec(s))!==null)pos.push({name:names[i],start:m.index,end:m.index+m[0].length});}
+  if(!pos.length)return null;
+  pos.sort(function(a,b){return a.start-b.start;});
+  var sec={};
+  for(var j=0;j<pos.length;j++){var from=pos[j].end,to=(j+1<pos.length)?pos[j+1].start:s.length;var body=s.slice(from,to).trim().replace(/^\(|\)$/g,'').trim();if(body&&sec[pos[j].name]==null)sec[pos[j].name]=body;}
+  function clean(v){return String(v||'').trim().replace(/^["“]|["”]$/g,'').trim();}
+  var out={},found=false;
+  if(sec.EXAMINER_NOTE){out.examinerNote=clean(sec.EXAMINER_NOTE);found=true;}
+  if(sec.MODEL_ANSWER){out.modelAnswer=clean(sec.MODEL_ANSWER);found=true;}
+  if(sec.REWRITE_NOTES)out.rewriteNotes=clean(sec.REWRITE_NOTES);
+  var cf={},anyCf=false;
+  ['FC','LR','GRA','P'].forEach(function(k){var body=sec['FEEDBACK_'+k];if(!body)return;
+    var em=/ERROR:\s*(.+?)\s*\|\s*FIX:\s*([\s\S]+)/i.exec(body);
+    if(em){var _eq=clean(em[1]);cf[k]={errors:(typeof gradeQuotePolluted==='function'&&gradeQuotePolluted(_eq))?[]:[_eq],fix:clean(em[2])};} /* dong ERROR nhiem reasoning (vd chua 'maybe same as'/'|') bi bo ngay tu parser, giu fix neu co */
+    else{var emOnly=/ERROR:\s*([\s\S]+)/i.exec(body);
+      if(emOnly){var _eo=clean(emOnly[1]);cf[k]={errors:(typeof gradeQuotePolluted==='function'&&gradeQuotePolluted(_eo))?[]:[_eo],fix:''};} /* phan hoi bi cat giua muc (mau THAT e2e 22/10: 'ERROR: listen music' khong co FIX): giu loi trich, fix DE TRONG de gradeMissingFields bat xin lai — TUYET DOI khong lay dong ERROR lam fix */
+      else{cf[k]={errors:[],fix:clean(body)};}}
+    anyCf=true;});
+  if(anyCf){out.criteriaFeedback=cf;found=true;}
+  if(sec.ERRORS){var errs=[],lines=sec.ERRORS.split(/\n/),wm;
+    var reLine=/WRONG:\s*(.+?)\s*\|\s*FIX:\s*(.+?)\s*\|\s*WHY:\s*([\s\S]+)/i;
+    for(var li=0;li<lines.length;li++){wm=reLine.exec(lines[li]);if(wm){var _ew={wrong:clean(wm[1]),fix:clean(wm[2]),why:clean(wm[3])};if(!(typeof gradeQuotePolluted==='function'&&gradeQuotePolluted(_ew.wrong)))errs.push(_ew);}else if(/WRONG:/i.test(lines[li])&&lines[li].indexOf('|')>=0){/* dong WRONG hong khong parse duoc (reasoning chen giua): bo han, khong co gang cuu */}}
+    if(!errs.length){wm=reLine.exec(sec.ERRORS);if(wm){var _ew2={wrong:clean(wm[1]),fix:clean(wm[2]),why:clean(wm[3])};if(!(typeof gradeQuotePolluted==='function'&&gradeQuotePolluted(_ew2.wrong)))errs.push(_ew2);}}
+    if(errs.length){out.errors=errs;found=true;}}
+  return found?out:null;
+}
+/* Ten chuan vong 2 cho chien luoc B (parser/prompt theo muc): cac ham duoi day la
+   diem vao chinh ma completeGradeIfNeeded goi; ban Lite/Prose ben tren la cung mot
+   cai dat van xuoi theo muc (Lite khong con la JSON lite cua vong 1 nua). */
+function buildCompletionSectionsPrompt(g,miss,q,part,tr){return buildCompletionPromptLite(g,miss,q,part,tr);}
+function parseCompletionSections(t){return parseCompletionProse(t);}
+
+async function completeGradeIfNeeded(g,res,q,part,tr,maxAttempts){
+  var maxA=(typeof maxAttempts==='number'&&isFinite(maxAttempts)&&maxAttempts>=1)?Math.floor(maxAttempts):2;
+  gradeSanitizeQuotes(g,tr); /* lam sach TUNG DONG co san trong g truoc: dong loi/cf khong nguyen van hoac nhiem reasoning bi go bo, muc tu do thanh THIEU de xin lai dung, thay vi de dong sach che dong rac */
+  var miss0=gradeMissingFields(g,tr,part);if(!miss0.length)return g;
+  function mergeExtra(extra,miss){
     if(!extra||extra._raw)return;
-    if(miss.indexOf('examinerNote')>=0&&String(extra.examinerNote||'').trim())g.examinerNote=String(extra.examinerNote).trim();
-    if(miss.indexOf('modelAnswer')>=0&&String(extra.modelAnswer||'').trim())g.modelAnswer=String(extra.modelAnswer).trim();
-    if(String(extra.rewriteNotes||'').trim())g.rewriteNotes=String(extra.rewriteNotes).trim();
+    /* Chi nhan gia tri THAT tu luot bo sung: gia tri placeholder (chu mau) bi tu choi de
+       vong lap sau xin lai, thay vi ghi de len bai cham bang chu mau. */
+    if(miss.indexOf('examinerNote')>=0){var _en=String(extra.examinerNote||'').trim();if(_en&&!gradeIsPlaceholderText(_en)&&_en.length>=15)g.examinerNote=_en;}
+    if(miss.indexOf('modelAnswer')>=0){var _ma=String(extra.modelAnswer||'').trim();if(_ma&&!gradeIsPlaceholderText(_ma)&&_ma.length>=40)g.modelAnswer=_ma;}
+    var _rn=String(extra.rewriteNotes||'').trim();if(_rn&&!gradeIsPlaceholderText(_rn))g.rewriteNotes=_rn;
     if(extra.criteriaFeedback&&typeof extra.criteriaFeedback==='object'&&!Array.isArray(extra.criteriaFeedback)){
       if(!g.criteriaFeedback||typeof g.criteriaFeedback!=='object'||Array.isArray(g.criteriaFeedback))g.criteriaFeedback={};
       ['FC','LR','GRA','P'].forEach(function(k){var cur=g.criteriaFeedback[k],add=extra.criteriaFeedback[k];
         if(add==null)return;
+        /* VONG 2: loc echo o MOI nhanh gan — errors[] cua tieu chi cung phai sach chu
+           huong dan bi sao chep, ke ca khi nhanh gan la cur==null (gan moi ca tieu chi). */
+        if(typeof add==='object'&&add!==null&&Array.isArray(add.errors)){
+          var cleanErrs=add.errors.filter(function(x){var qt=gradeQuoteText(x).trim();return qt&&gradeQuoteAcceptable(qt,tr);}); /* LOC TUNG DONG ca cf: tung trich phai nguyen van transcript + khong nhiem reasoning, dong rac bi bo rieng, dong sach van giu */
+          add=Object.assign({},add,{errors:cleanErrs});
+          if(!cleanErrs.length&&!(String(add.fix||'').trim()&&!gradeIsPlaceholderText(String(add.fix).trim())))return;
+        }
+        var addFix=(typeof add==='object'&&add!==null)?String(add.fix||'').trim():(typeof add==='string'?String(add).trim():'');
+        if(typeof add==='string'&&gradeIsPlaceholderText(add))return;
+        if(addFix&&gradeIsPlaceholderText(addFix))return; /* bo sung tra fix mau/echo: bo qua, vong sau xin lai */
         if(cur==null){g.criteriaFeedback[k]=add;return;}
-        if(typeof cur==='object'&&typeof add==='object'){if((!Array.isArray(cur.errors)||!cur.errors.length)&&Array.isArray(add.errors)&&add.errors.length)cur.errors=add.errors;if(!String(cur.fix||'').trim()&&String(add.fix||'').trim())cur.fix=add.fix;}
+        if(typeof cur==='object'&&typeof add==='object'){
+          var curHadErrs=Array.isArray(cur.errors)&&cur.errors.length>0;
+          if(!curHadErrs&&Array.isArray(add.errors)&&add.errors.length)cur.errors=add.errors;
+          var curFix=String(cur.fix||'').trim();
+          if((!curFix||gradeIsPlaceholderText(curFix))&&addFix)cur.fix=add.fix; /* fix cu la chu mau thi PHAI thay bang fix that */
+          else if(!curHadErrs&&Array.isArray(add.errors)&&add.errors.length&&addFix&&addFix.length>=curFix.length)cur.fix=addFix; /* tieu chi tung thieu loi trich nguyen van: lay ca fix cu the hon cua luot bo sung */
+        }
+        else if(typeof cur==='string'&&gradeIsPlaceholderText(cur)&&typeof add==='object'){g.criteriaFeedback[k]=add;}
       });
     }
     if(extra.errors&&extra.errors.length){
-      var good=extra.errors.filter(function(e){return e&&String(e.wrong||'').trim()&&String(e.fix||'').trim()&&String(e.why||'').trim();});
-      var curGood=(Array.isArray(g.errors)?g.errors:[]).filter(function(e){return e&&String(e.wrong||'').trim()&&String(e.fix||'').trim()&&String(e.why||'').trim();});
+      var good=extra.errors.filter(function(e){return e&&gradeQuoteAcceptable(e.wrong,tr)&&String(e.fix||'').trim()&&String(e.why||'').trim()&&!gradeIsPlaceholderText(String(e.fix).trim())&&!gradeIsPlaceholderText(String(e.why).trim())&&!gradeQuotePolluted(String(e.fix))&&!gradeQuotePolluted(String(e.why));}); /* LOC TUNG DONG errors (fix vong 2): tung dong wrong phai la substring nguyen van cua transcript va khong nhiem reasoning — dong rac RUN2 bi bo rieng, khong lot ca dong vao g.errors */
+      var curGood=(Array.isArray(g.errors)?g.errors:[]).filter(function(e){return e&&gradeQuoteAcceptable(e.wrong,tr)&&String(e.fix||'').trim()&&String(e.why||'').trim()&&!gradeIsPlaceholderText(String(e.fix).trim())&&!gradeIsPlaceholderText(String(e.why).trim());});
       if(good.length&&good.length>=curGood.length)g.errors=good;
+      else if(!good.length&&curGood.length<(Array.isArray(g.errors)?g.errors.length:0)){g.errors=curGood;} /* extra toan rac: van phai don sach g.errors cu (chi giu dong dung duoc) */
     }
   }
-  var via1='';
-  try{
-    var prompt=buildCompletionPrompt(g,miss,q,part,tr);
-    var r2=await aiAsk(prompt,null,prompt,{json:true}); /* aiAsk di qua groqAsk/geminiAsk (sticky model vua thanh cong thu truoc) hoac backend dang dung */
-    via1=r2.via||'';try{g._completionVia=via1;}catch(e){}
-    var extra=null;try{extra=extractJSON(r2.text);}catch(e){}
-    mergeExtra(extra);
-  }catch(e){aiLogErr('completeGrade',e);}
-  /* NGAN SACH LUOT GOI: completion chi goi DUNG 1 luot aiAsk. Khi cham bang Pollinations (0-key), tong ca lan cham toi da 2 luot Pollinations (cham + completion/fixJSON) nen audit se bi bo qua (xem auditGradeIfNeeded). Khi co key Groq/Gemini thi ngan sach la cham + completion/fixJSON + audit. Phan con thieu (neu van thieu sau 1 luot) da co fallback hien thi trong renderGrade. */
+  /* BO SUNG TOI DA maxA LUOT (mac dinh 2; gradeNow/mtGradeMock truyen 1 neu fixJSON da
+     dung 1 luot bo sung, de TONG so luot bo sung sau luot cham chinh khong qua 2): luot 1
+     xin cac muc thieu, neu aiAsk nem loi / tra rac (khong doc duoc) / van thieu it nhat 1
+     muc thi thu lai chi xin cac muc CON thieu. Moi luot di qua aiAsk nen giu nguyen thu tu
+     dong co Groq -> Gemini -> Pollinations va che do 0-key chi Pollinations; prompt day du
+     cho Groq/Gemini, prompt LITE cho Pollinations. Audit co dieu kien se bi bo qua khi da
+     dung luot bo sung qua Pollinations (xem auditGradeIfNeeded). */
+  for(var attempt=1;attempt<=maxA;attempt++){
+    var miss=gradeMissingFields(g,tr,part);if(!miss.length)break;
+    aiSetStatus('Điểm đã có — đang bổ sung phần còn thiếu ('+miss.join(', ')+')'+(attempt>1?' — thử lại lần 2':'')+'...');
+    try{
+      var prompt=buildCompletionPrompt(g,miss,q,part,tr);
+      var r2=await aiAsk(prompt,'You are damu, a pink capybara and strict IELTS Speaking examiner. Follow the user instruction exactly: if it asks for JSON return ONLY JSON; if it asks for plain-text sections with === markers, return ONLY those sections.',buildCompletionSectionsPrompt(g,miss,q,part,tr),{json:true});
+      var via1=r2.via||'';try{g._completionVia=via1;g._completionAttempts=attempt;}catch(e){}
+      var extra=null;try{extra=extractJSON(r2.text);}catch(e){}
+      if(extra&&extra.sampleAnswer!=null&&extra.examinerNote==null&&extra.modelAnswer==null&&extra.criteriaFeedback==null&&!extra.errors){extra=null;} /* parser goi y nuot nham phan hoi bo sung: coi nhu rac, thu lai */
+      /* VONG 2: nhanh Pollinations tra VAN XUOI theo muc (chien luoc B) — cat muc bang
+         parseCompletionProse; JSON doc duoc ma thieu muc thi dien not tu van xuoi. */
+      var prose=null;try{prose=parseCompletionSections(r2.text);}catch(e){}
+      if(prose){
+        if(!extra||extra._raw){extra=prose;}
+        else{
+          if(extra.examinerNote==null&&prose.examinerNote)extra.examinerNote=prose.examinerNote;
+          if(extra.modelAnswer==null&&prose.modelAnswer)extra.modelAnswer=prose.modelAnswer;
+          if(extra.rewriteNotes==null&&prose.rewriteNotes)extra.rewriteNotes=prose.rewriteNotes;
+          if(extra.criteriaFeedback==null&&prose.criteriaFeedback)extra.criteriaFeedback=prose.criteriaFeedback;
+          else if(extra.criteriaFeedback&&prose.criteriaFeedback){['FC','LR','GRA','P'].forEach(function(k){if(extra.criteriaFeedback[k]==null&&prose.criteriaFeedback[k])extra.criteriaFeedback[k]=prose.criteriaFeedback[k];});}
+          if((!extra.errors||!extra.errors.length)&&prose.errors)extra.errors=prose.errors;
+        }
+      }
+      if(!extra||extra._raw){
+        /* tra rac / khong doc duoc: khong merge, vong lap se thu lai neu con luot */
+        continue;
+      }
+      mergeExtra(extra,miss);
+    }catch(e){aiLogErr('completeGrade',e);/* nem loi: vong lap thu lai lan 2 neu con */}
+  }
+  gradeSanitizeQuotes(g,tr); /* don sach lan cuoi truoc khi tra: khong dong trich hong nao duoc song sot sang renderGrade/lich su */
   return g;}
 
 function geminiErrHtml(res){if(!res)return '';var groqNote='';
@@ -1856,6 +2119,7 @@ function criteriaFeedbackHtml(g){
   if(!g||!g.criteriaFeedback||typeof g.criteriaFeedback!=='object')return '';
   var labels={FC:'Fluency & Coherence',LR:'Lexical Resource',GRA:'Grammar Range & Accuracy',P:'Pronunciation'};
   var order=['FC','LR','GRA','P'];var sc=g.scores||{};
+  var _trCf=(typeof gradeTrOf==='function')?gradeTrOf(g):''; /* transcript (neu biet) de loc verbatim TUNG dong o tang hien thi */
   var h='';var any=false;
   function renderOne(key,cf){
     if(cf==null)return '';
@@ -1868,8 +2132,9 @@ function criteriaFeedbackHtml(g){
       fix=cf.fix||cf.howToFix||cf.advice||cf.improvement||cf.solution||cf.feedback||'';
       if(Array.isArray(fix))fix=fix.join(' ');
     } else {fix=String(cf);}
-    errs=errs.filter(function(x){return x!=null&&cfErrText(x).trim()!=='';});
+    errs=errs.filter(function(x){return x!=null&&cfErrText(x).trim()!==''&&!(typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(cfErrText(x)))&&!(typeof gradeQuoteAcceptable==='function'&&!gradeQuoteAcceptable(gradeQuoteText(x),_trCf));}); /* chi hien dong trich dung duoc: nguyen van transcript (khi biet) + khong nhiem reasoning */
     fix=fix?String(fix).trim():'';
+    if(fix&&typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(fix))fix=''; /* fix la chu mau cua prompt thi khong hien lam nhan xet that */
     if(!errs.length&&!fix)return '';
     var sv=sc[key];var sTxt=(sv!=null&&sv!=='')?(' \u2014 '+Number(sv).toFixed(1)):'';
     var hh='<div class="cfb"><h4>'+key+' \u2014 '+labels[key]+sTxt+'</h4>';
@@ -1891,21 +2156,23 @@ function criteriaFeedbackHtml(g){
 }
 function renderGrade(g,via,wpm,ev){if(g&&g._raw){return{html:'<p>🩷 damu nhận được bài chấm ở dạng chữ (không phải JSON chuẩn) — đây là nguyên văn:</p><p style="white-space:pre-wrap">'+esc(g._raw)+'</p><p class="small">Chấm bởi: '+esc(via)+'.</p>',overall:null};}
   if(!validateGrade(g))return{html:'<p>😵 Kết quả chấm không hợp lệ (thiếu điểm). Bấm chấm lại nhé.</p>',overall:null};
+  try{gradeSanitizeQuotes(g,gradeTrOf(g));}catch(e){} /* TANG HEN CUOI o hien thi: chi dong wrong la substring nguyen van cua transcript (g._transcript) va khong nhiem reasoning moi duoc in; dong rac bi an rieng tung dong */
   var sc=g.scores||{};var fc=+sc.FC||0,lr=+sc.LR||0,gra=+sc.GRA||0,p=+sc.P||0;var overall=roundBand((fc+lr+gra+p)/4);
-  var h='';if(g.opening)h+='<p>🩷 '+esc(g.opening)+'</p>';
+  var h='';if(g.opening&&!(typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(g.opening)))h+='<p>🩷 '+esc(g.opening)+'</p>';
   h+='<div class="bandbox"><div class="bb total"><b>'+overall.toFixed(1)+'</b>Band tổng</div><div class="bb"><b>'+fc.toFixed(1)+'</b>Fluency &amp; Coherence</div><div class="bb"><b>'+lr.toFixed(1)+'</b>Lexical Resource</div><div class="bb"><b>'+gra.toFixed(1)+'</b>Grammar Range &amp; Accuracy</div><div class="bb"><b>'+p.toFixed(1)+'</b>Pronunciation*</div></div>';
   if(ev)h+='<p class="small">\uD83D\uDCCA <b>So lieu khach quan:</b> '+ev.words+' tu \u2022 '+ev.wpm+' tu/phut \u2022 '+ev.sentences+' cau (trung binh '+ev.avgSentLen+' tu/cau) \u2022 da dang tu vung (type-token) '+ev.ttr+' \u2022 tu dem/ngap ngung '+ev.fillers+' lan \u2022 cum dai bi lap '+ev.repPhrases+'</p>';
   h+=(typeof auditNoteHtml==='function')?auditNoteHtml(g):'';
-  h+=criteriaFeedbackHtml(g);
-  if(g.praise)h+='<p>✅ <b>Điểm tốt:</b> '+esc(g.praise)+'</p>';
-  if(g.examinerNote)h+='<h3>🎓 Examiner note</h3><p>'+esc(g.examinerNote)+'</p>';else h+='<h3>🎓 Examiner note</h3><p class="small">(examinerNote fallback: giám khảo chưa để lại ghi chú riêng lần này — bám vào điểm từng tiêu chí, band cap trong mẹo và phần lỗi sai bên dưới nhé.)</p>';
-  var validErrs=(g.errors||[]).filter(function(e){return e&&String(e.wrong||'').trim()!==''&&String(e.fix||'').trim()!==''&&String(e.why||'').trim()!=='';});
+  var _cfHtml=criteriaFeedbackHtml(g);if(_cfHtml)h+=_cfHtml;else h+='<h3>🔍 Lỗi riêng từng tiêu chí &amp; cách khắc phục</h3><p class="small">Phần nhận xét chi tiết theo từng tiêu chí (criteriaFeedback) chưa có lần này — xem điểm từng tiêu chí ở trên, phần lỗi sai và mẹo bên dưới nhé.</p>';
+  if(g.praise&&!(typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(g.praise)))h+='<p>✅ <b>Điểm tốt:</b> '+esc(g.praise)+'</p>';
+  if(g.examinerNote&&!(typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(g.examinerNote)))h+='<h3>🎓 Examiner note</h3><p>'+esc(g.examinerNote)+'</p>';else h+='<h3>🎓 Examiner note</h3><p class="small">Giám khảo chưa để lại ghi chú riêng lần này — bám vào điểm từng tiêu chí, band cap trong mẹo và phần lỗi sai bên dưới nhé.</p>';
+  var validErrs=(g.errors||[]).filter(function(e){return e&&String(e.wrong||'').trim()!==''&&String(e.fix||'').trim()!==''&&String(e.why||'').trim()!==''&&(typeof gradeQuoteAcceptable!=='function'||gradeQuoteAcceptable(e.wrong,gradeTrOf(g)));});
   if(validErrs.length){h+='<h3>❌ Lỗi sai cần sửa</h3><table class="errs"><tr><th>Bạn nói</th><th>Sửa đúng</th><th>Vì sao</th></tr>';for(var i=0;i<validErrs.length;i++){h+='<tr><td class="wrong">'+esc(validErrs[i].wrong)+'</td><td class="fix">'+esc(validErrs[i].fix)+'</td><td>'+esc(validErrs[i].why)+'</td></tr>';}h+='</table>';}
   else if(g.errors&&g.errors.length){h+='<p class="small">Một số dòng lỗi AI trả về thiếu cột sửa/vì sao nên damu đã ẩn đi để bảng không trống cột — xem lỗi theo từng tiêu chí ở mục 🔍 phía trên nhé.</p>';}
   var validUps=(g.upgrades||[]).filter(function(u){return u&&String(u.original||'').trim()!==''&&String(u.better||'').trim()!=='';});
   if(validUps.length){h+='<h3>🚀 Nâng cấp lên band 7+</h3><table class="errs"><tr><th>Cách nói thường</th><th>Cách nói nâng band</th></tr>';for(var j=0;j<validUps.length;j++){h+='<tr><td>'+esc(validUps[j].original)+'</td><td class="fix">'+esc(validUps[j].better)+'</td></tr>';}h+='</table>';}
-  if(g.modelAnswer){lastModelAnswer=String(g.modelAnswer);h+='<h3>⭐ Câu trả lời của bạn — bản nâng Band 8</h3>'+(g.rewriteNotes?'<p class="small">📝 '+esc(g.rewriteNotes)+'</p>':'')+'<p style="white-space:pre-wrap">'+esc(g.modelAnswer)+'</p>'+speakBtnsHtml('lastModelAnswer','🔊 Nghe đọc bản nâng cấp');}else h+='<h3>⭐ Câu trả lời của bạn — bản nâng Band 8</h3><p class="small">(modelAnswer fallback: chưa có bản nâng cấp lần này — tự viết lại câu trả lời bằng các cụm nâng band ở mục 🚀 phía trên rồi nói lại từ đầu nhé.)</p>';
-  if(g.tips&&g.tips.length){h+='<h3>💡 3 mẹo lên band nhanh</h3><ol>';for(var k=0;k<g.tips.length;k++)h+='<li>'+esc(g.tips[k])+'</li>';h+='</ol>';}
+  if(g.modelAnswer&&!(typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(g.modelAnswer))){lastModelAnswer=String(g.modelAnswer);h+='<h3>⭐ Câu trả lời của bạn — bản nâng Band 8</h3>'+(g.rewriteNotes?'<p class="small">📝 '+esc(g.rewriteNotes)+'</p>':'')+'<p style="white-space:pre-wrap">'+esc(g.modelAnswer)+'</p>'+speakBtnsHtml('lastModelAnswer','🔊 Nghe đọc bản nâng cấp');}else h+='<h3>⭐ Câu trả lời của bạn — bản nâng Band 8</h3><p class="small">Chưa có bản nâng cấp lần này — tự viết lại câu trả lời bằng các cụm nâng band ở mục 🚀 phía trên rồi nói lại từ đầu nhé.</p>';
+  var realTips=(g.tips||[]).filter(function(t){return t&&String(t).trim()&&!(typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(t));});
+  if(realTips.length){h+='<h3>💡 3 mẹo lên band nhanh</h3><ol>';for(var k=0;k<realTips.length;k++)h+='<li>'+esc(realTips[k])+'</li>';h+='</ol>';}
   h+='<p class="small">* Pronunciation là điểm <b>ước tính</b> từ transcript + tốc độ nói của bạn ('+wpm+' từ/phút), không phải điểm nghe trực tiếp. Chấm bởi: '+esc(via)+'.</p>';
   return{html:h,overall:overall};}
 async function gradeNow(){if(aiGrading)return;var tr=$('transcript').value.trim();
@@ -1938,8 +2205,8 @@ async function gradeNow(){if(aiGrading)return;var tr=$('transcript').value.trim(
       saveHistory(null,tr,wpm);
     }else{
       statusBubble();
-      var missBefore=(!didFix)?gradeMissingFields(g):[];
-      if(!didFix)g=await completeGradeIfNeeded(g,res,curQuestion,curPart,tr); /* da dung fixJSON thi bo qua completion */
+      var missBefore=gradeMissingFields(g,tr,curPart);
+      g=await completeGradeIfNeeded(g,res,curQuestion,curPart,tr,didFix?1:2); /* luon bo sung neu con thieu muc, ke ca khi da dung fixJSON (fix du diem nhung van co the thieu examinerNote/modelAnswer/criteriaFeedback); fixJSON da tinh 1 luot bo sung nen ngan sach con lai 1, tong bo sung <= 2 */
       var evNow=computeEvidence(tr,secs);
       g=await auditGradeIfNeeded(g,tr,evNow,{via:(g._completionVia||res.via),extraUsed:didFix||missBefore.length>0});
       var r=renderGrade(g,res.via,wpm,evNow);
@@ -2150,17 +2417,18 @@ function toggleHistDetail(i){histOpenIdx=(histOpenIdx===i?-1:i);renderHistory();
 function histDetailHtml(it){
   var f=histFeedbackOf(it);
   if(!f)return '<div class="histDetail"><p class="small">Bài này chưa có nhận xét chi tiết (bản ghi cũ chỉ lưu điểm và transcript, chưa lưu nhận xét). Chấm một bài mới là damu sẽ lưu đủ nhận xét để xem lại ở đây nhé.</p></div>';
-  var g={scores:it.scores||null,opening:f.opening||'',praise:f.praise||'',examinerNote:f.examinerNote||'',modelAnswer:f.modelAnswer||'',rewriteNotes:f.rewriteNotes||'',errors:Array.isArray(f.errors)?f.errors:[],upgrades:Array.isArray(f.upgrades)?f.upgrades:[],tips:Array.isArray(f.tips)?f.tips:[],criteriaFeedback:f.criteriaFeedback||null,audit:f.audit||null,_audit:f.audit||null};
+  var g={scores:it.scores||null,opening:f.opening||'',praise:f.praise||'',examinerNote:f.examinerNote||'',modelAnswer:f.modelAnswer||'',rewriteNotes:f.rewriteNotes||'',errors:Array.isArray(f.errors)?f.errors:[],upgrades:Array.isArray(f.upgrades)?f.upgrades:[],tips:Array.isArray(f.tips)?f.tips:[],criteriaFeedback:f.criteriaFeedback||null,audit:f.audit||null,_audit:f.audit||null,_transcript:it.transcript||''};
+  try{gradeSanitizeQuotes(g,it.transcript||'');}catch(e){} /* lich su cung loc tung dong theo transcript da luu, dong nhiem reasoning khong hien lai */
   var h='<div class="histDetail">';
   if(g.opening)h+='<p>🩷 '+esc(g.opening)+'</p>';
   if(it.band!=null||g.scores){var sc=g.scores||{};h+='<div class="bandbox">'+(it.band!=null?'<div class="bb total"><b>'+Number(it.band).toFixed(1)+'</b>Band tổng</div>':'')+(['FC','LR','GRA','P'].map(function(k){var nm={FC:'Fluency & Coherence',LR:'Lexical Resource',GRA:'Grammar Range & Accuracy',P:'Pronunciation'}[k];return '<div class="bb"><b>'+(sc[k]!=null?Number(sc[k]).toFixed(1):'—')+'</b>'+nm+'</div>';}).join(''))+'</div>';}
   h+=criteriaFeedbackHtml(g);
   h+=(typeof auditNoteHtml==='function')?auditNoteHtml(g):'';
   if(g.praise)h+='<p>✅ <b>Điểm tốt:</b> '+esc(g.praise)+'</p>';
-  if(g.examinerNote)h+='<h3>🎓 Ghi chú giám khảo (Examiner note)</h3><p>'+esc(g.examinerNote)+'</p>';
+  if(g.examinerNote&&!(typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(g.examinerNote)))h+='<h3>🎓 Ghi chú giám khảo (Examiner note)</h3><p>'+esc(g.examinerNote)+'</p>';
   if(g.errors.length){h+='<h3>❌ Lỗi sai cần sửa</h3><table class="errs"><tr><th>Bạn nói</th><th>Sửa đúng</th><th>Vì sao</th></tr>';for(var i=0;i<g.errors.length;i++){var e=g.errors[i]||{};h+='<tr><td class="wrong">'+esc(e.wrong)+'</td><td class="fix">'+esc(e.fix)+'</td><td>'+esc(e.why)+'</td></tr>';}h+='</table>';}
   if(g.upgrades.length){h+='<h3>🚀 Nâng cấp lên band 7+</h3><table class="errs"><tr><th>Cách nói thường</th><th>Cách nói nâng band</th></tr>';for(var j=0;j<g.upgrades.length;j++){var u=g.upgrades[j]||{};h+='<tr><td>'+esc(u.original)+'</td><td class="fix">'+esc(u.better)+'</td></tr>';}h+='</table>';}
-  if(g.modelAnswer){histModelAnswer=String(g.modelAnswer);h+='<h3>⭐ Câu trả lời của bạn — bản nâng Band 8</h3>'+(g.rewriteNotes?'<p class="small">📝 '+esc(g.rewriteNotes)+'</p>':'')+'<p style="white-space:pre-wrap">'+esc(g.modelAnswer)+'</p>'+speakBtnsHtml('histModelAnswer','🔊 Nghe đọc bản nâng cấp');}
+  if(g.modelAnswer&&!(typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(g.modelAnswer))){histModelAnswer=String(g.modelAnswer);h+='<h3>⭐ Câu trả lời của bạn — bản nâng Band 8</h3>'+(g.rewriteNotes?'<p class="small">📝 '+esc(g.rewriteNotes)+'</p>':'')+'<p style="white-space:pre-wrap">'+esc(g.modelAnswer)+'</p>'+speakBtnsHtml('histModelAnswer','🔊 Nghe đọc bản nâng cấp');}
   if(g.tips.length){h+='<h3>💡 Mẹo lên band</h3><ol>';for(var k=0;k<g.tips.length;k++)h+='<li>'+esc(g.tips[k])+'</li>';h+='</ol>';}
   return h+'</div>';
 }
@@ -2592,8 +2860,8 @@ async function mtGradeMock(){
       mtGrading=false;return;
     }
     statusBubble();
-    var missBeforeMt=(!didFix)?gradeMissingFields(g):[];
-    if(!didFix)g=await completeGradeIfNeeded(g,res,'Full mock test — Part 2 cue card: '+mt.p2Card.prompt,2,allTr); /* da dung fixJSON thi bo qua completion */
+    var missBeforeMt=gradeMissingFields(g,allTr,2);
+    g=await completeGradeIfNeeded(g,res,'Full mock test — Part 2 cue card: '+mt.p2Card.prompt,2,allTr,didFix?1:2); /* luon bo sung neu con thieu muc, ke ca khi da dung fixJSON; fixJSON da tinh 1 luot bo sung nen ngan sach con lai 1, tong bo sung <= 2 */
     var evMock=computeEvidence(mt.answers.map(function(a){return a.transcript||'';}).join(' '),totalSecs);
     g=await auditGradeIfNeeded(g,allTr,evMock,{via:(g._completionVia||res.via),extraUsed:didFix||missBeforeMt.length>0});
     stopStatus();
