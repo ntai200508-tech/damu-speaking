@@ -1254,8 +1254,9 @@ async function listGeminiModels(key){var cachedList=aiModelListGet(key);if(cache
   var names=ms.map(function(m){return m.name;});
   aiModelListSet(key,names);aiModelCacheSet(key,names[0]);return names;}
 async function pickModel(key){var cached=aiModelCacheGet(key);if(cached)return cached;var names=await listGeminiModels(key);return names[0];}
-async function geminiCallOnce(key,model,prompt,minimal){
-  var genCfg=minimal?{temperature:0.35,maxOutputTokens:2500}:{temperature:0.35,maxOutputTokens:2500,responseMimeType:'application/json'}; /* JSON mode: ep Gemini tra JSON sach; KHONG gui thinkingConfig (web tu vung chay on khong can) */
+async function geminiCallOnce(key,model,prompt,minimal,tempOverride){
+  var gTemp=(typeof tempOverride==='number'&&isFinite(tempOverride))?tempOverride:0.35;
+  var genCfg=minimal?{temperature:gTemp,maxOutputTokens:2500}:{temperature:gTemp,maxOutputTokens:2500,responseMimeType:'application/json'}; /* JSON mode: ep Gemini tra JSON sach; KHONG gui thinkingConfig (web tu vung chay on khong can) */
   var r;
   try{r=await fetchTimeout('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:genCfg})},AI_GEMINI_TIMEOUT_MS);}
   catch(e){throw classifyErr(e,'generativelanguage.googleapis.com');}
@@ -1266,7 +1267,7 @@ async function geminiCallOnce(key,model,prompt,minimal){
   var parts=(((j.candidates||[])[0]||{}).content||{}).parts||[];var out='';for(var p=0;p<parts.length;p++)if(parts[p].text)out+=parts[p].text;
   if(!out)throw new Error('server|Google trả về rỗng.');
   return out;}
-async function geminiAsk(prompt){var key=aiGetKey();if(!key)throw new Error('nokey');
+async function geminiAsk(prompt,opts){var key=aiGetKey();if(!key)throw new Error('nokey');var gTempOpt=(opts&&typeof opts.temperature==='number'&&isFinite(opts.temperature))?opts.temperature:null;
   /* FAILOVER NHIEU MODEL: thu tu thu = sticky (model thanh cong gan nhat) -> model cache -> danh sach model that cua key -> ten du phong cu.
      Toi da 3 model, moi model timeout NGAN 25s. Loi 503/429/timeout/rong/404 o 1 model = thu NGAY model tiep theo;
      chi khi CA 3 model deu that bai geminiAsk moi throw (luc do aiAsk moi tinh breaker + roi xuong Pollinations). */
@@ -1283,12 +1284,12 @@ async function geminiAsk(prompt){var key=aiGetKey();if(!key)throw new Error('nok
     var model=cand[mi];
     aiSetStatus(mi===0?('Đang chấm bằng Gemini ('+model+')...'):('Google đang bận, đang thử model Gemini khác ('+(mi+1)+'/'+cand.length+': '+model+')...'));
     try{
-      var out=await geminiCallOnce(key,model,prompt,false);
+      var out=await geminiCallOnce(key,model,prompt,false,gTempOpt);
       aiGfailReset();aiPreferFallback=false;aiModelCacheSet(key,model);aiStickySet(model);return out;
     }catch(e){lastErr=classifyErr(e,'generativelanguage.googleapis.com');var lm2=String(lastErr.message);
       if(lm2.indexOf('badkey|')===0){
         /* 400 co the do JSON mode: thu lai CHINH model nay 1 lan voi cau hinh toi gian truoc khi ket luan */
-        try{var out2=await geminiCallOnce(key,model,prompt,true);aiGfailReset();aiPreferFallback=false;aiModelCacheSet(key,model);aiStickySet(model);return out2;}
+        try{var out2=await geminiCallOnce(key,model,prompt,true,gTempOpt);aiGfailReset();aiPreferFallback=false;aiModelCacheSet(key,model);aiStickySet(model);return out2;}
         catch(e2){if(String((e2&&e2.message)||'').indexOf('badkey|')===0)throw e2;lastErr=e2;aiLogErr('geminiAsk.model:'+model,lastErr);continue;}
       }
       if(/^(forbidden|blocked:)/.test(lm2))throw lastErr;
@@ -1299,15 +1300,23 @@ async function geminiAsk(prompt){var key=aiGetKey();if(!key)throw new Error('nok
   }
   throw lastErr||new Error('server|Cả '+cand.length+' model Gemini đều bận/lỗi.');}
 
-async function pollinationsAsk(prompt,sysOverride){aiSetStatus('Đang chấm bằng AI dự phòng (Pollinations)...');var sys=sysOverride||'You are damu, a pink capybara and strict IELTS Speaking examiner (examiner-coach persona): roast candidates in English, blunt and sarcastic, grade seriously and strictly with no grade inflation. Follow the user instruction exactly and output ONLY the requested JSON.';
+async function pollinationsAsk(prompt,sysOverride,opts){aiSetStatus('Đang chấm bằng AI dự phòng (Pollinations)...');var sys=sysOverride||'You are damu, a pink capybara and strict IELTS Speaking examiner (examiner-coach persona): roast candidates in English, blunt and sarcastic, grade seriously and strictly with no grade inflation. Follow the user instruction exactly and output ONLY the requested JSON.';
+  /* opts.temperature / opts.seed (chi luot BIEN DOI chong cache/dump truyen vao): dua vao
+     body POST + query GET du phong de Pollinations khong phat lai phan hoi da cache cho
+     prompt gan giong het va giam kha nang lap lai dung ban reasoning dump cu. */
+  var pTemp=(opts&&typeof opts.temperature==='number'&&isFinite(opts.temperature))?opts.temperature:null;
+  var pSeed=(opts&&typeof opts.seed==='number'&&isFinite(opts.seed))?Math.floor(opts.seed):null;
   var work=(async function(){
     try{ /* POST: prompt dài không nhồi vào URL như bản cũ (URL dài dễ chậm/lỗi) */
-      var r=await fetchTimeout('https://text.pollinations.ai/',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'openai',private:true,messages:[{role:'system',content:sys},{role:'user',content:prompt}]})},AI_FALLBACK_TIMEOUT_MS);
+      var pBody={model:'openai',private:true,messages:[{role:'system',content:sys},{role:'user',content:prompt}]};
+      if(pTemp!=null)pBody.temperature=pTemp;
+      if(pSeed!=null)pBody.seed=pSeed;
+      var r=await fetchTimeout('https://text.pollinations.ai/',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(pBody)},AI_FALLBACK_TIMEOUT_MS);
       if(!r.ok){var btx='';try{btx=await r.text();}catch(x){}if(r.status===402||aiIsLimitText(btx))throw new Error('quota|Pollinations free limit reached (HTTP 402)');throw new Error('HTTP '+r.status);}
       var tx=await r.text();if(!String(tx).trim())throw new Error('empty');if(aiIsLimitText(tx))throw new Error('quota|Pollinations free limit reached (HTTP 402)');return tx;
     }catch(e){
       if(String((e&&e.message)||'').indexOf('quota|')===0)throw e;
-      var url='https://text.pollinations.ai/'+encodeURIComponent(prompt)+'?model=openai&system='+encodeURIComponent(sys)+'&private=true';
+      var url='https://text.pollinations.ai/'+encodeURIComponent(prompt)+'?model=openai&system='+encodeURIComponent(sys)+'&private=true'+(pTemp!=null?('&temperature='+pTemp):'')+(pSeed!=null?('&seed='+pSeed):'');
       var r2=await fetchTimeout(url,{},AI_FALLBACK_TIMEOUT_MS);if(!r2.ok){var btx2='';try{btx2=await r2.text();}catch(x){}if(r2.status===402||aiIsLimitText(btx2))throw new Error('quota|Pollinations free limit reached (HTTP 402)');throw new Error('HTTP '+r2.status);}var tx2=await r2.text();if(aiIsLimitText(tx2))throw new Error('quota|Pollinations free limit reached (HTTP 402)');return tx2;}
   })();
   var guard=new Promise(function(_,rej){setTimeout(function(){rej(new Error('slow:text.pollinations.ai'));},AI_FALLBACK_TIMEOUT_MS);});
@@ -1323,14 +1332,80 @@ function buildPromptLite(q,part,tr,wpm){
   var maLen=(part===2)?'Band 8 rewrite of the learner answer, 150-200 words':'Band 8 rewrite of the learner answer, 2-4 sentences';
   return 'Return ONLY JSON, no other text, no markdown. Grade this IELTS Speaking Part '+part+' answer strictly (no grade inflation). Question: \''+String(q||'')+'\' Transcript: \''+trC+'\' Speed about '+wpm+' wpm.'+evLine+' Use EXACTLY this JSON shape: {"opening":"1 short roast sentence in English","scores":{"FC":5.0,"LR":5.0,"GRA":5.0,"P":5.0},"errors":[{"wrong":"exact phrase from transcript","fix":"corrected version","why":"short reason in Vietnamese"}],"upgrades":[{"original":"simple phrase from transcript","better":"band 7 version"}],"tips":["tip in Vietnamese","tip in Vietnamese","tip in Vietnamese"],"praise":"1 sentence in Vietnamese","examinerNote":"2 sentences in English, name the biggest lever to gain band","modelAnswer":"'+maLen+'","rewriteNotes":"1 short line in Vietnamese: what was kept, fixed or added","criteriaFeedback":{"FC":{"strength":"1 short strength in Vietnamese","errors":[{"wrong":"exact phrase from transcript","fix":"corrected version","why":"short reason in Vietnamese"},{"wrong":"another exact phrase from transcript","fix":"corrected version of that other phrase","why":"short reason in Vietnamese"}],"fix":"specific fix in Vietnamese","drill":"1 practice drill in Vietnamese","bandLink":"1 band bridge sentence in Vietnamese"},"LR":{"strength":"1 short strength in Vietnamese","errors":[{"wrong":"exact phrase from transcript","fix":"corrected version","why":"short reason in Vietnamese"},{"wrong":"another exact phrase from transcript","fix":"corrected version of that other phrase","why":"short reason in Vietnamese"}],"fix":"specific fix in Vietnamese","drill":"1 practice drill in Vietnamese","bandLink":"1 band bridge sentence in Vietnamese"},"GRA":{"strength":"1 short strength in Vietnamese","errors":[{"wrong":"exact phrase from transcript","fix":"corrected version","why":"short reason in Vietnamese"},{"wrong":"another exact phrase from transcript","fix":"corrected version of that other phrase","why":"short reason in Vietnamese"}],"fix":"specific fix in Vietnamese","drill":"1 practice drill in Vietnamese","bandLink":"1 band bridge sentence in Vietnamese"},"P":{"strength":"1 short strength in Vietnamese","errors":[{"wrong":"exact word from transcript","fix":"how to say it right","why":"short reason in Vietnamese"},{"wrong":"another exact word from transcript","fix":"how to say that word right","why":"short reason in Vietnamese"}],"fix":"specific fix in Vietnamese","drill":"1 practice drill in Vietnamese","bandLink":"1 band bridge sentence in Vietnamese"}}} Rules: scores 0-9 in 0.5 steps; errors max 2, quote the transcript exactly word-for-word; criteriaFeedback: per criterion give strength, 2-3 errors each with its own corrected version and one-line reason, a specific fix, one practice drill tied to those errors and one band bridge sentence (fix these errors and this criterion reaches the next band); tips exactly 3; keep every string SHORT; never use a double-quote character inside string values, use single quotes instead.';
 }
+/* ===== LUOT CHINH BIEN DOI CHONG CACHE + CHONG DUMP (PIN AI vong 2, 22/10) =====
+   Bang chung pin vong 1: Pollinations PHAT LAI phan hoi loi da cache trong ~1s khi prompt
+   GIONG HET (B1/B3 hong o luot chinh ca 4 vong), va hay tra reasoning dump thay noi dung.
+   Khi luot chinh khong doc duoc diem, gradeParseWithRecovery thu lai DUNG 1 luot bang
+   PROMPT BIEN DOI: doi cach dien dat + doi thu tu muc (scores/criteriaFeedback dao thu tu)
+   + ma attempt rieng trong prompt (pha cache) + nhan manh 'tra JSON ngay, khong suy luan
+   dai' + temperature khac (0.7) va seed rieng qua aiAskGrade opts. Truong hop thuong
+   (luot chinh doc duoc diem) KHONG ton them luot nao. */
+function gradeResponseLooksDump(t){var s=String(t||'');if(!s.trim())return true;
+  var hasScores=/"scores"\s*:\s*\{\s*"(FC|LR|GRA|P)"\s*:\s*[0-9]/.test(s);
+  if(hasScores)return false;
+  if(/"reasoning"\s*:/.test(s))return true;
+  var u='';try{u=unwrapAIEnvelopeText(s);}catch(e){}
+  if(u&&u!==s.trim())return true; /* envelope ma noi dung ben trong khong co diem dang so */
+  return s.length>1500&&!/FC\s*[:=]\s*[0-9]/.test(s);}
+function buildPromptLiteVariant(q,part,tr,wpm,seed){
+  var trC=String(tr||'').slice(0,1200);
+  var evLine='';
+  try{var _ev=computeEvidence(trC,0);if(_ev)evLine=' Objective evidence: '+_ev.words+' words, type-token ratio '+_ev.ttr+', filler words '+_ev.fillers+' — low speed or many fillers caps Fluency; low type-token caps Lexical Resource.';}catch(e){}
+  var maLen=(part===2)?'Band 8 rewrite of the learner answer, 150-200 words':'Band 8 rewrite of the learner answer, 2-4 sentences';
+  function cfShape(k,hint){return '"'+k+'":{"strength":"1 short strength in Vietnamese","errors":[{"wrong":"'+hint+'","fix":"corrected version","why":"short reason in Vietnamese"}],"fix":"specific fix in Vietnamese","drill":"1 practice drill in Vietnamese","bandLink":"1 band bridge sentence in Vietnamese"}';}
+  var shape='{"scores":{"P":5.0,"GRA":5.0,"LR":5.0,"FC":5.0},"criteriaFeedback":{'+cfShape('P','exact word from transcript')+','+cfShape('GRA','exact phrase from transcript')+','+cfShape('LR','exact phrase from transcript')+','+cfShape('FC','exact phrase from transcript')+'},"modelAnswer":"'+maLen+'","examinerNote":"2 sentences in English, last sentence names the biggest lever to gain band","rewriteNotes":"1 short line in Vietnamese: what was kept, fixed or added","errors":[{"wrong":"exact phrase from transcript","fix":"corrected version","why":"short reason in Vietnamese"}],"upgrades":[{"original":"simple phrase from transcript","better":"band 7 version"}],"tips":["tip in Vietnamese","tip in Vietnamese","tip in Vietnamese"],"praise":"1 sentence in Vietnamese","opening":"1 short roast sentence in English"}';
+  return 'JSON ONLY — grading attempt code '+seed+'. Your FIRST character must be { and your LAST character must be }. Decide silently: do NOT write reasoning, analysis, plans or explanations, and do NOT describe the JSON before writing it — output the finished JSON immediately, every value SHORT.\nTRANSCRIPT FIRST (grade exactly this answer, nothing else): \''+trC+'\'\nQuestion (IELTS Speaking Part '+part+'): \''+String(q||'')+'\' Speed about '+wpm+' wpm.'+evLine+'\nYou are damu, a strict IELTS Speaking examiner: grade strictly, no grade inflation, scores 0-9 in 0.5 steps. Quote rule: every wrong/original value must be copied word-for-word from the transcript above; if you cannot quote it exactly, drop that error. Never use a double-quote character inside a string value; use single quotes instead.\nUse EXACTLY this JSON shape, keys in THIS order:\n'+shape+'\nField rules: criteriaFeedback — one entry per criterion (order above: P, GRA, LR, FC), each with a real strength, 1-2 errors with their own fix and why, a specific fix, one drill tied to those errors and one band bridge sentence; errors max 2; tips exactly 3; modelAnswer is an upgraded rewrite of THIS answer keeping the learner ideas, not a new answer.';
+}
+function buildPromptVariant(q,part,tr,wpm,secs,seed){
+  var trC=String(tr||'').slice(0,1800);
+  var evTxtP='';
+  try{var _ev2=computeEvidence(trC,secs);if(_ev2)evTxtP=evidenceText(_ev2);}catch(e){}
+  if(!evTxtP)evTxtP='Objective evidence: trust the transcript length and wording itself; very short answers cap Fluency and Grammar, repeated basic words cap Lexical Resource.';
+  var shape='{"scores":{"P":6.0,"GRA":6.0,"LR":5.5,"FC":6.0},"criteriaFeedback":{"P":{"strength":"short strength in Vietnamese","errors":[{"wrong":"exact word from transcript","fix":"correct pronunciation","why":"short reason in Vietnamese"}],"fix":"specific fix in Vietnamese","drill":"1 drill in Vietnamese","bandLink":"1 band bridge sentence in Vietnamese"},"GRA":{"strength":"short strength in Vietnamese","errors":[{"wrong":"exact phrase from transcript","fix":"corrected version","why":"short reason in Vietnamese"}],"fix":"specific fix in Vietnamese","drill":"1 drill in Vietnamese","bandLink":"1 band bridge sentence in Vietnamese"},"LR":{"strength":"short strength in Vietnamese","errors":[{"wrong":"exact phrase from transcript","fix":"corrected version","why":"short reason in Vietnamese"}],"fix":"specific fix in Vietnamese","drill":"1 drill in Vietnamese","bandLink":"1 band bridge sentence in Vietnamese"},"FC":{"strength":"short strength in Vietnamese","errors":[{"wrong":"exact phrase from transcript","fix":"corrected version","why":"short reason in Vietnamese"}],"fix":"specific fix in Vietnamese","drill":"1 drill in Vietnamese","bandLink":"1 band bridge sentence in Vietnamese"}},"modelAnswer":"Band 8 upgraded rewrite of the learner own answer","examinerNote":"2-3 sentences in English, last sentence names the biggest lever","rewriteNotes":"1-2 short lines in Vietnamese","errors":[{"wrong":"exact phrase from transcript","fix":"corrected version","why":"short reason in Vietnamese"}],"upgrades":[{"original":"simple phrase from transcript","better":"band 7 version"}],"tips":["tip in Vietnamese","tip in Vietnamese","tip in Vietnamese"],"praise":"1 sentence in Vietnamese","opening":"1-2 short roast sentences in English"}';
+  return 'Grading attempt code '+seed+'. Output the JSON object IMMEDIATELY as your entire reply: first character {, last character }. No reasoning text, no plan, no markdown, no explanation before or after — think silently, then write only the finished JSON.\nTASK — IELTS Speaking Part '+part+', question: "'+String(q||'')+'"\nTranscript (speech recognition, some words may be mis-heard): "'+trC+'"\nSpeed about '+wpm+' wpm, duration about '+secs+' seconds.\n'+evTxtP+'\nSCORING (strict, 0.5 steps, no sympathy marks) — anchors: 5.0 = chains of short simple sentences, constant basic errors even in simple sentences, basic repetitive vocabulary; 5.5 = extended 3-4 sentence answers, some complex forms, but narrow tense range and slips in simple sentences; 6.5 = willing and natural, wide-enough lexis with few collocation errors, mostly accurate with occasional basic slips; 7.5 = fluent with precise topic lexis, hesitation for ideas only, only minor slips such as a double comparative. A score that contradicts the objective evidence must be lowered to fit it. Hunt Vietnamese-learner errors: dropped final -s/-ed, tense inconsistency, wrong articles/prepositions, translated collocations, fillers, memorised chunks.\nUse EXACTLY this JSON shape, keys in THIS order:\n'+shape+'\nRules: never use a double-quote character inside a string value (use single quotes); every quoted wrong/original MUST be a character-for-character substring of the transcript — never paraphrase or invent; each error item needs wrong, fix AND why filled; examinerNote at least 2 English sentences ending with the single biggest lever to the next band; modelAnswer REQUIRED — an upgraded rewrite of the candidate own answer (keep their ideas and order, repair logic, add at most 1-2 missing ideas only where thin; Part 1: 2-3 sentences, Part 2: 180-240 words, Part 3: 3-4 sentences); criteriaFeedback per criterion: one genuine strength, 1-2 errors quoted for THAT criterion only, a specific fix, one 5-10 minute drill tied to those errors, one band bridge sentence; tips exactly 3 in Vietnamese, one naming the band cap.';
+}
+function makeGradeVariantPrompts(q,part,tr,wpm,secs){var seedNum=1+Math.floor(Math.random()*999999);var seed='V'+seedNum;return{full:buildPromptVariant(q,part,tr,wpm,secs,seed),lite:buildPromptLiteVariant(q,part,tr,wpm,seed),seed:seed,seedNum:seedNum};}
+/* gradeParseWithRecovery(res, makeVariant, onPhase): doc diem tu luot cham chinh; neu
+   KHONG doc duoc (dump / JSON hong / grade-invalid) thi (1) thu lai 1 luot bang prompt
+   BIEN DOI (makeVariant tra {full,lite,seedNum}, temperature 0.7 + seed), (2) van hong
+   thi moi dung fixJSON nhu cu tren van ban moi nhat. Tra {g, res, didFix, didVariant}.
+   Ngan sach: luot bien doi chi chay khi luot chinh hong va KHONG tinh vao ngan sach
+   bo sung (completeGradeIfNeeded) — xem ghi chu ngan sach trong gradeNow. */
+async function gradeParseWithRecovery(res,makeVariant,onPhase){
+  var g=null;try{g=extractJSON(res.text);}catch(pe){aiLogErr('gradeParse.parse',pe);g={_raw:res.text,_fallback:true};}
+  if(validateGrade(g))return{g:g,res:res,didFix:false,didVariant:false};
+  var didVariant=false;
+  if(typeof makeVariant==='function'){
+    try{
+      var vp=makeVariant();
+      if(vp&&(vp.full||vp.lite)){
+        if(onPhase)try{onPhase('variant');}catch(e){}
+        aiSetStatus('Bản chấm lỗi/dump — đang chấm lại bằng prompt biến đổi (chống cache)...');
+        var vres=await aiAskGrade(vp.full||vp.lite,vp.lite||vp.full,{temperature:0.7,seed:(typeof vp.seedNum==='number'?vp.seedNum:undefined)});
+        didVariant=true;
+        var gv=null;try{gv=extractJSON(vres.text);}catch(e2){}
+        if(validateGrade(gv))return{g:gv,res:{text:vres.text,via:vres.via,geminiErr:res.geminiErr,groqErr:res.groqErr},didFix:false,didVariant:true};
+        if(vres&&vres.text){res={text:vres.text,via:vres.via,geminiErr:res.geminiErr,groqErr:res.groqErr};if(gv)g=gv;}
+      }
+    }catch(ve){aiLogErr('gradeParse.variant',ve);}
+  }
+  if(validateGrade(g))return{g:g,res:res,didFix:false,didVariant:didVariant};
+  try{
+    if(onPhase)try{onPhase('fix');}catch(e){}
+    var fix=await aiAsk('Fix the following text into ONE valid JSON object with EXACTLY this shape: {"opening":"short text","scores":{"FC":6.0,"LR":5.5,"GRA":6.0,"P":6.0},"errors":[{"wrong":"...","fix":"...","why":"..."}],"upgrades":[{"original":"...","better":"..."}],"tips":["...","...","..."],"praise":"...","examinerNote":"...","modelAnswer":"...","rewriteNotes":"...","criteriaFeedback":{"FC":{"strength":"...","errors":[{"wrong":"...","fix":"...","why":"..."}],"fix":"...","drill":"...","bandLink":"..."},"LR":{"strength":"...","errors":[{"wrong":"...","fix":"...","why":"..."}],"fix":"...","drill":"...","bandLink":"..."},"GRA":{"strength":"...","errors":[{"wrong":"...","fix":"...","why":"..."}],"fix":"...","drill":"...","bandLink":"..."},"P":{"strength":"...","errors":[{"wrong":"...","fix":"...","why":"..."}],"fix":"...","drill":"...","bandLink":"..."}}}. Rules: output ONLY the JSON, no markdown fences, never use a double-quote character inside string values (use single quotes), keep strings short. Here is the text to fix:\n'+String(res.text).slice(0,6000),null,buildFixJsonLite(res.text),{json:true});
+    var g2=null;try{g2=extractJSON(fix.text);}catch(e3){}
+    if(validateGrade(g2))return{g:g2,res:{text:fix.text,via:fix.via,geminiErr:res.geminiErr,groqErr:res.groqErr},didFix:true,didVariant:didVariant};
+  }catch(fe){aiLogErr('gradeParse.fixJSON',fe);}
+  return{g:g,res:res,didFix:false,didVariant:didVariant};
+}
 function buildFixJsonLite(t){return 'Return ONLY JSON, no other text, no markdown. Rewrite the following broken grading result as ONE valid JSON object with EXACTLY this shape: {"opening":"short text","scores":{"FC":5.0,"LR":5.0,"GRA":5.0,"P":5.0},"errors":[{"wrong":"exact phrase","fix":"corrected","why":"short Vietnamese reason"}],"upgrades":[{"original":"simple phrase","better":"band 7 version"}],"tips":["tip in Vietnamese","tip in Vietnamese","tip in Vietnamese"],"praise":"1 sentence in Vietnamese","examinerNote":"2 sentences in English","modelAnswer":"short Band 8 rewrite","criteriaFeedback":{"FC":{"strength":"short strength in Vietnamese","errors":[{"wrong":"exact phrase","fix":"corrected","why":"short reason"},{"wrong":"another exact phrase","fix":"corrected"}],"fix":"Vietnamese fix","drill":"Vietnamese drill","bandLink":"Vietnamese band bridge"},"LR":{"strength":"short strength in Vietnamese","errors":[{"wrong":"exact phrase","fix":"corrected","why":"short reason"},{"wrong":"another exact phrase","fix":"corrected"}],"fix":"Vietnamese fix","drill":"Vietnamese drill","bandLink":"Vietnamese band bridge"},"GRA":{"strength":"short strength in Vietnamese","errors":[{"wrong":"exact phrase","fix":"corrected","why":"short reason"},{"wrong":"another exact phrase","fix":"corrected"}],"fix":"Vietnamese fix","drill":"Vietnamese drill","bandLink":"Vietnamese band bridge"},"P":{"strength":"short strength in Vietnamese","errors":[{"wrong":"exact word","fix":"corrected","why":"short reason"},{"wrong":"another exact word","fix":"corrected"}],"fix":"Vietnamese fix","drill":"Vietnamese drill","bandLink":"Vietnamese band bridge"}}} Rules: keep the SAME scores as in the text; keep strings short; never use a double-quote character inside string values. Text to fix:\n'+String(t||'').slice(0,2500);}
 /* ===== DONG CO GROQ (OpenAI-compatible) =====
    POST https://api.groq.com/openai/v1/chat/completions, temperature 0.2, timeout 18s/model.
    Model chinh llama-3.3-70b-versatile, loi thi thu llama-3.1-8b-instant.
    Luot can JSON (cham bai) gui response_format json_object; luot van xuoi thi khong ep.
    Tra ve text tho giong geminiAsk/pollinationsAsk de cac ham phia tren khong phai sua. */
-async function groqCallOnce(key,model,prompt,sys,jsonMode){
-  var body={model:model,temperature:0.2,messages:[{role:'system',content:sys},{role:'user',content:String(prompt||'')}]};
+async function groqCallOnce(key,model,prompt,sys,jsonMode,tempOverride){
+  var body={model:model,temperature:(typeof tempOverride==='number'&&isFinite(tempOverride))?tempOverride:0.2,messages:[{role:'system',content:sys},{role:'user',content:String(prompt||'')}]};
   if(jsonMode)body.response_format={type:'json_object'};
   var r;
   try{r=await fetchTimeout('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify(body)},AI_GROQ_TIMEOUT_MS);}
@@ -1356,7 +1431,7 @@ async function groqAsk(prompt,opts){
     var attempts=jsonMode?2:1; /* neu bi groqfmt (400 vi response_format) thi thu lai CHINH model nay khong ep JSON */
     for(var at=0;at<attempts;at++){
       try{
-        var out=await groqCallOnce(key,model,prompt,sys,jsonMode&&at===0);
+        var out=await groqCallOnce(key,model,prompt,sys,jsonMode&&at===0,(typeof opts.temperature==='number'&&isFinite(opts.temperature))?opts.temperature:null);
         aiGroqFailReset();aiGroqLastModel=model;return out;
       }catch(e){
         lastErr=classifyErr(e,'api.groq.com');aiLogErr('groqAsk.'+model,lastErr);
@@ -1382,32 +1457,32 @@ async function aiAsk(prompt,sysOverride,litePrompt,opts){
     /* 0-KEY: di THANG Pollinations bang prompt rut gon (litePrompt) — KHONG goi geminiAsk/
        listGeminiModels khi khong co key (goi chi ton thoi gian vo ich), KHONG goi Groq. */
     aiSetStatus('Chưa có key — đang dùng AI dự phòng miễn phí (Pollinations)...');
-    try{var t0=await pollinationsAsk(litePrompt||prompt,sysOverride);if(aiIsLimitText(t0))throw new Error('quota|Pollinations free limit reached (HTTP 402)');return{text:t0,via:'AI dự phòng (Pollinations)',geminiErr:null,groqErr:null};}
+    try{var t0=await pollinationsAsk(litePrompt||prompt,sysOverride,opts);if(aiIsLimitText(t0))throw new Error('quota|Pollinations free limit reached (HTTP 402)');return{text:t0,via:'AI dự phòng (Pollinations)',geminiErr:null,groqErr:null};}
     catch(e0){aiLogErr('aiAsk.pollinations.keyless',e0);throw e0;}
   }
   if(gk){
     if(aiGroqFailGet()>=2){var gi=aiGroqFailInfo();groqErr=new Error('breaker-groq: Groq tam nghi do loi 2 lan gan nhat (con khoang '+gi.remainMin+' phut) — bam nut reset breaker Groq o tab Cai dat de thu lai ngay');}
     else{
-      try{var gt=await groqAsk(prompt,{system:sysOverride,json:aiWantsJSON(prompt,opts)});return{text:gt,via:'Groq',geminiErr:null,groqErr:null};}
+      try{var gt=await groqAsk(prompt,{system:sysOverride,json:aiWantsJSON(prompt,opts),temperature:(opts&&typeof opts.temperature==='number')?opts.temperature:undefined});return{text:gt,via:'Groq',geminiErr:null,groqErr:null};}
       catch(ge){if(String(ge.message)==='nokey-groq'){groqErr=ge;}
         else{aiLogErr('aiAsk.groq',ge);if(aiIsGroqServerFail(ge))aiGroqFailSet(aiGroqFailGet()+1);groqErr=ge;aiSetStatus('Groq đang bận, đang chuyển sang Gemini...');}}
     }
   }
   if(key&&!aiPreferFallback&&aiGfailGet()<2){
-    try{return{text:await geminiAsk(prompt),via:'Gemini',geminiErr:null,groqErr:groqErr};}
+    try{return{text:await geminiAsk(prompt,opts),via:'Gemini',geminiErr:null,groqErr:groqErr};}
     catch(e){if(String(e.message)==='nokey')throw e;aiLogErr('aiAsk.gemini',e);
       if(aiIsGoogleFail(e))aiGfailSet(aiGfailGet()+1); /* geminiAsk chi throw khi CA 3 model deu that bai -> breaker Gemini chi kich hoat khi TOAN BO Gemini that bai */
       if(!aiCanFallback(e))throw e; /* key sai / mat mang: bao dung loi, du phong cung khong cuu duoc */
       geminiErr=e;aiPreferFallback=true;}
   }else if(key){var inf=aiGfailInfo();if(aiGfailGet()>=2)geminiErr=new Error('breaker: Gemini tam nghi do loi 2 lan gan nhat (con khoang '+inf.remainMin+' phut) — bam nut reset breaker o tab Cai dat de thu lai ngay');else geminiErr=new Error('prefer: Gemini vua loi toan bo model o lan cham truoc nen lan nay di thang AI du phong cho nhanh va on dinh');}
   if(groqErr||geminiErr)aiSetStatus('Động cơ chính đang bận, đang chuyển sang AI dự phòng (Pollinations)...');
-  try{var t=await pollinationsAsk(litePrompt||prompt,sysOverride);if(aiIsLimitText(t))throw new Error('quota|Pollinations free limit reached (HTTP 402)');return{text:t,via:'AI dự phòng (Pollinations)',geminiErr:geminiErr,groqErr:groqErr};}
+  try{var t=await pollinationsAsk(litePrompt||prompt,sysOverride,opts);if(aiIsLimitText(t))throw new Error('quota|Pollinations free limit reached (HTTP 402)');return{text:t,via:'AI dự phòng (Pollinations)',geminiErr:geminiErr,groqErr:groqErr};}
   catch(e2){aiLogErr('aiAsk.pollinations',e2);
-    if(key&&aiPreferFallback){try{var t2=await geminiAsk(prompt);aiPreferFallback=false;return{text:t2,via:'Gemini',geminiErr:null,groqErr:groqErr};}catch(e3){aiLogErr('aiAsk.geminiRetry',e3);e3.groqErr=groqErr;throw e3;}}
+    if(key&&aiPreferFallback){try{var t2=await geminiAsk(prompt,opts);aiPreferFallback=false;return{text:t2,via:'Gemini',geminiErr:null,groqErr:groqErr};}catch(e3){aiLogErr('aiAsk.geminiRetry',e3);e3.groqErr=groqErr;throw e3;}}
     e2.groqErr=groqErr;e2.geminiErr=geminiErr;throw e2;}
 }
 
-async function aiAskGrade(promptFull,promptLite){return aiAsk(promptFull,null,promptLite,{json:true});}
+async function aiAskGrade(promptFull,promptLite,opts){var o={json:true};if(opts){for(var _ok in opts)o[_ok]=opts[_ok];}return aiAsk(promptFull,null,promptLite,o);}
 async function testKeyUI(){var key=aiGetKey();if(!key){$('keyNote').textContent='Chưa có key nào được lưu. Dán key vào ô trên, bấm Lưu key, rồi kiểm tra lại. (Không có key vẫn chấm được bằng AI dự phòng.)';return;}$('keyNote').textContent='Đang kiểm tra… (gọi generateContent thật bằng đúng cấu hình lúc chấm, tối đa 18 giây cho mỗi model)';renderAIStatus();
   try{var m=await pickModel(key);var t0=Date.now();
     var genCfg={temperature:0.35,maxOutputTokens:2500,responseMimeType:'application/json'};
@@ -1972,8 +2047,18 @@ function gradeIsPlaceholderText(v){
   if(/^(one\s+)?(specific\s+)?(practice\s+)?(drill|exercise|bai\s+tap)/i.test(s)&&s.length<60)return true;
   if(/^1\s+(short\s+)?sentence\s+in\s+(english|vietnamese)/i.test(s))return true;
   if(/^1\s+short\s+line\s+in\s+vietnamese/i.test(s))return true;
+  if(/^1\s+short\s+line\b/i.test(s)&&s.length<60)return true; /* PIN AI 22/10: '1 short line Vietnamese.' tu reasoning dump */
   if(/^short\s+band\s*8\s+rewrite/i.test(s))return true;
   if(/^band\s*8\s+(upgraded\s+)?rewrite\s+of\s+the\s+learner/i.test(s))return true;
+  /* ECHO PIN AI 22/10 (bai B6): reasoning dump cua Pollinations chua ban NHAP ke hoach
+     co dau muc ===...=== kem dong huong dan nguyen van ('2-3 sentences, each <=14 words.',
+     'Band 8 rewrite: 2-4 sentences, keep learner ideas, fix grammar.') — parser cat muc
+     lay dung cac dong nay lam examinerNote/modelAnswer. Bat them: moi gia tri BAT DAU
+     bang khoang so cau 'N-M sentences' (khong can 'in English'), 'Band 8 rewrite:' co dau
+     hai cham, hoac chua cum gioi han do dai cua prompt bo sung thi la chu huong dan. */
+  if(/^\d+\s*[-–]\s*\d+\s+sentences?\b/i.test(s))return true;
+  if(/^band\s*8\s+rewrite\s*:/i.test(s))return true;
+  if(/(each\s*<=\s*14\s*words|max\s+14\s*words|keep\s+(the\s+)?learner\s+(own\s+)?ideas|keep learner ideas|fix\s+grammar\s+and\s+vocabulary|fix grammar\/vocab)/i.test(s)&&s.length<160)return true;
   if(/^tip\s+in\s+vietnamese$/i.test(s))return true;
   if(/^(how\s+to\s+improve|vietnamese\s+fix|cach\s+khac\s+phuc)/i.test(s)&&s.length<80)return true;
   if(/^short\s+evaluation\s+comment/i.test(s))return true;
@@ -2059,6 +2144,32 @@ function gradeCfBadKeys(g,tr){var keys=['FC','LR','GRA','P'];
     if(!f||gradeIsPlaceholderText(f)||f.length<8||!stg||gradeIsPlaceholderText(stg)||stg.length<8||!drl||gradeIsPlaceholderText(drl)||drl.length<8||!blk||gradeIsPlaceholderText(blk)||blk.length<8||cPoll||(trLow&&cFull===0))bad.push(k);
   }
   return bad;}
+/* gradeCfCompletelyMissing(g,k): tieu chi k MAT TRANG han trong criteriaFeedback —
+   khong co strength/fix/drill/bandLink that VA khong co dong loi trich nao. Chi cac
+   tieu chi mat trang moi duoc dung LUOT VI MO (xem completeGradeIfNeeded); tieu chi
+   chi thieu sau mot phan (co noi dung nhung chua du nguong) thi khong. */
+function gradeCfCompletelyMissing(g,k){
+  if(!g||typeof g!=='object')return true;
+  var cf=g.criteriaFeedback;
+  if(!cf||typeof cf!=='object'||Array.isArray(cf))return true;
+  var c=cf[k];if(c==null)return true;
+  if(typeof c==='string')return gradeIsPlaceholderText(c);
+  if(typeof c!=='object')return true;
+  function hasTxt(v){var s=String(v||'').trim();return !!s&&!gradeIsPlaceholderText(s)&&s.length>=8;}
+  var errs=Array.isArray(c.errors)?c.errors.filter(function(x){return gradeQuoteText(x).trim()!=='';}):[];
+  return !hasTxt(c.strength)&&!hasTxt(c.fix)&&!hasTxt(c.drill)&&!hasTxt(c.bandLink)&&!errs.length;}
+/* buildMicroPrompt(g,key,q,part,tr,lite): prompt VI MO chi xin DUNG 1 tieu chi mat
+   trang — ban lite dang van xuoi theo muc (cho Pollinations), ban full dang JSON gon
+   (cho Groq/Gemini). Rat ngan de model mien phi tra tron ven trong 1 luot. */
+function buildMicroPrompt(g,key,q,part,tr,lite){
+  var sc=g.scores||{};
+  var fullNames={FC:'Fluency and Coherence',LR:'Lexical Resource',GRA:'Grammatical Range and Accuracy',P:'Pronunciation'};
+  if(lite){
+    return 'Scores are FINAL: FC '+sc.FC+', LR '+sc.LR+', GRA '+sc.GRA+', P '+sc.P+' — never change them, never re-grade. Do NOT output JSON. Do NOT write reasoning, analysis or explanations. Write PLAIN TEXT with ONLY this one section, every line SHORT (max 14 words):\n===FEEDBACK_'+key+'===\nSTRENGTH: <real strength of THIS answer for '+key+', short, in Vietnamese>\nERROR: <exact phrase copied word-for-word from the transcript> | CORRECTION: <corrected version> | WHY: <short reason in Vietnamese>\nADVICE: <specific fix in Vietnamese>\nDRILL: <one 5-10 minute drill tied to that error, in Vietnamese>\nBANDLINK: <1 sentence in Vietnamese: fixing this lifts '+key+' to which band>\nReplace every <...> with REAL content about THIS answer only — never write the instruction words themselves as content. Question: \''+String(q||'').slice(0,200)+'\' Transcript: \''+String(tr||'').slice(0,800)+'\'';
+  }
+  var errObj=(key==='P')?'"wrong":"exact word likely mispronounced","fix":"correct pronunciation, with IPA if useful","why":"short reason in Vietnamese"':'"wrong":"exact phrase from the transcript for '+key+' only","fix":"the corrected version of that exact phrase","why":"short reason in Vietnamese"';
+  return 'You are damu, an IELTS Speaking examiner. Scores are FINAL: '+JSON.stringify(g.scores||{})+' — do NOT change scores and do NOT re-grade. Only ONE criterion is still completely missing its feedback: '+key+' ('+(fullNames[key]||key)+'). Return ONLY a valid JSON object (no markdown, no text outside JSON) in EXACTLY this shape: {"criteriaFeedback":{"'+key+'":{"strength":"1 short genuine strength in Vietnamese for '+key+'","errors":[{'+errObj+'}],"fix":"specific fix in Vietnamese for '+key+'","drill":"1 concrete 5-10 minute drill in Vietnamese tied to those errors","bandLink":"1 sentence in Vietnamese: fixing these errors lifts '+key+' to which band"}}}. Rules: every wrong value MUST be copied character-for-character from the transcript — never paraphrase, reconstruct or invent; never use a double-quote character inside string values; write REAL content about THIS answer only, never copy instruction phrases as field values.\nQuestion (Part '+part+'): "'+String(q||'').slice(0,300)+'"\nTranscript: "'+String(tr||'').slice(0,1000)+'"';
+}
 function gradeMissingFields(g,tr,part){var miss=[];if(!g||typeof g!=='object')return miss;
   if(tr){try{g._transcript=String(tr);}catch(e){}} /* luu transcript len g de renderGrade/criteriaFeedbackHtml loc verbatim tung dong o tang hien thi */
   var en=String(g.examinerNote||'').trim();
@@ -2102,17 +2213,21 @@ function buildCompletionPrompt(g,miss,q,part,tr){var parts=[];
    dung cau truc JSON ma mergeExtra/gradeMissingFields dang dung. Chi xin muc dang
    thieu: luot 1 xin tat ca muc thieu, luot 2 (neu con) chi xin muc con thieu — tach
    luot theo ngan sach san co (tong bo sung <= 2). */
+/* PIN AI 22/10 (vong sua 3): mau THAT vong 1-3 cho thay Pollinations cat phan hoi o
+   CUOI muc FEEDBACK (DRILL/BANDLINK mat truoc) — ban LITE chi xin 1 dong ERROR moi
+   tieu chi (nguong gradeCfBadKeys chi can >=1 loi day du wrong/fix/why) de moi muc
+   ngan lai, tra tron ven ca 5 phan; prompt day du cho Groq/Gemini van xin 2-3 loi. */
 function buildCompletionPromptLite(g,miss,q,part,tr,badKeys,retryNote){
   var sc=g.scores||{};
   var wantCf=function(k){return !badKeys||!badKeys.length||badKeys.indexOf(k)>=0;}; /* CHIA LUOT: chi xin cac tieu chi chua dat nguong (completeGradeIfNeeded truyen nhom cua luot nay) — moi luot ngan thi Pollinations tra tron ven, khong cat giua chung */
   var secs=[];
-  if(miss.indexOf('examinerNote')>=0)secs.push('===EXAMINER_NOTE===\n(2-3 sentences in English: a real examiner note about THIS answer, mention its actual strengths and weaknesses, and end with the single biggest lever to reach the next band)');
-  if(miss.indexOf('modelAnswer')>=0){secs.push('===MODEL_ANSWER===\n('+(part===2?'a Band 8 rewrite of the learner answer, 150-200 words':'a Band 8 rewrite of the learner answer, 2-4 sentences')+', keep the learner own ideas and order, fix grammar and vocabulary)');secs.push('===REWRITE_NOTES===\n(1 short line in Vietnamese: what was kept, fixed or added)');}
+  if(miss.indexOf('examinerNote')>=0)secs.push('===EXAMINER_NOTE===\n(2-3 cau tieng Anh that ve bai nay: diem manh, diem yeu, cau cuoi neu don bay len band lon nhat)');
+  if(miss.indexOf('modelAnswer')>=0){secs.push('===MODEL_ANSWER===\n('+(part===2?'Band 8 rewrite, 150-200 words':'Band 8 rewrite, 2-4 sentences')+', keep learner ideas and order, fix grammar/vocab)');secs.push('===REWRITE_NOTES===\n(1 short line in Vietnamese: what was kept, fixed or added)');}
   if(miss.indexOf('criteriaFeedback')>=0){
-    if(wantCf('FC'))secs.push('===FEEDBACK_FC===\nSTRENGTH: <1 short genuine strength in Vietnamese for fluency and coherence in THIS answer>\nERROR: <one phrase copied word-for-word from the transcript> | CORRECTION: <the corrected version of that phrase> | WHY: <one short reason in Vietnamese>\nERROR: <another phrase copied word-for-word from the transcript> | CORRECTION: <the corrected version of that phrase> | WHY: <one short reason in Vietnamese>\nADVICE: <one specific fix in Vietnamese for fluency and coherence>\nDRILL: <one concrete practice drill in Vietnamese for fluency and coherence, tied to the errors above, doable in 5-10 minutes>\nBANDLINK: <1 sentence in Vietnamese: if you fix the errors above, this criterion reaches band Y>');
-    if(wantCf('LR'))secs.push('===FEEDBACK_LR===\nSTRENGTH: <1 short genuine strength in Vietnamese for vocabulary in THIS answer>\nERROR: <one phrase copied word-for-word from the transcript> | CORRECTION: <the corrected version of that phrase> | WHY: <one short reason in Vietnamese>\nERROR: <another phrase copied word-for-word from the transcript> | CORRECTION: <the corrected version of that phrase> | WHY: <one short reason in Vietnamese>\nADVICE: <one specific fix in Vietnamese for vocabulary>\nDRILL: <one concrete practice drill in Vietnamese for vocabulary, tied to the errors above, doable in 5-10 minutes>\nBANDLINK: <1 sentence in Vietnamese: if you fix the errors above, this criterion reaches band Y>');
-    if(wantCf('GRA'))secs.push('===FEEDBACK_GRA===\nSTRENGTH: <1 short genuine strength in Vietnamese for grammar in THIS answer>\nERROR: <one phrase copied word-for-word from the transcript> | CORRECTION: <the corrected version of that phrase> | WHY: <one short reason in Vietnamese>\nERROR: <another phrase copied word-for-word from the transcript> | CORRECTION: <the corrected version of that phrase> | WHY: <one short reason in Vietnamese>\nADVICE: <one specific fix in Vietnamese for grammar>\nDRILL: <one concrete practice drill in Vietnamese for grammar, tied to the errors above, doable in 5-10 minutes>\nBANDLINK: <1 sentence in Vietnamese: if you fix the errors above, this criterion reaches band Y>');
-    if(wantCf('P'))secs.push('===FEEDBACK_P===\nSTRENGTH: <1 short genuine strength in Vietnamese for pronunciation in THIS answer>\nERROR: <one word from the transcript> | CORRECTION: <how to pronounce that word correctly, with IPA if helpful> | WHY: <one short reason in Vietnamese>\nERROR: <another word from the transcript> | CORRECTION: <how to pronounce that word correctly> | WHY: <one short reason in Vietnamese>\nADVICE: <one specific fix in Vietnamese for pronunciation>\nDRILL: <one concrete practice drill in Vietnamese for pronunciation, tied to the errors above, doable in 5-10 minutes>\nBANDLINK: <1 sentence in Vietnamese: if you fix the errors above, this criterion reaches band Y>');
+    if(wantCf('FC'))secs.push('===FEEDBACK_FC===\nSTRENGTH: <diem manh that cua bai nay, tieng Viet, ngan>\nERROR: <cum trich NGUYEN VAN transcript> | CORRECTION: <ban sua cua cum do> | WHY: <ly do ngan, tieng Viet>\nADVICE: <cach sua cu the, tieng Viet>\nDRILL: <bai tap 5-10 phut gan voi loi tren, tieng Viet>\nBANDLINK: <1 cau tieng Viet: sua xong cac loi tren thi tieu chi nay len band may>');
+    if(wantCf('LR'))secs.push('===FEEDBACK_LR===\nSTRENGTH: <diem manh that cua bai nay, tieng Viet, ngan>\nERROR: <cum trich NGUYEN VAN transcript> | CORRECTION: <ban sua cua cum do> | WHY: <ly do ngan, tieng Viet>\nADVICE: <cach sua cu the, tieng Viet>\nDRILL: <bai tap 5-10 phut gan voi loi tren, tieng Viet>\nBANDLINK: <1 cau tieng Viet: sua xong cac loi tren thi tieu chi nay len band may>');
+    if(wantCf('GRA'))secs.push('===FEEDBACK_GRA===\nSTRENGTH: <diem manh that cua bai nay, tieng Viet, ngan>\nERROR: <cum trich NGUYEN VAN transcript> | CORRECTION: <ban sua cua cum do> | WHY: <ly do ngan, tieng Viet>\nADVICE: <cach sua cu the, tieng Viet>\nDRILL: <bai tap 5-10 phut gan voi loi tren, tieng Viet>\nBANDLINK: <1 cau tieng Viet: sua xong cac loi tren thi tieu chi nay len band may>');
+    if(wantCf('P'))secs.push('===FEEDBACK_P===\nSTRENGTH: <diem manh that cua bai nay, tieng Viet, ngan>\nERROR: <cum trich NGUYEN VAN transcript> | CORRECTION: <ban sua cua cum do> | WHY: <ly do ngan, tieng Viet>\nADVICE: <cach sua cu the, tieng Viet>\nDRILL: <bai tap 5-10 phut gan voi loi tren, tieng Viet>\nBANDLINK: <1 cau tieng Viet: sua xong cac loi tren thi tieu chi nay len band may>');
   }
   if(miss.indexOf('errors')>=0)secs.push('===ERRORS===\n(one line per error, 2-3 lines, format: WRONG: <wrong phrase copied word-for-word from the transcript> | FIX: <corrected version> | WHY: <short reason in Vietnamese>)');
   return 'Scores are FINAL: FC '+sc.FC+', LR '+sc.LR+', GRA '+sc.GRA+', P '+sc.P+' — never change them, never re-grade. Do NOT output JSON. Write PLAIN TEXT using EXACTLY these section markers, each marker on its own line, in this order:\n'+secs.join('\n')+'\nReplace every <...> with REAL content written about THIS answer only — never write the instruction words themselves as content. Question: \''+String(q||'').slice(0,200)+'\' Transcript: \''+String(tr||'').slice(0,900)+'\''+(retryNote?('\n'+retryNote):'');
@@ -2135,8 +2250,10 @@ function parseCompletionProse(t){
   for(var j=0;j<pos.length;j++){var from=pos[j].end,to=(j+1<pos.length)?pos[j+1].start:s.length;var body=s.slice(from,to).trim().replace(/^\(|\)$/g,'').trim();if(body&&sec[pos[j].name]==null)sec[pos[j].name]=body;}
   function clean(v){return String(v||'').trim().replace(/^["“]|["”]$/g,'').trim();}
   var out={},found=false;
-  if(sec.EXAMINER_NOTE){out.examinerNote=clean(sec.EXAMINER_NOTE);found=true;}
-  if(sec.MODEL_ANSWER){out.modelAnswer=clean(sec.MODEL_ANSWER);found=true;}
+  /* PIN AI 22/10: body la chu huong dan bi sao chep (ke ca tu reasoning dump) thi KHONG
+     coi la noi dung — bo qua muc do de gradeMissingFields tiep tuc danh dau thieu. */
+  if(sec.EXAMINER_NOTE){var _enB=clean(sec.EXAMINER_NOTE);if(_enB&&!(typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(_enB))){out.examinerNote=_enB;found=true;}}
+  if(sec.MODEL_ANSWER){var _maB=clean(sec.MODEL_ANSWER);if(_maB&&!(typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(_maB))){out.modelAnswer=_maB;found=true;}}
   if(sec.REWRITE_NOTES)out.rewriteNotes=clean(sec.REWRITE_NOTES);
   var cf={},anyCf=false;
   ['FC','LR','GRA','P'].forEach(function(k){var body=sec['FEEDBACK_'+k];if(!body)return;
@@ -2159,7 +2276,7 @@ function parseCompletionProse(t){
       var _mEo=/^\s*ERROR:\s*([\s\S]+)/i.exec(_ln);
       if(_mEo){var _w2=clean(_mEo[1]);if(!(typeof gradeQuotePolluted==='function'&&gradeQuotePolluted(_w2)))_errs.push(_w2);} /* muc bi cat giua chung: giu trich, fix/drill de trong de gradeMissingFields bat xin lai */
     }
-    if(!_errs.length&&!_adv&&!_str&&!_legacyFix){cf[k]={errors:[],fix:clean(body)};}
+    if(!_errs.length&&!_adv&&!_str&&!_legacyFix){var _fb=clean(body);/* PIN AI 22/10: nhanh fallback chi nhan prose ngan gon — body dai nhieu doan la reasoning dump bi cat nham theo dau muc, khong phai cach khac phuc that */if(_fb.length<=300&&_fb.split(/\n/).length<=3)cf[k]={errors:[],fix:_fb};else cf[k]={errors:[],fix:''};}
     else{var _ent={errors:_errs,fix:_adv||_legacyFix};if(_str)_ent.strength=_str;if(_drl)_ent.drill=_drl;if(_blk)_ent.bandLink=_blk;cf[k]=_ent;}
     anyCf=true;});
   if(anyCf){out.criteriaFeedback=cf;found=true;}
@@ -2223,6 +2340,26 @@ async function completeGradeIfNeeded(g,res,q,part,tr,maxAttempts){
       else if(!good.length&&curGood.length<(Array.isArray(g.errors)?g.errors.length:0)){g.errors=curGood;} /* extra toan rac: van phai don sach g.errors cu (chi giu dong dung duoc) */
     }
   }
+  /* resolveExtra(text): trich ket qua bo sung tu 1 phan hoi — JSON truc tiep, va/hoac
+     VAN XUOI theo muc (chien luoc B, parseCompletionSections) dien not cac muc JSON
+     thieu. Dung chung cho luot bo sung thuong va LUOT VI MO. */
+  function resolveExtra(text){
+    var extra=null;try{extra=extractJSON(text);}catch(e){}
+    if(extra&&extra.sampleAnswer!=null&&extra.examinerNote==null&&extra.modelAnswer==null&&extra.criteriaFeedback==null&&!extra.errors)extra=null; /* parser goi y nuot nham phan hoi bo sung: coi nhu rac */
+    var prose=null;try{prose=parseCompletionSections(text);}catch(e){}
+    if(prose){
+      if(!extra||extra._raw){extra=prose;}
+      else{
+        if(extra.examinerNote==null&&prose.examinerNote)extra.examinerNote=prose.examinerNote;
+        if(extra.modelAnswer==null&&prose.modelAnswer)extra.modelAnswer=prose.modelAnswer;
+        if(extra.rewriteNotes==null&&prose.rewriteNotes)extra.rewriteNotes=prose.rewriteNotes;
+        if(extra.criteriaFeedback==null&&prose.criteriaFeedback)extra.criteriaFeedback=prose.criteriaFeedback;
+        else if(extra.criteriaFeedback&&prose.criteriaFeedback){['FC','LR','GRA','P'].forEach(function(k){if(extra.criteriaFeedback[k]==null&&prose.criteriaFeedback[k])extra.criteriaFeedback[k]=prose.criteriaFeedback[k];});}
+        if((!extra.errors||!extra.errors.length)&&prose.errors)extra.errors=prose.errors;
+      }
+    }
+    return extra;
+  }
   /* BO SUNG TOI DA maxA LUOT (mac dinh 2; gradeNow/mtGradeMock truyen 1 neu fixJSON da
      dung 1 luot bo sung, de TONG so luot bo sung sau luot cham chinh khong qua 2): luot 1
      xin cac muc thieu, neu aiAsk nem loi / tra rac (khong doc duoc) / van thieu it nhat 1
@@ -2239,22 +2376,7 @@ async function completeGradeIfNeeded(g,res,q,part,tr,maxAttempts){
       var prompt=buildCompletionPrompt(g,miss,q,part,tr);
       var r2=await aiAsk(prompt,'You are damu, a pink capybara and strict IELTS Speaking examiner. Follow the user instruction exactly: if it asks for JSON return ONLY JSON; if it asks for plain-text sections with === markers, return ONLY those sections.',buildCompletionSectionsPrompt(g,miss,q,part,tr,targetKeys,(attempt>1?'SECOND TRY: the previous reply was unusable (reasoning text, no sections). Output ONLY the sections, every line SHORT (max 14 words), no analysis, no explanation before or after.':'')),{json:true});
       var via1=r2.via||'';try{g._completionVia=via1;g._completionAttempts=attempt;}catch(e){}
-      var extra=null;try{extra=extractJSON(r2.text);}catch(e){}
-      if(extra&&extra.sampleAnswer!=null&&extra.examinerNote==null&&extra.modelAnswer==null&&extra.criteriaFeedback==null&&!extra.errors){extra=null;} /* parser goi y nuot nham phan hoi bo sung: coi nhu rac, thu lai */
-      /* VONG 2: nhanh Pollinations tra VAN XUOI theo muc (chien luoc B) — cat muc bang
-         parseCompletionProse; JSON doc duoc ma thieu muc thi dien not tu van xuoi. */
-      var prose=null;try{prose=parseCompletionSections(r2.text);}catch(e){}
-      if(prose){
-        if(!extra||extra._raw){extra=prose;}
-        else{
-          if(extra.examinerNote==null&&prose.examinerNote)extra.examinerNote=prose.examinerNote;
-          if(extra.modelAnswer==null&&prose.modelAnswer)extra.modelAnswer=prose.modelAnswer;
-          if(extra.rewriteNotes==null&&prose.rewriteNotes)extra.rewriteNotes=prose.rewriteNotes;
-          if(extra.criteriaFeedback==null&&prose.criteriaFeedback)extra.criteriaFeedback=prose.criteriaFeedback;
-          else if(extra.criteriaFeedback&&prose.criteriaFeedback){['FC','LR','GRA','P'].forEach(function(k){if(extra.criteriaFeedback[k]==null&&prose.criteriaFeedback[k])extra.criteriaFeedback[k]=prose.criteriaFeedback[k];});}
-          if((!extra.errors||!extra.errors.length)&&prose.errors)extra.errors=prose.errors;
-        }
-      }
+      var extra=resolveExtra(r2.text);
       if(!extra||extra._raw){
         /* tra rac / khong doc duoc: khong merge, vong lap se thu lai neu con luot */
         continue;
@@ -2262,6 +2384,31 @@ async function completeGradeIfNeeded(g,res,q,part,tr,maxAttempts){
       mergeExtra(extra,miss);
     }catch(e){aiLogErr('completeGrade',e);/* nem loi: vong lap thu lai lan 2 neu con */}
   }
+  /* LUOT VI MO (PIN AI vong 2, 22/10): sau khi het luot bo sung thuong, neu van con
+     NGUYEN 1 tieu chi MAT TRANG han (gradeCfCompletelyMissing — hay xay ra o GRA/P vi
+     phan hoi bi cat o cuoi) thi cho phep THEM DUNG 1 luot vi mo chi xin rieng tieu chi
+     do bang prompt rat ngan (buildMicroPrompt). Ngan sach tong: bo sung thuong <= maxA
+     (mac dinh 2) + vi mo <= 1; tieu chi chi thieu sau mot phan (da co noi dung) thi
+     KHONG dung luot vi mo; co _microUsed chan chay lap. */
+  try{
+    if(!g._microUsed){
+      var missEnd=gradeMissingFields(g,tr,part);
+      if(missEnd.indexOf('criteriaFeedback')>=0){
+        var bkEnd=gradeCfBadKeys(g,tr),microKey='';
+        for(var _mi=0;_mi<bkEnd.length;_mi++){if(gradeCfCompletelyMissing(g,bkEnd[_mi])){microKey=bkEnd[_mi];break;}}
+        if(microKey){
+          g._microUsed=true;
+          aiSetStatus('Còn trống nguyên tiêu chí '+microKey+' — đang xin riêng tiêu chí đó (lượt vi mô)...');
+          try{
+            var rm=await aiAsk(buildMicroPrompt(g,microKey,q,part,tr,false),'You are damu, a pink capybara and strict IELTS Speaking examiner. Follow the user instruction exactly: if it asks for JSON return ONLY JSON; if it asks for plain-text sections with === markers, return ONLY those sections.',buildMicroPrompt(g,microKey,q,part,tr,true),{json:true});
+            try{g._completionVia=rm.via||g._completionVia;g._microVia=rm.via;}catch(e){}
+            var extraM=resolveExtra(rm.text);
+            if(extraM&&!extraM._raw)mergeExtra(extraM,['criteriaFeedback']);
+          }catch(em){aiLogErr('completeGrade.micro',em);}
+        }
+      }
+    }
+  }catch(eMicro){}
   gradeSanitizeQuotes(g,tr); /* don sach lan cuoi truoc khi tra: khong dong trich hong nao duoc song sot sang renderGrade/lich su */
   return g;}
 
@@ -2402,16 +2549,8 @@ async function gradeNow(){if(aiGrading)return;var tr=$('transcript').value.trim(
   statusBubble();
   try{
     var res=await aiAskGrade(buildPrompt(curQuestion,curPart,tr,wpm,secs),buildPromptLite(curQuestion,curPart,tr,wpm));
-    var g=null;try{g=extractJSON(res.text);}catch(pe){aiLogErr('gradeNow.parse',pe);g={_raw:res.text,_fallback:true};}
-    var didFix=false; /* ngan sach: khi qua Pollinations (0-key) toi da 2 luot (cham + 1 luot bo sung: fixJSON/completion, audit bi bo qua); co key Groq/Gemini thi toi da 3 luot (them audit) */
-    if(!validateGrade(g)){
-      /* Lớp cuối trước khi bỏ cuộc: nhờ AI tự sửa lại JSON hỏng đúng 1 lần */
-      st.phase='Bản chấm lỗi định dạng, đang gói lại JSON...';statusBubble();
-      try{var fix=await aiAsk('Fix the following text into ONE valid JSON object with EXACTLY this shape: {"opening":"short text","scores":{"FC":6.0,"LR":5.5,"GRA":6.0,"P":6.0},"errors":[{"wrong":"...","fix":"...","why":"..."}],"upgrades":[{"original":"...","better":"..."}],"tips":["...","...","..."],"praise":"...","examinerNote":"...","modelAnswer":"...","rewriteNotes":"...","criteriaFeedback":{"FC":{"strength":"...","errors":[{"wrong":"...","fix":"...","why":"..."}],"fix":"...","drill":"...","bandLink":"..."},"LR":{"strength":"...","errors":[{"wrong":"...","fix":"...","why":"..."}],"fix":"...","drill":"...","bandLink":"..."},"GRA":{"strength":"...","errors":[{"wrong":"...","fix":"...","why":"..."}],"fix":"...","drill":"...","bandLink":"..."},"P":{"strength":"...","errors":[{"wrong":"...","fix":"...","why":"..."}],"fix":"...","drill":"...","bandLink":"..."}}}. Rules: output ONLY the JSON, no markdown fences, never use a double-quote character inside string values (use single quotes), keep strings short. Here is the text to fix:\n'+String(res.text).slice(0,6000),null,buildFixJsonLite(res.text),{json:true});
-        var g2=null;try{g2=extractJSON(fix.text);}catch(e2){}
-        if(validateGrade(g2)){g=g2;didFix=true;res={text:fix.text,via:fix.via,geminiErr:res.geminiErr};}
-      }catch(fe){aiLogErr('gradeNow.fixJSON',fe);}
-    }
+    var rec=await gradeParseWithRecovery(res,function(){return makeGradeVariantPrompts(curQuestion,curPart,tr,wpm,secs);},function(ph){if(ph==='fix'){st.phase='Bản chấm lỗi định dạng, đang gói lại JSON...';statusBubble();}else if(ph==='variant'){st.phase='AI trả bản lỗi — đang chấm lại bằng prompt biến đổi...';statusBubble();}});
+    var g=rec.g;res=rec.res;var didFix=rec.didFix;var didVariant=rec.didVariant; /* ngan sach vong 2: 1 luot chinh (+1 luot BIEN DOI chi khi luot chinh hong/dump, khong tinh vao bo sung) + fixJSON neu van hong (tinh 1 luot bo sung nhu cu: didFix -> bo sung con 1) + bo sung <=2 + vi mo <=1 (trong completeGradeIfNeeded) */
     if(!validateGrade(g)){
       chat.innerHTML=myMsg+damuMsg('😵 damu chấm chưa thành công — AI trả về kết quả không đọc được điểm. Bài nói của bạn vẫn còn nguyên, bấm nút dưới để chấm lại nhé.<br><button class="btn" onclick="gradeNow()">🔁 Chấm lại</button>'+geminiErrHtml(res)+groqSuggestHtml());
       saveHistory(null,tr,wpm);
@@ -2420,7 +2559,7 @@ async function gradeNow(){if(aiGrading)return;var tr=$('transcript').value.trim(
       var missBefore=gradeMissingFields(g,tr,curPart);
       g=await completeGradeIfNeeded(g,res,curQuestion,curPart,tr,didFix?1:2); /* luon bo sung neu con thieu muc, ke ca khi da dung fixJSON (fix du diem nhung van co the thieu examinerNote/modelAnswer/criteriaFeedback); fixJSON da tinh 1 luot bo sung nen ngan sach con lai 1, tong bo sung <= 2 */
       var evNow=computeEvidence(tr,secs);
-      g=await auditGradeIfNeeded(g,tr,evNow,{via:(g._completionVia||res.via),extraUsed:didFix||missBefore.length>0});
+      g=await auditGradeIfNeeded(g,tr,evNow,{via:(g._completionVia||res.via),extraUsed:didFix||didVariant||missBefore.length>0});
       var r=renderGrade(g,res.via,wpm,evNow);
       chat.innerHTML=myMsg+damuMsg(r.html+geminiErrHtml(res));
       saveHistory(r.overall,tr,wpm,(g&&!g._fallback)?g.scores:null,g);
@@ -3355,15 +3494,8 @@ async function mtGradeMock(){
     var prompt=buildMockPrompt(mt);
     var allTr=mt.answers.map(function(a){return a.transcript||'';}).join(' ').slice(0,2500);
     var res=await aiAskGrade(prompt,buildPromptLite('Full IELTS mock test (Parts 1, 2 and 3)',0,allTr,avgWpm));
-    var g=null;try{g=extractJSON(res.text);}catch(pe){aiLogErr('mtGradeMock.parse',pe);g={_raw:res.text,_fallback:true};}
-    var didFix=false; /* ngan sach: khi qua Pollinations (0-key) toi da 2 luot (cham + 1 luot bo sung: fixJSON/completion, audit bi bo qua); co key Groq/Gemini thi toi da 3 luot (them audit) */
-    if(!validateGrade(g)){
-      st.phase='Bản chấm lỗi định dạng, đang gói lại JSON...';statusBubble();
-      try{var fix=await aiAsk('Fix the following text into ONE valid JSON object with EXACTLY this shape: {"opening":"short text","scores":{"FC":6.0,"LR":5.5,"GRA":6.0,"P":6.0},"errors":[{"wrong":"...","fix":"...","why":"..."}],"upgrades":[{"original":"...","better":"..."}],"tips":["...","...","..."],"praise":"...","examinerNote":"...","modelAnswer":"...","rewriteNotes":"...","criteriaFeedback":{"FC":{"strength":"...","errors":[{"wrong":"...","fix":"...","why":"..."}],"fix":"...","drill":"...","bandLink":"..."},"LR":{"strength":"...","errors":[{"wrong":"...","fix":"...","why":"..."}],"fix":"...","drill":"...","bandLink":"..."},"GRA":{"strength":"...","errors":[{"wrong":"...","fix":"...","why":"..."}],"fix":"...","drill":"...","bandLink":"..."},"P":{"strength":"...","errors":[{"wrong":"...","fix":"...","why":"..."}],"fix":"...","drill":"...","bandLink":"..."}}}. Rules: output ONLY the JSON, no markdown fences, never use a double-quote character inside string values (use single quotes), keep strings short except modelAnswer. Here is the text to fix:\n'+String(res.text).slice(0,6000),null,buildFixJsonLite(res.text),{json:true});
-        var g2=null;try{g2=extractJSON(fix.text);}catch(e2){}
-        if(validateGrade(g2)){g=g2;didFix=true;res={text:fix.text,via:fix.via,geminiErr:res.geminiErr};}
-      }catch(fe){aiLogErr('mtGradeMock.fixJSON',fe);}
-    }
+    var recMt=await gradeParseWithRecovery(res,function(){var sd=1+Math.floor(Math.random()*999999);var seed='V'+sd;return{full:'Grading attempt code '+seed+'. Output the JSON object IMMEDIATELY as your entire reply: first character {, last character }. No reasoning text, no plan, no markdown — think silently, then write only the finished JSON.\n'+prompt,lite:buildPromptLiteVariant('Full IELTS mock test (Parts 1, 2 and 3)',0,allTr,avgWpm,seed),seed:seed,seedNum:sd};},function(ph){if(ph==='fix'){st.phase='Bản chấm lỗi định dạng, đang gói lại JSON...';statusBubble();}});
+    var g=recMt.g;res=recMt.res;var didFix=recMt.didFix;var didVariantMt=recMt.didVariant;
     if(!validateGrade(g)){
       stopStatus();
       if(chat)chat.innerHTML=damuMsg('😵 damu chấm chưa thành công — AI trả về kết quả không đọc được điểm. Buổi thi của bạn vẫn còn nguyên, bấm nút dưới để chấm lại nhé.<br><button class="btn" onclick="mtGradeMock()">🔁 Chấm lại</button>'+geminiErrHtml(res)+groqSuggestHtml());
@@ -3374,7 +3506,7 @@ async function mtGradeMock(){
     var missBeforeMt=gradeMissingFields(g,allTr,2);
     g=await completeGradeIfNeeded(g,res,'Full mock test — Part 2 cue card: '+mt.p2Card.prompt,2,allTr,didFix?1:2); /* luon bo sung neu con thieu muc, ke ca khi da dung fixJSON; fixJSON da tinh 1 luot bo sung nen ngan sach con lai 1, tong bo sung <= 2 */
     var evMock=computeEvidence(mt.answers.map(function(a){return a.transcript||'';}).join(' '),totalSecs);
-    g=await auditGradeIfNeeded(g,allTr,evMock,{via:(g._completionVia||res.via),extraUsed:didFix||missBeforeMt.length>0});
+    g=await auditGradeIfNeeded(g,allTr,evMock,{via:(g._completionVia||res.via),extraUsed:didFix||didVariantMt||missBeforeMt.length>0});
     stopStatus();
     var r=renderGrade(g,res.via,avgWpm,evMock);
     mt.phase='done';
