@@ -969,7 +969,7 @@ var AI_KEYLS='damuSpeaking.geminiKey';
 var GROQ_KEYLS='damuSpeaking.groqKey';
 var AI_GROQ_TIMEOUT_MS=18000,AI_GROQ_MODELS=['llama-3.3-70b-versatile','llama-3.1-8b-instant'];
 var AI_MODELLS='damuSpeaking.modelcache',AI_MODEL_CACHE_TTL=7*24*3600*1000;
-var AI_TIMEOUT_MS=18000,AI_GEMINI_TIMEOUT_MS=18000,AI_GEMINI_MAX_MODELS=3,AI_FALLBACK_TIMEOUT_MS=30000,AI_LIST_TIMEOUT_MS=15000;
+var AI_TIMEOUT_MS=18000,AI_GEMINI_TIMEOUT_MS=18000,AI_GEMINI_MAX_MODELS=3,AI_FALLBACK_TIMEOUT_MS=45000,AI_LIST_TIMEOUT_MS=15000;
 var AI_MODELS=['gemini-3.8-flash','gemini-3.7-flash','gemini-3.6-flash','gemini-3.5-flash']; /* như web cũ: chỉ còn là dự phòng khi không liệt kê được model */
 var aiPreferFallback=false,aiGrading=false;
 function aiGetKey(){try{return (localStorage.getItem(AI_KEYLS)||'').trim();}catch(e){return '';}}
@@ -1005,12 +1005,13 @@ function aiGroqFailSet(c){try{localStorage.setItem('damuSpeaking.groqfail',JSON.
 function aiGroqFailReset(){try{localStorage.removeItem('damuSpeaking.groqfail');}catch(e){}}
 function aiGroqFailInfo(){try{var o=JSON.parse(localStorage.getItem('damuSpeaking.groqfail')||'null');if(o&&o.lastFail){var remainMs=10*60*1000-(Date.now()-o.lastFail);return{count:o.count||0,lastFail:o.lastFail,remainMin:remainMs>0?Math.ceil(remainMs/60000):0,active:remainMs>0&&(o.count||0)>=2};}}catch(e){}return{count:0,lastFail:0,remainMin:0,active:false};}
 function aiIsGroqServerFail(e){var m=String((e&&e.message)||'');return m.indexOf('slow:')===0||m.indexOf('server-groq|')===0||m.indexOf('quota-groq|')===0||m.indexOf('groqfmt|')===0;}
-function aiFriendlyGroqErr(e){var m=String((e&&e.message)||'Lỗi không rõ');var pi=m.indexOf('|');var b=pi>=0?m.slice(0,pi):m;var d=pi>=0?m.slice(pi+1):'';
-  if(b==='groqauth')return 'Key Groq bị Groq từ chối (401/403) — kiểm tra lại key ở tab Cài đặt, hoặc tạo key mới ở console.groq.com.'+(d?' Chi tiết: '+d:'');
-  if(b==='quota-groq')return 'Groq đang hết lượt/tạm bận (429). App sẽ tự dùng Gemini/AI dự phòng; thử lại sau ít phút cũng được.'+(d?' Chi tiết: '+d:'');
-  if(m.indexOf('slow:')===0)return 'Groq trả lời quá chậm (quá '+Math.round(AI_GROQ_TIMEOUT_MS/1000)+' giây).';
-  if(m.indexOf('blocked:')===0)return 'Không gọi được máy chủ Groq — kiểm tra mạng/VPN rồi thử lại. ('+m+')';
-  return m;}
+function aiFriendlyGroqErr(e){var m=String((e&&e.message)||'');
+  if(m.indexOf('groqauth|')===0)return 'Key Groq bị Groq từ chối — kiểm tra lại key ở tab Cài đặt, hoặc tạo key mới ở console.groq.com nhé.';
+  if(m.indexOf('quota-groq|')===0||m.indexOf('quota|')===0)return 'Groq đang hết lượt hoặc tạm bận. App sẽ tự dùng Gemini/AI dự phòng; thử lại sau ít phút cũng được.';
+  if(m.indexOf('slow:')===0)return 'Groq trả lời quá chậm (quá '+Math.round(AI_GROQ_TIMEOUT_MS/1000)+' giây). App sẽ tự dùng động cơ khác.';
+  if(m.indexOf('blocked:')===0)return 'Không gọi được máy chủ Groq — kiểm tra mạng/VPN rồi thử lại nhé.';
+  if(m.indexOf('groqfmt|')===0||m.indexOf('server-groq|')===0)return 'Máy chủ Groq đang bận hoặc lỗi tạm thời. App sẽ tự dùng Gemini/AI dự phòng.';
+  return aiFriendlyErr(e);}
 function groqSuggestHtml(){try{if(!aiGetGroqKey())return '<br><span class="small">💡 Muốn chấm nhanh và ổn định hơn: thêm key Groq miễn phí ở tab Cài đặt.</span>';}catch(e){}return '';}
 async function testGroqKeyUI(){var n=$('groqNote');var key=aiGetGroqKey();if(!key){if(n)n.textContent='Chưa có key Groq nào được lưu. Dán key (bắt đầu bằng gsk_) vào ô trên, bấm Lưu key Groq, rồi kiểm tra lại.';return;}if(n)n.textContent='Đang kiểm tra key Groq… (bắn 1 lượt generate thật nhỏ bằng model '+AI_GROQ_MODELS[0]+')';
   try{var t0=Date.now();var out=await groqAsk('Reply with only this JSON: {"ok":true}',{json:true});if(!out||!String(out).trim())throw new Error('server-groq|Groq trả về rỗng.');var secs=((Date.now()-t0)/1000).toFixed(1);if(n)n.textContent='✅ Key Groq dùng được THẬT (đã gọi generate thành công)! Model: '+(aiGroqLastModel||AI_GROQ_MODELS[0])+' • Thời gian phản hồi: '+secs+' giây.';renderAIStatus();}
@@ -1026,18 +1027,28 @@ function renderAIStatus(){var box=$('aiStatusBox');if(!box)return;var info=aiGfa
   if(ginfo.active)h+='<p>⛔ <b>Breaker đang GHIM Groq</b>: đã lỗi '+ginfo.count+' lần gần nhất, còn khoảng '+ginfo.remainMin+' phút nữa app mới tự thử lại Groq (breaker Groq riêng — Gemini vẫn dùng bình thường).</p>';
   else if(ginfo.count>0)h+='<p>⚠️ Groq đã lỗi '+ginfo.count+' lần trong 10 phút gần đây (chưa tới mức ghim 2 lần).</p>';
   else h+='<p>✅ Breaker Groq: <b>không ghim</b> — Groq đang được dùng bình thường.</p>';
-  try{var a=JSON.parse(localStorage.getItem('damuSpeaking.errlog')||'[]');if(a.length){var last=a[a.length-1];h+='<p class="small">Lỗi gần nhất ['+esc(last.w)+'] '+esc(last.t)+': '+esc(last.m)+'</p>';}else h+='<p class="small">Chưa ghi nhận lỗi AI nào.</p>';}catch(e){}
+  try{var a=JSON.parse(localStorage.getItem('damuSpeaking.errlog')||'[]');if(a.length){var last=a[a.length-1];h+='<p class="small">Lỗi gần nhất ['+esc(last.w)+'] '+esc(last.t)+': '+esc(aiFriendlyErr(new Error(last.m)))+'</p>';}else h+='<p class="small">Chưa ghi nhận lỗi AI nào.</p>';}catch(e){}
   box.innerHTML=h;}
 function resetGeminiUI(){aiGfailReset();aiPreferFallback=false;renderAIStatus();var n=$('keyNote');if(n)n.textContent='🔁 Đã reset breaker Gemini — lần chấm sau app sẽ thử lại Gemini. Qua tab Luyện nói bấm chấm lại nhé.';}
 function aiLogErr(where,e){try{var k='damuSpeaking.errlog';var a=JSON.parse(localStorage.getItem(k)||'[]');a.push({t:new Date().toISOString(),w:String(where),m:String((e&&e.message)||e).slice(0,300)});if(a.length>20)a=a.slice(a.length-20);localStorage.setItem(k,JSON.stringify(a));}catch(x){}}
 function aiIsGoogleFail(e){var m=String((e&&e.message)||'');if(m.indexOf('slow:')===0)return true;if(m.indexOf('quota|')===0||m.indexOf('model404|')===0)return true;return m.indexOf('server|')===0;}
 function aiCanFallback(e){var m=String((e&&e.message)||'');if(m.indexOf('slow:')===0)return true;var b=m.split('|')[0];return b==='server'||b==='quota'||b==='model404';}
-function aiFriendlyErr(e){var m=String((e&&e.message)||'Lỗi không rõ');var pi=m.indexOf('|');var b=pi>=0?m.slice(0,pi):m;var d=pi>=0?m.slice(pi+1):'';
-  if(b==='badkey')return 'Google từ chối yêu cầu (400) — lỗi ở key hoặc ở cấu hình gửi đi, không kết luận là key sai. Kiểm tra lại key ở tab Cài đặt nhé.'+(d?' Chi tiết kỹ thuật: '+d:'');
-  if(b==='forbidden')return 'Key Gemini bị Google từ chối quyền (403). Thử tạo key mới ở aistudio.google.com nhé.'+(d?' (Chi tiết: '+d+')':'');
-  if(b==='blocked')return 'Không gọi được máy chủ AI — kiểm tra mạng/VPN rồi thử lại. ('+m+')';
-  if(m.indexOf('slow:')===0)return 'Máy chủ AI trả lời quá chậm (quá '+Math.round(AI_TIMEOUT_MS/1000)+' giây). Thử chấm lại sau ít phút nhé.';
-  return m;}
+function aiFriendlyErr(e){var raw=String((e&&e.message)||e||'');var low=raw.toLowerCase();
+  /* Cat MOI prefix code (badformat|..., server|..., quota|..., slow:..., groqauth|...):
+     nguoi dung CHI thay tieng Viet than thien, khong bao gio thay ma tho hay dau | */
+  if(/free limit reached|limit reached|http 402|\b402\b|quota|\b429\b|too many requests/.test(low))return 'AI miễn phí đang hết lượt tạm thời (đang bị giới hạn tốc độ). Đợi khoảng 30 giây rồi bấm thử lại, hoặc thêm key Groq/Gemini miễn phí ở tab Cài đặt để dùng ổn định hơn nhé.';
+  if(low.indexOf('badkey')>=0||/http 400/.test(low))return 'Google từ chối yêu cầu — có thể do key hoặc cấu hình gửi đi, chưa kết luận là key sai. Kiểm tra lại key ở tab Cài đặt rồi thử lại nhé.';
+  if(low.indexOf('forbidden')>=0||low.indexOf('groqauth')>=0||/http 40[13]/.test(low))return 'Key AI bị từ chối quyền truy cập. Thử tạo key mới rồi dán lại ở tab Cài đặt nhé.';
+  if(low.indexOf('badformat')>=0||low.indexOf('thieu noi dung')>=0||low.indexOf('unparsable')>=0||low.indexOf('khong doc duoc')>=0)return 'AI trả về kết quả chưa đúng định dạng nên damu chưa đọc được. Bấm thử lại nhé — thường thử lại là được.';
+  if(low.indexOf('slow')>=0||low.indexOf('timeout')>=0||low.indexOf('abort')>=0)return 'Máy chủ AI trả lời quá chậm. Đợi ít phút rồi bấm thử lại nhé.';
+  if(low.indexOf('blocked')>=0||low.indexOf('failed to fetch')>=0||low.indexOf('network')>=0)return 'Không gọi được máy chủ AI — kiểm tra mạng hoặc VPN rồi bấm thử lại nhé.';
+  if(low.indexOf('model404')>=0||/http 404/.test(low))return 'Model AI không còn khả dụng nữa. Bấm thử lại — app sẽ tự chọn model khác cho bạn.';
+  if(low.indexOf('breaker')>=0)return 'Động cơ AI đang tạm nghỉ vì lỗi liên tiếp. App sẽ tự dùng động cơ dự phòng, hoặc vào tab Cài đặt bấm nút thử lại động cơ chính nhé.';
+  if(low.indexOf('nokey')>=0)return 'Chưa có key AI nào được lưu. Bạn vẫn dùng được AI dự phòng miễn phí khi có mạng, hoặc dán key ở tab Cài đặt để ổn định hơn.';
+  if(low.indexOf('server')>=0||/http 5\d\d/.test(low)||low.indexOf('empty')>=0||low.indexOf('rong')>=0)return 'Máy chủ AI đang bận hoặc lỗi tạm thời. Đợi ít phút rồi bấm thử lại nhé.';
+  return 'AI đang gặp trục trặc tạm thời nên chưa làm được. Kiểm tra mạng rồi bấm thử lại nhé.';}
+function aiIsLimitText(t){var s=String(t||'');return /free limit reached|limit reached|please wait \d+ seconds|get unlimited replies|enter\.pollinations\.ai|pollen key|switch to a pollen|http 402|payment required/i.test(s);}
+function aiIsErrorText(t){var s=String(t||'').trim();if(aiIsLimitText(s))return true;return /^(error|quota|server|badformat|badkey|forbidden|blocked|slow|nokey)[|:]/i.test(s);}
 function classifyErr(e,host){if(e&&e.name==='AbortError')return new Error('slow:'+host);if(e&&/Failed to fetch|NetworkError|Load failed/i.test(e.message||''))return new Error('blocked:'+host);return e;}
 async function fetchTimeout(url,opts,ms){var c=new AbortController();var t=setTimeout(function(){c.abort();},ms);try{opts=opts||{};opts.signal=c.signal;return await fetch(url,opts);}finally{clearTimeout(t);}}
 async function listGeminiModels(key){var cachedList=aiModelListGet(key);if(cachedList)return cachedList;
@@ -1101,16 +1112,27 @@ async function pollinationsAsk(prompt,sysOverride){aiSetStatus('Đang chấm b�
   var work=(async function(){
     try{ /* POST: prompt dài không nhồi vào URL như bản cũ (URL dài dễ chậm/lỗi) */
       var r=await fetchTimeout('https://text.pollinations.ai/',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'openai',private:true,messages:[{role:'system',content:sys},{role:'user',content:prompt}]})},AI_FALLBACK_TIMEOUT_MS);
-      if(!r.ok)throw new Error('HTTP '+r.status);
-      var tx=await r.text();if(!String(tx).trim())throw new Error('empty');return tx;
+      if(!r.ok){var btx='';try{btx=await r.text();}catch(x){}if(r.status===402||aiIsLimitText(btx))throw new Error('quota|Pollinations free limit reached (HTTP 402)');throw new Error('HTTP '+r.status);}
+      var tx=await r.text();if(!String(tx).trim())throw new Error('empty');if(aiIsLimitText(tx))throw new Error('quota|Pollinations free limit reached (HTTP 402)');return tx;
     }catch(e){
+      if(String((e&&e.message)||'').indexOf('quota|')===0)throw e;
       var url='https://text.pollinations.ai/'+encodeURIComponent(prompt)+'?model=openai&system='+encodeURIComponent(sys)+'&private=true';
-      var r2=await fetchTimeout(url,{},AI_FALLBACK_TIMEOUT_MS);if(!r2.ok)throw new Error('HTTP '+r2.status);return await r2.text();}
+      var r2=await fetchTimeout(url,{},AI_FALLBACK_TIMEOUT_MS);if(!r2.ok){var btx2='';try{btx2=await r2.text();}catch(x){}if(r2.status===402||aiIsLimitText(btx2))throw new Error('quota|Pollinations free limit reached (HTTP 402)');throw new Error('HTTP '+r2.status);}var tx2=await r2.text();if(aiIsLimitText(tx2))throw new Error('quota|Pollinations free limit reached (HTTP 402)');return tx2;}
   })();
   var guard=new Promise(function(_,rej){setTimeout(function(){rej(new Error('slow:text.pollinations.ai'));},AI_FALLBACK_TIMEOUT_MS);});
   return await Promise.race([work,guard]);}
 
-function buildPromptLite(q,part,tr,wpm){var evLite='';if(typeof computeEvidence==='function'&&typeof evidenceText==='function'){try{evLite=evidenceText(computeEvidence(String(tr||'').slice(0,1500),wpm>0?Math.round(wordCount(tr)/(wpm/60)):0));}catch(e){}}if(!evLite){var _bw=String(tr||'').slice(0,1500).trim()?String(tr||'').slice(0,1500).trim().split(/\s+/):[];var _bn=_bw.map(function(w){return w.toLowerCase().replace(/^[^a-z0-9']+|[^a-z0-9']+$/g,'');}).filter(function(w){return w;});var _bs={},_bu=0;for(var _bi=0;_bi<_bn.length;_bi++){if(!_bs[_bn[_bi]]){_bs[_bn[_bi]]=1;_bu++;}}var _bt=_bn.length?Math.round((_bu/_bn.length)*1000)/1000:0;var _bp=' '+_bn.join(' ')+' ';var _bf=(_bp.split(' um ').length-1)+(_bp.split(' uh ').length-1)+(_bp.split(' er ').length-1)+(_bp.split(' you know ').length-1)+(_bp.split(' i mean ').length-1);evLite='EVIDENCE (objective metrics computed locally from the transcript - trust these numbers over impressions): total words '+_bw.length+'; type-token ratio (typeTokenRatio) '+_bt+' ('+_bu+' unique words out of '+_bw.length+'); filler words / hesitation tokens (fillerCount) '+_bf+' total. CROSS-CHECK RULE (mandatory): confront these numbers before scoring FC and LR - very low speed plus many fillers caps FC, a low type-token ratio caps LR, very short answers cap FC and GRA; if a score contradicts the EVIDENCE, lower the score to fit the evidence.';}return 'You are damu, a strict IELTS Speaking examiner. Grade this answer strictly (no grade inflation) on Fluency and Coherence, Lexical Resource, Grammatical Range and Accuracy, and Pronunciation estimated from the transcript. Respond with ONLY a valid JSON object, no markdown, in EXACTLY this shape: {\'opening\':\'1-2 short roast sentences in English about THIS performance\',\'scores\':{\'FC\':6.0,\'LR\':5.5,\'GRA\':6.0,\'P\':6.0},\'errors\':[{\'wrong\':\'exact wrong phrase\',\'fix\':\'corrected version\',\'why\':\'very short reason in Vietnamese\'}],\'upgrades\':[{\'original\':\'simple phrase\',\'better\':\'band 7+ version\'}],\'tips\':[\'tip in Vietnamese\',\'tip in Vietnamese\',\'tip in Vietnamese\'],\'praise\':\'1 sentence in Vietnamese\',\'examinerNote\':\'1-2 sentences in English like a real examiner note\',\'modelAnswer\':\'Band 8 upgraded rewrite of the learner own answer: preserve the candidate own ideas and order where coherent, repair logic and coherence gaps, add at most 1-2 missing ideas only where the answer is thin, rewrite the language at Band 8, do NOT invent a different line of argument\',\'rewriteNotes\':\'1-2 dong tieng Viet: giu lai y gi, sua logic o dau, them y gi\',\'criteriaFeedback\':{\'FC\':{\'errors\':[\'exact phrase from transcript for FC only\'],\'fix\':\'cach khac phuc FC bang tieng Viet\'},\'LR\':{\'errors\':[\'exact phrase from transcript for LR only\'],\'fix\':\'cach khac phuc LR bang tieng Viet\'},\'GRA\':{\'errors\':[\'exact phrase from transcript for GRA only\'],\'fix\':\'cach khac phuc GRA bang tieng Viet\'},\'P\':{\'errors\':[\'word likely mispronounced\'],\'fix\':\'cach khac phuc P bang tieng Viet\'}}}. Rules: scores 0-9 in 0.5 steps; errors must be REAL errors in the transcript (max 3); never use a double-quote character inside string values, use single quotes. Question (Part '+part+'): \''+q+'\' Transcript: \''+String(tr).slice(0,1500)+'\' Speaking speed about '+wpm+' wpm. '+evLite+' QUOTE-VERBATIM RULE: every errors wrong, upgrades original and criteriaFeedback error MUST be copied character-for-character from the transcript; if you cannot quote it exactly, do not report that error.';}
+function buildPromptLite(q,part,tr,wpm){
+  /* Prompt RUT GON danh rieng cho Pollinations (engine 0-key / du phong) — dua tren mau THAT:
+     prompt lite cu 3.2k ky tu mat 42.3s va tra JSON nhay don bi cat cut; ban rut gon ~1.4k ky tu
+     (hinh dang toi thieu, moi chuoi ngan, nhan manh Return ONLY JSON) tra ket qua trong ~23s. */
+  var trC=String(tr||'').slice(0,1200);
+  var evLine='';
+  try{var _ev=computeEvidence(trC,0);if(_ev)evLine=' Evidence: '+_ev.words+' words, type-token ratio '+_ev.ttr+', filler words '+_ev.fillers+' — if speed is low or fillers are many, cap Fluency; if type-token is low, cap Lexical Resource.';}catch(e){}
+  var maLen=(part===2)?'Band 8 rewrite of the learner answer, 150-200 words':'Band 8 rewrite of the learner answer, 2-4 sentences';
+  return 'Return ONLY JSON, no other text, no markdown. Grade this IELTS Speaking Part '+part+' answer strictly (no grade inflation). Question: \''+String(q||'')+'\' Transcript: \''+trC+'\' Speed about '+wpm+' wpm.'+evLine+' Use EXACTLY this JSON shape: {"opening":"1 short roast sentence in English","scores":{"FC":5.0,"LR":5.0,"GRA":5.0,"P":5.0},"errors":[{"wrong":"exact phrase from transcript","fix":"corrected version","why":"short reason in Vietnamese"}],"upgrades":[{"original":"simple phrase from transcript","better":"band 7 version"}],"tips":["tip in Vietnamese","tip in Vietnamese","tip in Vietnamese"],"praise":"1 sentence in Vietnamese","examinerNote":"1 sentence in English","modelAnswer":"'+maLen+'","rewriteNotes":"1 short line in Vietnamese: what was kept, fixed or added","criteriaFeedback":{"FC":{"errors":[],"fix":"how to improve FC in Vietnamese"},"LR":{"errors":[],"fix":"how to improve LR in Vietnamese"},"GRA":{"errors":[],"fix":"how to improve GRA in Vietnamese"},"P":{"errors":[],"fix":"how to improve P in Vietnamese"}}} Rules: scores 0-9 in 0.5 steps; errors max 2, quote the transcript exactly word-for-word; tips exactly 3; keep every string SHORT; never use a double-quote character inside string values, use single quotes instead.';
+}
+function buildFixJsonLite(t){return 'Return ONLY JSON, no other text, no markdown. Rewrite the following broken grading result as ONE valid JSON object with EXACTLY this shape: {"opening":"short text","scores":{"FC":5.0,"LR":5.0,"GRA":5.0,"P":5.0},"errors":[{"wrong":"exact phrase","fix":"corrected","why":"short Vietnamese reason"}],"upgrades":[{"original":"simple phrase","better":"band 7 version"}],"tips":["tip in Vietnamese","tip in Vietnamese","tip in Vietnamese"],"praise":"1 sentence in Vietnamese","examinerNote":"1 sentence in English","modelAnswer":"short Band 8 rewrite","criteriaFeedback":{"FC":{"errors":[],"fix":"Vietnamese fix"},"LR":{"errors":[],"fix":"Vietnamese fix"},"GRA":{"errors":[],"fix":"Vietnamese fix"},"P":{"errors":[],"fix":"Vietnamese fix"}}} Rules: keep the SAME scores as in the text; keep strings short; never use a double-quote character inside string values. Text to fix:\n'+String(t||'').slice(0,2500);}
 /* ===== DONG CO GROQ (OpenAI-compatible) =====
    POST https://api.groq.com/openai/v1/chat/completions, temperature 0.2, timeout 18s/model.
    Model chinh llama-3.3-70b-versatile, loi thi thu llama-3.1-8b-instant.
@@ -1165,6 +1187,13 @@ function aiWantsJSON(prompt,opts){
 async function aiAsk(prompt,sysOverride,litePrompt,opts){
   var key=aiGetKey();var geminiErr=null;var groqErr=null;
   var gk=aiGetGroqKey();
+  if(!key&&!gk){
+    /* 0-KEY: di THANG Pollinations bang prompt rut gon (litePrompt) — KHONG goi geminiAsk/
+       listGeminiModels khi khong co key (goi chi ton thoi gian vo ich), KHONG goi Groq. */
+    aiSetStatus('Chưa có key — đang dùng AI dự phòng miễn phí (Pollinations)...');
+    try{var t0=await pollinationsAsk(litePrompt||prompt,sysOverride);if(aiIsLimitText(t0))throw new Error('quota|Pollinations free limit reached (HTTP 402)');return{text:t0,via:'AI dự phòng (Pollinations)',geminiErr:null,groqErr:null};}
+    catch(e0){aiLogErr('aiAsk.pollinations.keyless',e0);throw e0;}
+  }
   if(gk){
     if(aiGroqFailGet()>=2){var gi=aiGroqFailInfo();groqErr=new Error('breaker-groq: Groq tam nghi do loi 2 lan gan nhat (con khoang '+gi.remainMin+' phut) — bam nut reset breaker Groq o tab Cai dat de thu lai ngay');}
     else{
@@ -1181,7 +1210,7 @@ async function aiAsk(prompt,sysOverride,litePrompt,opts){
       geminiErr=e;aiPreferFallback=true;}
   }else if(key){var inf=aiGfailInfo();if(aiGfailGet()>=2)geminiErr=new Error('breaker: Gemini tam nghi do loi 2 lan gan nhat (con khoang '+inf.remainMin+' phut) — bam nut reset breaker o tab Cai dat de thu lai ngay');else geminiErr=new Error('prefer: Gemini vua loi toan bo model o lan cham truoc nen lan nay di thang AI du phong cho nhanh va on dinh');}
   if(groqErr||geminiErr)aiSetStatus('Động cơ chính đang bận, đang chuyển sang AI dự phòng (Pollinations)...');
-  try{var t=await pollinationsAsk(litePrompt||prompt,sysOverride);return{text:t,via:'AI dự phòng (Pollinations)',geminiErr:geminiErr,groqErr:groqErr};}
+  try{var t=await pollinationsAsk(litePrompt||prompt,sysOverride);if(aiIsLimitText(t))throw new Error('quota|Pollinations free limit reached (HTTP 402)');return{text:t,via:'AI dự phòng (Pollinations)',geminiErr:geminiErr,groqErr:groqErr};}
   catch(e2){aiLogErr('aiAsk.pollinations',e2);
     if(key&&aiPreferFallback){try{var t2=await geminiAsk(prompt);aiPreferFallback=false;return{text:t2,via:'Gemini',geminiErr:null,groqErr:groqErr};}catch(e3){aiLogErr('aiAsk.geminiRetry',e3);e3.groqErr=groqErr;throw e3;}}
     e2.groqErr=groqErr;e2.geminiErr=geminiErr;throw e2;}
@@ -1197,7 +1226,7 @@ async function testKeyUI(){var key=aiGetKey();if(!key){$('keyNote').textContent=
     if(!out)throw new Error('server|generateContent trả về rỗng.');
     var secs=((Date.now()-t0)/1000).toFixed(1);var inf=aiGfailInfo();
     $('keyNote').textContent='✅ Key dùng được THẬT (đã gọi generateContent thành công)! Model: '+m+' • Thời gian phản hồi: '+secs+' giây • Breaker: '+(inf.active?('đang ghim, còn ~'+inf.remainMin+' phút'):('không ghim (lỗi gần đây: '+inf.count+')'))+'.';
-  }catch(e){aiLogErr('testKeyUI',e);$('keyNote').textContent='⚠️ Kiểm tra thất bại: '+aiFriendlyErr(e)+' | Chi tiết kỹ thuật: '+String((e&&e.message)||e).slice(0,200);renderAIStatus();}}
+  }catch(e){aiLogErr('testKeyUI',e);$('keyNote').textContent='⚠️ Kiểm tra thất bại: '+aiFriendlyErr(e);renderAIStatus();}}
 
 /* ================= CHẤM BÀI ================= */
 function roundBand(avg){var f=Math.floor(avg),frac=avg-f;if(frac<0.25)return f;if(frac<0.75)return f+0.5;return f+1;}
@@ -1343,9 +1372,19 @@ function auditEvidenceMismatch(g,ev){
     if(graErrN>=2||totErr>=3)return 'GRA '+gra.toFixed(1)+' nhưng lỗi trích nguyên văn toàn lỗi cơ bản ('+(graErrN>=2?('lỗi GRA x'+graErrN):('tổng lỗi x'+totErr))+')';}
   if(words>0&&words<35&&(fc>=7||lr>=7||gra>=7))return 'bài quá ngắn ('+words+' từ) nhưng có tiêu chí >= 7.0';
   return '';}
-async function auditGradeIfNeeded(g,tr,ev){
+async function auditGradeIfNeeded(g,tr,ev,ctx){
   if(!validateGrade(g))return g;
   var evObj=(ev&&typeof ev==='object')?ev:null;
+  /* NGAN SACH POLLINATIONS (0-key): toi da 2 luot Pollinations / 1 lan cham.
+     Neu luot cham chinh da qua Pollinations VA da ton them 1 luot bo sung
+     (completion hoac fixJSON) thi BO QUA audit — giu tong <= 2 luot. */
+  var ctxVia=(ctx&&typeof ctx==='object')?String(ctx.via||''):String(ctx||'');
+  var ctxExtra=(ctx&&typeof ctx==='object')?!!ctx.extraUsed:false;
+  var effVia=String((g&&g._completionVia)||ctxVia||'');
+  if(effVia.indexOf('Pollinations')>=0&&(ctxExtra||(g&&g._completionVia))){
+    try{g._auditSkipped=true;g._audit={verdict:'skipped',reason:'Bỏ qua kiểm định để giữ tối đa 2 lượt AI dự phòng (Pollinations) cho 1 lần chấm khi chưa có key — lượt chấm + lượt bổ sung đã đủ ngân sách.',before:g.scores,after:g.scores};g.audit=g._audit;}catch(e){}
+    return g;
+  }
   var mismatch=auditEvidenceMismatch(g,evObj);
   if(!mismatch){
     try{g._auditSkipped=true;g._audit={verdict:'skipped',reason:'Điểm khớp số liệu EVIDENCE (tốc độ/từ đệm/độ dài câu/type-token không lệch với điểm) nên không tốn lượt kiểm định',before:g.scores,after:g.scores};g.audit=g._audit;}catch(e){}
@@ -1456,8 +1495,147 @@ function balanceJSON(s){
   while(stack.length){var o=stack.pop();out+=(o==='{'?'}':']');}
   return out;
 }
+/* ================= PARSER GOI Y (HINT) NHIEU LOP =================
+   Pollinations (model openai) hay tra ENVELOPE {"role":"assistant","reasoning":"...","tool_calls":[]}
+   thay vi noi dung hint: reasoning chua ban nhap hint dang van xuoi (y tuong dang gach dau dong,
+   cum tu dang en:/vi:, cau mau dang Sample answer: "..."). Parser nay: (1) bo envelope lay reasoning/
+   content, (2) thu JSON ben trong, (3) trich prose ideas/phrases/sampleAnswer bang nhieu mau khac nhau. */
+var _hintParseDepth=0;
+function isValidHint(g){return !!(g&&Array.isArray(g.ideas)&&g.ideas.length&&typeof g.sampleAnswer==='string'&&g.sampleAnswer.trim());}
+function normalizeHint(g){if(!g||typeof g!=='object')return null;var ideas=(Array.isArray(g.ideas)?g.ideas:[]).map(function(x){return String(x||'').trim();}).filter(Boolean);var phrases=(Array.isArray(g.phrases)?g.phrases:[]).map(function(ph){if(typeof ph==='string')return{en:ph,vi:''};return{en:String((ph&&ph.en)||'').trim(),vi:String((ph&&ph.vi)||'').trim()};}).filter(function(ph){return ph.en;});var sample=String(g.sampleAnswer||'').trim();var band=parseFloat(g.sampleBand);return{ideas:ideas,phrases:phrases,sampleAnswer:sample,sampleBand:isFinite(band)?band:6.5};}
+function unwrapAIEnvelopeText(t){
+  var s=String(t||'').trim();if(!s)return '';
+  var a=s.indexOf('{'),b=s.lastIndexOf('}');
+  if(a>=0&&b>a){
+    try{var o=JSON.parse(s.slice(a,b+1));
+      if(o&&typeof o==='object'){
+        if(typeof o.reasoning==='string'&&o.reasoning.trim())return o.reasoning;
+        if(typeof o.content==='string'&&o.content.trim())return o.content;
+        if(typeof o.text==='string'&&o.text.trim())return o.text;
+        if(o.choices&&o.choices[0]){var ch=o.choices[0];var mm=(ch.message&&ch.message.content)||ch.text||ch.content;if(typeof mm==='string'&&mm.trim())return mm;}
+        if(o.message&&typeof o.message.content==='string'&&o.message.content.trim())return o.message.content;
+      }
+    }catch(e){}
+  }
+  return s;
+}
+function extractHintProse(text){
+  var work=String(text||'').replace(/\\"/g,'"').replace(/\\n/g,'\n');
+  if(!work.trim()||aiIsLimitText(work))return null;
+  var ideas=[],phrases=[],sample='',seenI={},seenP={};
+  function addIdea(x){var v=String(x||'').trim().replace(/^["“”']+|["“”']+$/g,'').trim();if(v.length<8||v.length>220)return;var k=v.toLowerCase();if(seenI[k])return;seenI[k]=1;ideas.push(v);}
+  function addPhrase(en,vi){var e=String(en||'').trim().replace(/^["“”']+|["“”']+$/g,'').trim();var v=String(vi||'').trim().replace(/^["“”']+|["“”']+$/g,'').trim();if(e.length<3||e.length>90)return;if(!/[a-zA-Z]/.test(e))return;var k=e.toLowerCase();if(seenP[k])return;seenP[k]=1;phrases.push({en:e,vi:v});}
+  var m,i;
+  /* --- phrases lop 1: cap en: "...", vi: "..." (dang trong reasoning cua envelope) --- */
+  var pairRe=/en\s*:\s*["“]([^"”\n]{3,90})["”]\s*,\s*vi\s*:\s*["“]([^"”\n]{1,80})["”]/gi;
+  while((m=pairRe.exec(work))!==null)addPhrase(m[1],m[2]);
+  /* --- phrases lop 2: object JSON {"en":"...","vi":"..."} ke ca nhay don --- */
+  var pairRe2=/\{\s*["']en["']\s*:\s*["']([^"']{3,90})["']\s*,\s*["']vi["']\s*:\s*["']([^"']{1,80})["']\s*\}/gi;
+  while((m=pairRe2.exec(work))!==null)addPhrase(m[1],m[2]);
+  /* --- sample lop 1: Sample answer: "..." (co ngoac kep) --- */
+  var sm=work.match(/sample\s*(?:answer|response)\s*[:\-–]\s*["“]([\s\S]{25,900}?)["”]/i);
+  if(sm)sample=sm[1].trim();
+  /* --- sample lop 2: Sample answer: <doan van khong ngoac> --- */
+  if(!sample){var sm2=work.match(/sample\s*(?:answer|response)\s*[:\-–]\s*\n?\s*([A-Za-z][\s\S]{25,900}?)(?=\n\s*(?:ideas|phrases|sample\s*band|note|band)\s*[:\-–]|\n\s*\n\s*\n|$)/i);if(sm2)sample=sm2[1].trim().replace(/\s+\d+\s*words[\s\S]*$/i,'').trim();}
+  /* --- sample lop 3: khoi tieng Anh trong ngoac kep DAI NHAT (cau mau thuong dai nhat) --- */
+  if(!sample){var qs=[],qre=/["“]([^"”]{50,900})["”]/g,qm;while((qm=qre.exec(work))!==null){var cand=qm[1].trim();var wc=cand.split(/\s+/).length;if(wc>=10&&/[.!?]/.test(cand)&&/\b(I|I'm|I am|My)\b/.test(cand))qs.push(cand);}qs.sort(function(x,y){return y.length-x.length;});if(qs.length)sample=qs[0];}
+  /* --- ideas lop 1: cac dong gach dau dong / so thu tu chua tieng Viet --- */
+  var hasVN=/[àáâãèéêìíòóôõùúýăđơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ]/i;
+  var lines=work.split('\n');
+  for(i=0;i<lines.length;i++){
+    var ln=lines[i].trim();
+    var bm=ln.match(/^(?:[-•*]|\d+[.)])\s+(.+)$/);
+    if(!bm)continue;
+    var body=bm[1].trim();
+    if(/en\s*:|count|words\s*:|^sample/i.test(body))continue;
+    if(/["“][^"”]{3,90}["”]\s*,\s*vi\s*:/i.test(body))continue;
+    if(/^[A-Za-z'’\-][A-Za-z'’\- ]{2,70}\s*[—–]\s/.test(body))continue; /* dong cum tu Anh — Viet, khong phai y tuong */
+    var unq=body.replace(/^["“]([^"”]+)["”].*$/,'$1');
+    unq=unq.replace(/\s*\((?:But|Should be|Vietnamese words)[^)]*\)\s*$/i,'').trim(); /* bo ghi chu meta tieng Anh trong ngoac */
+    if(hasVN.test(unq)&&unq.split(/\s+/).length>=4)addIdea(unq);
+  }
+  /* --- ideas lop 2: chuoi tieng Viet trong ngoac kep (dai vua, khong phai nghia ngan cua phrases) --- */
+  if(ideas.length<2){var vre=/["“]([^"”]{28,220})["”]/g,vm;while((vm=vre.exec(work))!==null){var vc=vm[1].trim();if(/^means\b/i.test(vc))continue;if(hasVN.test(vc)&&vc!==sample)addIdea(vc);if(ideas.length>=3)break;}}
+  /* --- phrases lop 2b: dang "cum Anh" means nghia Viet --- */
+  var meanRe=/["“]([^"”]{3,80})["”]\s*(?:means|nghĩa là|—|–)\s*([^,.\n]{2,70})/gi;
+  while((m=meanRe.exec(work))!==null){if(/^(ideas|phrases|sampleAnswer|sampleBand|en|vi)$/i.test(m[1].trim()))continue;if(hasVN.test(m[2]))addPhrase(m[1],m[2]);}
+  /* --- phrases lop 3: dong dang - Cum tieng Anh — nghia tieng Viet --- */
+  if(!phrases.length){
+    for(i=0;i<lines.length;i++){var dl=lines[i].trim().match(/^(?:[-•*]|\d+[.)])?\s*["“]?([A-Za-z][A-Za-z'’\- ]{3,70}?)["”]?\s*[—–]\s*(.+)$/);if(dl&&hasVN.test(dl[2]))addPhrase(dl[1],dl[2]);}
+  }
+  /* --- ideas lop 3: doan sau nhan Ideas: neu van chua co --- */
+  if(!ideas.length){var im=work.match(/ideas\s*[:\-–]\s*\n?([\s\S]{20,700}?)(?=\n\s*(?:phrases|sample|useful)\s*[:\-–]|$)/i);if(im){im[1].split(/\n|;/).forEach(function(seg){var sv=seg.replace(/^(?:[-•*]|\d+[.)])\s+/,'').trim();if(hasVN.test(sv))addIdea(sv);});if(!ideas.length){var whole=im[1].replace(/\s+/g,' ').trim();if(hasVN.test(whole)&&whole.length>=20&&whole.length<=220)addIdea(whole);}}}
+  ideas=ideas.slice(0,3);phrases=phrases.slice(0,6);
+  var sb=work.match(/sample\s*band\s*[:=]?\s*([0-9](?:\.[0-9])?)/i);
+  if(!ideas.length&&!phrases.length&&!sample)return null;
+  return{ideas:ideas,phrases:phrases,sampleAnswer:sample,sampleBand:sb?parseFloat(sb[1]):6.5};
+}
+/* Do day du cua 1 hint trich duoc: dung de giu ban MOT PHAN tot nhat khi response bi cat cut
+   (vd HINT_LITE_1 that: JSON dung o '"phrases":[' — phrases/sampleAnswer KHONG ton tai trong
+   du lieu goc nen khong parser nao trich ra duoc; phan ideas da co thi PHAI giu tron ven de
+   requestHint gop voi luot retry bo sung, thay vi de lop prose yeu hon de mat 1 y). */
+function hintRichness(g){if(!g)return -1;var r=0;if(Array.isArray(g.ideas))r+=g.ideas.length*30;if(Array.isArray(g.phrases))r+=g.phrases.length*12;var s=(typeof g.sampleAnswer==='string')?g.sampleAnswer.trim():'';if(s)r+=100+Math.min(60,s.length/10);return r;}
+function mergeHints(a,b){var x=normalizeHint(a),y=normalizeHint(b);if(!x)return y;if(!y)return x;
+  var ideas=x.ideas.slice();y.ideas.forEach(function(v){if(ideas.indexOf(v)<0)ideas.push(v);});
+  var phrases=x.phrases.slice(),seen={};phrases.forEach(function(p){seen[p.en.toLowerCase()]=1;});
+  y.phrases.forEach(function(p){var k=p.en.toLowerCase();if(!seen[k]){seen[k]=1;phrases.push(p);}});
+  var sample=x.sampleAnswer;if(!sample||(y.sampleAnswer&&y.sampleAnswer.length>sample.length))sample=y.sampleAnswer||sample;
+  return{ideas:ideas.slice(0,3),phrases:phrases.slice(0,6),sampleAnswer:sample,sampleBand:isFinite(x.sampleBand)?x.sampleBand:y.sampleBand};}
+function hintMissingFields(g){var n=normalizeHint(g),miss=[];if(!n||!n.ideas.length)miss.push('ideas');if(!n||!n.phrases.length)miss.push('phrases');if(!n||!n.sampleAnswer)miss.push('sampleAnswer');return miss;}
+function isTruncatedHintText(t){var s=String(t||'').trim();if(!s)return false;if(/[\[,:{]\s*$/.test(s))return true;
+  if(s.charAt(0)==='{'){var o=0,c=0;for(var i=0;i<s.length;i++){if(s.charAt(i)==='{')o++;else if(s.charAt(i)==='}')c++;}if(o>c)return true;}return false;}
+function buildHintCompletionPrompt(q, part, tgt, partial){
+  var band=(tgt&&typeof tgt.display==='number')?tgt.display.toFixed(1):'6.5';
+  var miss=hintMissingFields(partial),fields=[];
+  var lenRule=part===2?'150-200 words':(part===3?'70-100 words':'45-70 words');
+  if(miss.indexOf('ideas')>=0)fields.push('"ideas":["y tuong 1 bang tieng Viet","y tuong 2 bang tieng Viet"]');
+  if(miss.indexOf('phrases')>=0)fields.push('"phrases":[{"en":"useful English phrase","vi":"nghia Viet ngan"},{"en":"useful English phrase","vi":"nghia Viet ngan"},{"en":"useful English phrase","vi":"nghia Viet ngan"},{"en":"useful English phrase","vi":"nghia Viet ngan"}]');
+  if(miss.indexOf('sampleAnswer')>=0)fields.push('"sampleAnswer":"Sample answer in English, '+lenRule+', first person"');
+  fields.push('"sampleBand":'+band);
+  var ctx='';var n=normalizeHint(partial);
+  if(n&&n.ideas.length&&miss.indexOf('sampleAnswer')>=0)ctx=' Follow these answer ideas already given: '+n.ideas.join(' | ')+'.';
+  return 'Reply ONLY with JSON, no markdown, no explanation, no double quotes inside string values: {'+fields.join(',')+'} Question Part '+part+': '+String(q||'')+'.'+ctx+' This completes a previous reply that was cut off — output ONLY the fields in the JSON shape above.';
+}
+function parseHint(t){
+  if(!t||aiIsLimitText(t))return null;
+  var raw=String(t);
+  _hintParseDepth++;
+  try{
+    var best=null,found=false;
+    function consider(c){if(found||!c)return;if(isValidHint(c)){best=c;found=true;return;}if(hintRichness(c)>hintRichness(best))best=c;}
+    /* lop 1: JSON truc tiep (qua extractJSON, co khoa de quy de khong lap vo han) */
+    try{var g=extractJSON(raw);consider(normalizeHint(g));
+      if(!found&&g&&typeof g.reasoning==='string')consider(parseHint(g.reasoning));
+    }catch(e){}
+    /* lop 2: bo envelope roi thu lai JSON + prose tren noi dung ben trong */
+    if(!found){
+      var inner=unwrapAIEnvelopeText(raw);
+      if(inner&&inner!==raw){
+        try{var g2=extractJSON(inner);consider(normalizeHint(g2));}catch(e){}
+        if(!found)consider(extractHintProse(inner));
+      }
+    }
+    /* lop 3: trich prose truc tiep tren raw */
+    if(!found)consider(extractHintProse(raw));
+    /* Khong lop nao hop le (response cat cut/thieu truong): tra ban MOT PHAN GIAU NHAT da trich
+       duoc thay vi ban yeu hon/null — requestHint dua vao hintMissingFields de retry bo sung
+       dung truong thieu va mergeHints gop lai. isValidHint van FALSE cho ban nay: khong ha chuan. */
+    return best;
+  }finally{_hintParseDepth--;}
+}
 function extractJSON(t){
   if(!t)throw new Error('AI trả về rỗng');
+  /* Hook HINT: envelope/prose cua goi y khong co scores — trich hint truoc khi parser diem xu ly.
+     Khoa de quy (_hintParseDepth) giu parser diem nguyen ven cho moi phan hoi cham bai. */
+  if(_hintParseDepth===0&&!aiIsLimitText(t)){
+    var _hs=String(t);
+    if(/"sampleAnswer"|sample\s*answer\s*[:\-]|"reasoning"/i.test(_hs)){
+      var _isGrade=/scores/.test(_hs)&&/opening/.test(_hs);var _hp=_isGrade?null:parseHint(_hs);if(_hp&&(isValidHint(_hp)||_hp.sampleAnswer))return _hp;
+    }
+  }
+  /* Envelope cua Pollinations ({"role":"assistant","reasoning":"..."}): bo vo, parse TIEP reasoning —
+     trong reasoning thuong co ban nhap JSON (scores/opening/errors) hoac diem dang van xuoi. */
+  if(!extractJSON._envDepth){var _envT=unwrapAIEnvelopeText(t);if(_envT&&_envT!==String(t).trim()){extractJSON._envDepth=1;var _eg=null;try{_eg=extractJSON(_envT);}catch(e){}extractJSON._envDepth=0;if(_eg&&!_eg._raw)return _eg;}}
   var raw=String(t).replace(/```json/gi,'').replace(/```/g,'').trim();
   var a=raw.indexOf('{'),b=raw.lastIndexOf('}');
   var cand=(a>=0&&b>a)?raw.slice(a,b+1):raw;
@@ -1489,6 +1667,8 @@ function extractJSON(t){
   var em=full.match(/"examinerNote"\s*:\s*"((?:[^"\\]|\\.)*)"/);if(em){g.examinerNote=em[1];any=true;}
   var mam=full.match(/"modelAnswer"\s*:\s*"((?:[^"\\]|\\.)*)"/);if(mam){g.modelAnswer=mam[1];any=true;}
   var rnm=full.match(/"rewriteNotes"\s*:\s*"((?:[^"\\]|\\.)*)"/);if(rnm){g.rewriteNotes=rnm[1];any=true;}
+  var mam2=full.match(/(?:^|\n)\s*ModelAnswer\s*:\s*"([^"]{15,})"/i);if(!g.modelAnswer&&mam2){g.modelAnswer=mam2[1];any=true;}
+  var em2=full.match(/(?:^|\n)\s*ExaminerNote\s*:\s*"?([A-Za-z][^"\n]{14,160})"?/i);if(!g.examinerNote&&em2){g.examinerNote=em2[1].trim();any=true;}
   function strArr(name){var mm=full.match(new RegExp('"'+name+'"\\s*:\\s*\\[([\\s\\S]*?)\\]'));if(!mm)return null;var items=[],re=/"((?:[^"\\]|\\.)*)"/g,x;while((x=re.exec(mm[1]))!==null)items.push(x[1]);return items;}
   var tips=strArr('tips');if(tips&&tips.length){g.tips=tips;any=true;}
   if(any){g.errors=g.errors||[];g.upgrades=g.upgrades||[];g.tips=g.tips||[];g._repaired=true;return g;}
@@ -1578,11 +1758,11 @@ async function completeGradeIfNeeded(g,res,q,part,tr){
   try{
     var prompt=buildCompletionPrompt(g,miss,q,part,tr);
     var r2=await aiAsk(prompt,null,prompt,{json:true}); /* aiAsk di qua groqAsk/geminiAsk (sticky model vua thanh cong thu truoc) hoac backend dang dung */
-    via1=r2.via||'';
+    via1=r2.via||'';try{g._completionVia=via1;}catch(e){}
     var extra=null;try{extra=extractJSON(r2.text);}catch(e){}
     mergeExtra(extra);
   }catch(e){aiLogErr('completeGrade',e);}
-  /* NGAN SACH LUOT GOI: completion chi goi DUNG 1 luot aiAsk. Khong goi them backend con lai nua - de danh ngan sach cho luot audit (tong toi da 3 luot: cham + completion/fixJSON + audit). Phan con thieu (neu van thieu sau 1 luot) da co fallback hien thi trong renderGrade. */
+  /* NGAN SACH LUOT GOI: completion chi goi DUNG 1 luot aiAsk. Khi cham bang Pollinations (0-key), tong ca lan cham toi da 2 luot Pollinations (cham + completion/fixJSON) nen audit se bi bo qua (xem auditGradeIfNeeded). Khi co key Groq/Gemini thi ngan sach la cham + completion/fixJSON + audit. Phan con thieu (neu van thieu sau 1 luot) da co fallback hien thi trong renderGrade. */
   return g;}
 
 function geminiErrHtml(res){if(!res)return '';var groqNote='';
@@ -1711,11 +1891,11 @@ async function gradeNow(){if(aiGrading)return;var tr=$('transcript').value.trim(
   try{
     var res=await aiAskGrade(buildPrompt(curQuestion,curPart,tr,wpm,secs),buildPromptLite(curQuestion,curPart,tr,wpm));
     var g=null;try{g=extractJSON(res.text);}catch(pe){aiLogErr('gradeNow.parse',pe);g={_raw:res.text,_fallback:true};}
-    var didFix=false; /* ngan sach: cham(1) + fixJSON HOAC completion(1) + audit(1) = toi da 3 luot */
+    var didFix=false; /* ngan sach: khi qua Pollinations (0-key) toi da 2 luot (cham + 1 luot bo sung: fixJSON/completion, audit bi bo qua); co key Groq/Gemini thi toi da 3 luot (them audit) */
     if(!validateGrade(g)){
       /* Lớp cuối trước khi bỏ cuộc: nhờ AI tự sửa lại JSON hỏng đúng 1 lần */
       st.phase='Bản chấm lỗi định dạng, đang gói lại JSON...';statusBubble();
-      try{var fix=await aiAsk('Fix the following text into ONE valid JSON object with EXACTLY this shape: {"opening":"short text","scores":{"FC":6.0,"LR":5.5,"GRA":6.0,"P":6.0},"errors":[{"wrong":"...","fix":"...","why":"..."}],"upgrades":[{"original":"...","better":"..."}],"tips":["...","...","..."],"praise":"...","examinerNote":"...","modelAnswer":"...","rewriteNotes":"...","criteriaFeedback":{"FC":{"errors":["..."],"fix":"..."},"LR":{"errors":["..."],"fix":"..."},"GRA":{"errors":["..."],"fix":"..."},"P":{"errors":["..."],"fix":"..."}}}. Rules: output ONLY the JSON, no markdown fences, never use a double-quote character inside string values (use single quotes), keep strings short. Here is the text to fix:\n'+String(res.text).slice(0,6000),null,null,{json:true});
+      try{var fix=await aiAsk('Fix the following text into ONE valid JSON object with EXACTLY this shape: {"opening":"short text","scores":{"FC":6.0,"LR":5.5,"GRA":6.0,"P":6.0},"errors":[{"wrong":"...","fix":"...","why":"..."}],"upgrades":[{"original":"...","better":"..."}],"tips":["...","...","..."],"praise":"...","examinerNote":"...","modelAnswer":"...","rewriteNotes":"...","criteriaFeedback":{"FC":{"errors":["..."],"fix":"..."},"LR":{"errors":["..."],"fix":"..."},"GRA":{"errors":["..."],"fix":"..."},"P":{"errors":["..."],"fix":"..."}}}. Rules: output ONLY the JSON, no markdown fences, never use a double-quote character inside string values (use single quotes), keep strings short. Here is the text to fix:\n'+String(res.text).slice(0,6000),null,buildFixJsonLite(res.text),{json:true});
         var g2=null;try{g2=extractJSON(fix.text);}catch(e2){}
         if(validateGrade(g2)){g=g2;didFix=true;res={text:fix.text,via:fix.via,geminiErr:res.geminiErr};}
       }catch(fe){aiLogErr('gradeNow.fixJSON',fe);}
@@ -1725,9 +1905,10 @@ async function gradeNow(){if(aiGrading)return;var tr=$('transcript').value.trim(
       saveHistory(null,tr,wpm);
     }else{
       statusBubble();
-      if(!didFix)g=await completeGradeIfNeeded(g,res,curQuestion,curPart,tr); /* da dung fixJSON thi bo qua completion, danh ngan sach cho audit */
+      var missBefore=(!didFix)?gradeMissingFields(g):[];
+      if(!didFix)g=await completeGradeIfNeeded(g,res,curQuestion,curPart,tr); /* da dung fixJSON thi bo qua completion */
       var evNow=computeEvidence(tr,secs);
-      g=await auditGradeIfNeeded(g,tr,evNow);
+      g=await auditGradeIfNeeded(g,tr,evNow,{via:(g._completionVia||res.via),extraUsed:didFix||missBefore.length>0});
       var r=renderGrade(g,res.via,wpm,evNow);
       chat.innerHTML=myMsg+damuMsg(r.html+geminiErrHtml(res));
       saveHistory(r.overall,tr,wpm,(g&&!g._fallback)?g.scores:null,g);
@@ -1762,6 +1943,16 @@ function hintLocked(){return (typeof mt!=='undefined'&&mt!==null);}
 function syncHintLock(){var b=$('hintBtn');if(!b)return;var locked=hintLocked();
   if(locked){b.disabled=true;b.classList.add('locked');b.innerHTML='🔒 Trợ giảng đang khóa — đang trong buổi thi thử';var c=$('hintBandChip');if(c)c.textContent='🔒 Thi thật không ai nhắc bài — kết thúc buổi thi thử là trợ giảng mở lại ngay.';closeHintPanel();}
   else{b.disabled=false;b.classList.remove('locked');b.innerHTML='💡 Bí ý tưởng? Nhờ trợ giảng gợi ý';syncHintBandChip();}}
+function buildHintPromptLite(q, part, cur, tgt){
+  var band=(tgt&&typeof tgt.display==='number')?tgt.display.toFixed(1):'6.5';
+  var curB=(typeof cur==='number'&&isFinite(cur))?cur.toFixed(1):'5.0';
+  var lenRule=part===2?'150-200 words':(part===3?'70-100 words':'45-70 words');
+  return 'Return ONLY JSON, no other text, no markdown. You are an IELTS Speaking tutor helping a Vietnamese learner at about Band '+curB+' who is stuck on this Part '+part+' question: \''+String(q||'')+'\' Give answer ideas in Vietnamese, useful English phrases, and ONE sample answer at about Band '+band+' ('+lenRule+', simple and natural English, first person). Use EXACTLY this JSON shape: {"ideas":["short idea in Vietnamese","short idea in Vietnamese"],"phrases":[{"en":"useful English phrase","vi":"short Vietnamese meaning"}],"sampleAnswer":"the sample answer in English","sampleBand":'+band+'} Rules: ideas 2-3 items; phrases 4-5 items; never use a double-quote character inside any string value, use single quotes instead.';
+}
+function buildHintPromptUltra(q, part, tgt){
+  var band=(tgt&&typeof tgt.display==='number')?tgt.display.toFixed(1):'6.5';
+  return 'Reply ONLY with JSON: {"ideas":["y tuong 1 bang tieng Viet","y tuong 2 bang tieng Viet"],"phrases":[{"en":"English phrase","vi":"nghia Viet ngan"}],"sampleAnswer":"Sample answer in English, 45-70 words, first person","sampleBand":'+band+'} Question Part '+part+': '+String(q||'')+'. No markdown, no explanation, no double quotes inside string values.';
+}
 function buildHintPrompt(q, part, points, cur, tgt){
   var lenRule = part===1 ? '45-70 words (2-4 spoken sentences)'
     : part===2 ? '170-220 words, covering ALL the cue card points below'
@@ -1801,9 +1992,38 @@ async function requestHint(force){var body=$('hintBody');if(!body)return;
   body.innerHTML='<p><span class="spin"></span> Trợ giảng đang nghĩ ý cho câu này…</p>';
   hintLoading=true;var btn=$('hintBtn');if(btn)btn.disabled=true;
   try{
-    var res=await aiAsk(buildHintPrompt(curQuestion,curPart,points,info.band,tgt),HINT_SYS,null,{json:true});
-    var g=null;try{g=extractJSON(res.text);}catch(pe){aiLogErr('hint.parse',pe);}
-    if(!(g&&Array.isArray(g.ideas)&&g.ideas.length&&typeof g.sampleAnswer==='string'&&g.sampleAnswer.trim()))throw new Error('badformat|AI trả gợi ý thiếu nội dung');
+    var lite=buildHintPromptLite(curQuestion,curPart,info.band,tgt);
+    var res=await aiAsk(buildHintPrompt(curQuestion,curPart,points,info.band,tgt),HINT_SYS,lite,{json:true});
+    if(aiIsLimitText(res.text))throw new Error('quota|Pollinations free limit reached (HTTP 402)');
+    var g=parseHint(res.text);
+    if(!isValidHint(g)){
+      /* RETRY 1 bang prompt CUC NGAN (lite lam ca prompt chinh lan lite):
+         Pollinations hay tra envelope reasoning voi prompt dai — prompt ngan ep tra JSON sach.
+         Ket qua duoc GOP (mergeHints) voi phan da trich duoc o luot truoc chu khong bo di:
+         ca that HINT_LITE_1 bi cat cut dung o '"phrases":[' nen chi co ideas — gop giu tron ideas. */
+      aiSetStatus('Trợ giảng đang thử lại bằng prompt ngắn…');
+      var res2=await aiAsk(buildHintPromptUltra(curQuestion,curPart,tgt),HINT_SYS,lite,{json:true});
+      if(aiIsLimitText(res2.text))throw new Error('quota|Pollinations free limit reached (HTTP 402)');
+      var g2=parseHint(res2.text);
+      var merged=mergeHints(g,g2);
+      if(isValidHint(merged)){g=merged;res=res2;}
+      else{
+        /* RETRY 2 (chi khi sau gop van thieu truong — gom ca ca bi cat cut giua chung):
+           hoi BO SUNG dung cac truong con thieu (hintMissingFields) thay vi hoi lai tu dau,
+           roi gop tiep. Tong toi da 3 luot cho 1 lan goi y; ngan sach cham bai khong lien quan. */
+        g=merged;
+        aiSetStatus('Trợ giảng đang xin bổ sung phần còn thiếu…');
+        var compPrompt=buildHintCompletionPrompt(curQuestion,curPart,tgt,g);
+        var res3=await aiAsk(compPrompt,HINT_SYS,compPrompt,{json:true});
+        if(aiIsLimitText(res3.text))throw new Error('quota|Pollinations free limit reached (HTTP 402)');
+        var g3=parseHint(res3.text);
+        var merged3=mergeHints(g,g3);
+        if(isValidHint(merged3)){g=merged3;res=res3;}
+        else if(hintRichness(merged3)>hintRichness(g))g=merged3;
+      }
+    }
+    g=normalizeHint(g);
+    if(!isValidHint(g))throw new Error('badformat|AI trả gợi ý thiếu nội dung');
     hintCache[ck]={g:g,info:info,via:res.via};renderHint(g,info,res.via);
   }catch(e){aiLogErr('hint',e);
     body.innerHTML='<p>😅 Trợ giảng chưa nghĩ ra kịp (lỗi: '+esc(aiFriendlyErr(e))+'). Kiểm tra mạng/key rồi thử lại nhé.</p><button class="btn ghost" onclick="requestHint(true)">↻ Thử lại</button>';
@@ -1933,7 +2153,7 @@ function stratQuick(hist){
   var top=order.map(function(k){return counts[k];}).sort(function(a,b){return b.n-a.n;}).slice(0,5);
   return{cur:estimateCurrentBand(h),crit:crit,trend:trend,topErrs:top,scoredCount:scored.length,total:h.length};
 }
-function stratSaved(){try{var o=JSON.parse(localStorage.getItem(STRATLS)||'null');if(o&&o.text)return o;}catch(e){}return null;}
+function stratSaved(){try{var o=JSON.parse(localStorage.getItem(STRATLS)||'null');if(o&&o.text&&!aiIsLimitText(o.text)&&!aiIsErrorText(o.text))return o;}catch(e){}return null;}
 function renderStrategy(){
   var box=$('stratPanel');if(!box)return;
   try{
@@ -1955,6 +2175,9 @@ function renderStrategy(){
   }catch(e){box.innerHTML='<p class="small">Chưa phân tích được lịch sử lần này.</p>';}
 }
 var stratLoading=false;
+function buildStrategyPromptLite(summary){
+  return 'Write an IELTS Speaking band-up strategy IN VIETNAMESE as PLAIN TEXT (no JSON, no markdown), max 250 words, with these 3 headings on their own lines: NHẬN XÉT TỔNG QUAN / CHIẾN LƯỢC NÂNG BAND / MỤC TIÊU TUẦN NÀY. Give concrete daily exercises and 2-3 measurable goals for this week. Base it ONLY on this learner data:\n'+summary;
+}
 async function genStrategy(){
   if(stratLoading)return;
   var q=stratQuick(loadHist());
@@ -1969,9 +2192,14 @@ async function genStrategy(){
     +'\nTổng số bài đã chấm: '+q.scoredCount;
   var prompt='You are damu, an IELTS Speaking examiner-coach. Based ONLY on this learner data summary, write a band-up strategy IN VIETNAMESE as PLAIN TEXT (no JSON, no markdown code fences). Structure with these 3 clear headings on their own lines: 1) NHẬN XÉT TỔNG QUAN — 3-4 câu thẳng thắn về tình trạng hiện tại, bám đúng số liệu. 2) CHIẾN LƯỢC NÂNG BAND — ưu tiên tiêu chí nào trước và vì sao, kèm bài tập cụ thể làm được ngay mỗi ngày (nói rõ làm gì, bao lâu, lấy ví dụ từ lỗi lặp lại ở trên). 3) MỤC TIÊU TUẦN NÀY — 2-3 mục tiêu đo được (số bài chấm, lỗi phải sửa dứt điểm, band mục tiêu cho tiêu chí yếu nhất). Giọng: thẳng, có roast nhẹ cho có động lực nhưng không xúc phạm người học. Tối đa khoảng 350 từ.\n\nDỮ LIỆU HỌC VIÊN:\n'+summary;
   try{
-    var res=await aiAsk(prompt);
+    var res=await aiAsk(prompt,null,buildStrategyPromptLite(summary));
     var text=String((res&&res.text)||'').trim();
+    /* CHAN text gioi han/luong loi khoi duong chien luoc: thong bao limit (vd Free limit reached,
+       HTTP 402 cua Pollinations) hoac text ma loi TUYET DOI khong duoc luu lam chien luoc. */
     if(!text)throw new Error('AI trả về rỗng');
+    if(aiIsLimitText(text))throw new Error('quota|Pollinations free limit reached (HTTP 402)');
+    if(aiIsErrorText(text))throw new Error('badformat|AI trả chiến lược không đọc được');
+    if(text.length<60)throw new Error('badformat|AI trả chiến lược quá ngắn, chưa dùng được');
     try{localStorage.setItem(STRATLS,JSON.stringify({text:text,date:new Date().toISOString()}));}catch(e){}
     stratLoading=false;renderStrategy();
   }catch(e){
@@ -2315,10 +2543,10 @@ async function mtGradeMock(){
     var allTr=mt.answers.map(function(a){return a.transcript||'';}).join(' ').slice(0,2500);
     var res=await aiAskGrade(prompt,buildPromptLite('Full IELTS mock test (Parts 1, 2 and 3)',0,allTr,avgWpm));
     var g=null;try{g=extractJSON(res.text);}catch(pe){aiLogErr('mtGradeMock.parse',pe);g={_raw:res.text,_fallback:true};}
-    var didFix=false; /* ngan sach: cham(1) + fixJSON HOAC completion(1) + audit(1) = toi da 3 luot */
+    var didFix=false; /* ngan sach: khi qua Pollinations (0-key) toi da 2 luot (cham + 1 luot bo sung: fixJSON/completion, audit bi bo qua); co key Groq/Gemini thi toi da 3 luot (them audit) */
     if(!validateGrade(g)){
       st.phase='Bản chấm lỗi định dạng, đang gói lại JSON...';statusBubble();
-      try{var fix=await aiAsk('Fix the following text into ONE valid JSON object with EXACTLY this shape: {"opening":"short text","scores":{"FC":6.0,"LR":5.5,"GRA":6.0,"P":6.0},"errors":[{"wrong":"...","fix":"...","why":"..."}],"upgrades":[{"original":"...","better":"..."}],"tips":["...","...","..."],"praise":"...","examinerNote":"...","modelAnswer":"...","rewriteNotes":"...","criteriaFeedback":{"FC":{"errors":["..."],"fix":"..."},"LR":{"errors":["..."],"fix":"..."},"GRA":{"errors":["..."],"fix":"..."},"P":{"errors":["..."],"fix":"..."}}}. Rules: output ONLY the JSON, no markdown fences, never use a double-quote character inside string values (use single quotes), keep strings short except modelAnswer. Here is the text to fix:\n'+String(res.text).slice(0,6000),null,null,{json:true});
+      try{var fix=await aiAsk('Fix the following text into ONE valid JSON object with EXACTLY this shape: {"opening":"short text","scores":{"FC":6.0,"LR":5.5,"GRA":6.0,"P":6.0},"errors":[{"wrong":"...","fix":"...","why":"..."}],"upgrades":[{"original":"...","better":"..."}],"tips":["...","...","..."],"praise":"...","examinerNote":"...","modelAnswer":"...","rewriteNotes":"...","criteriaFeedback":{"FC":{"errors":["..."],"fix":"..."},"LR":{"errors":["..."],"fix":"..."},"GRA":{"errors":["..."],"fix":"..."},"P":{"errors":["..."],"fix":"..."}}}. Rules: output ONLY the JSON, no markdown fences, never use a double-quote character inside string values (use single quotes), keep strings short except modelAnswer. Here is the text to fix:\n'+String(res.text).slice(0,6000),null,buildFixJsonLite(res.text),{json:true});
         var g2=null;try{g2=extractJSON(fix.text);}catch(e2){}
         if(validateGrade(g2)){g=g2;didFix=true;res={text:fix.text,via:fix.via,geminiErr:res.geminiErr};}
       }catch(fe){aiLogErr('mtGradeMock.fixJSON',fe);}
@@ -2330,9 +2558,10 @@ async function mtGradeMock(){
       mtGrading=false;return;
     }
     statusBubble();
-    if(!didFix)g=await completeGradeIfNeeded(g,res,'Full mock test — Part 2 cue card: '+mt.p2Card.prompt,2,allTr); /* da dung fixJSON thi bo qua completion, danh ngan sach cho audit */
+    var missBeforeMt=(!didFix)?gradeMissingFields(g):[];
+    if(!didFix)g=await completeGradeIfNeeded(g,res,'Full mock test — Part 2 cue card: '+mt.p2Card.prompt,2,allTr); /* da dung fixJSON thi bo qua completion */
     var evMock=computeEvidence(mt.answers.map(function(a){return a.transcript||'';}).join(' '),totalSecs);
-    g=await auditGradeIfNeeded(g,allTr,evMock);
+    g=await auditGradeIfNeeded(g,allTr,evMock,{via:(g._completionVia||res.via),extraUsed:didFix||missBeforeMt.length>0});
     stopStatus();
     var r=renderGrade(g,res.via,avgWpm,evMock);
     mt.phase='done';
