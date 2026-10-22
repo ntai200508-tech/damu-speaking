@@ -222,6 +222,7 @@ nav button#nav-mocktest.on{background:#f59e0b;color:#fff;border-color:#f59e0b}
       <div class="st"><b id="stWpm">0</b>Tốc độ (từ/phút)</div>
     </div>
     <div id="audioPlayback"></div>
+    <div id="whisperBox"></div>
   </div>
 
   <div class="card">
@@ -230,6 +231,7 @@ nav button#nav-mocktest.on{background:#f59e0b;color:#fff;border-color:#f59e0b}
     <button class="btn big" id="gradeBtn" onclick="gradeNow()">🩷 DAMU CHẤM BÀI</button>
     <div style="height:12px"></div>
     <div id="chatBox"></div>
+    <div id="pendingBox"></div>
     <div class="warn">⚠️ <b>Lưu ý về điểm Pronunciation:</b> damu chỉ nghe qua bản transcript (chữ máy nhận diện được) + tốc độ nói của bạn, nên điểm Phát âm chỉ là <b>ước tính tham khảo</b> — từ nào phát âm chưa rõ thường bị máy nghe nhầm. Điểm này KHÔNG thay thế được giám khảo thật nghe trực tiếp.</div>
     <div class="crit">
       <div class="c"><b>Fluency &amp; Coherence</b><br><span class="small">Nói dài, ít ngập ngừng, ý nối nhau có logic, trả lời đúng trọng tâm.</span></div>
@@ -973,7 +975,7 @@ function updateCancelBtn(){var b=$('cancelBtn');if(b)b.style.display=(recording|
 function startRecord(){
   if(recording)return; /* khoá chống bấm đúp: 2 phiên nghe chồng nhau là đường nhân đôi transcript duy nhất ở tầng phiên */
   if(!SR){$('srWarn').innerHTML='<div class="err">⚠️ Trình duyệt này <b>không hỗ trợ nhận diện giọng nói</b> (Web Speech API). Hãy mở trang bằng <b>Google Chrome</b> hoặc <b>Microsoft Edge</b> trên máy tính/điện thoại Android. Hoặc bạn vẫn có thể tự gõ bài nói vào ô Bản ghi rồi bấm chấm.</div>';return;}
-  finalText=$('transcript').value.trim();recStart=Date.now();recElapsed=0;recBase=0;recSegStart=0;restartCount=0;netErrCount=0;stopNote='';
+  finalText=$('transcript').value.trim();recStart=Date.now();practiceRecBaseText=finalText;try{if(typeof whisperState!=='undefined'){whisperState.status='idle';whisperState.text='';whisperState.applied=false;renderWhisperBox();}}catch(e){}recElapsed=0;recBase=0;recSegStart=0;restartCount=0;netErrCount=0;stopNote='';
   try{
     recog=new SR();recog.lang=loadLang();recog.continuous=true;recog.interimResults=true;recog.maxAlternatives=3;
     recog.onstart=function(){recSegStart=Date.now();$('recStatus').textContent='🔴 Đang nghe… cứ nói tự nhiên bằng tiếng Anh. Part 2 hãy nói tới khi đồng hồ gần 02:00.';};
@@ -1045,6 +1047,7 @@ function cancelRecord(){
   if(recog){try{recog.onend=null;recog.onresult=null;recog.onerror=null;recog.onstart=null;recog.abort();}catch(e){}recog=null;}
   finalText='';recElapsed=0;recBase=0;recSegStart=0;recStart=0;restartCount=0;netErrCount=0;
   $('transcript').value='';
+  try{whisperState={blob:null,baseText:'',webText:'',text:'',source:'',status:'idle',applied:false,promise:null,err:''};renderWhisperBox();practiceTranscriptSource='webspeech';}catch(e){}
   $('liveBox').innerHTML='<span class="small">Đã huỷ bản ghi — bấm BẮT ĐẦU GHI ÂM để nói lại từ đầu…</span>';
   $('recTimer').style.display='none';$('recTimer').textContent='00:00';
   $('recBtn').textContent='🎙 BẮT ĐẦU GHI ÂM';$('recBtn').className='btn big';
@@ -1062,6 +1065,7 @@ document.addEventListener('visibilitychange',function(){if(!document.hidden&&rec
      nghe lại, nhận diện + chấm bài vẫn chạy bình thường. */
 var voiceStore={practice:{url:null,blob:null,ext:'webm',name:''},mock:{url:null,blob:null,ext:'webm',name:''},shadow:{url:null,blob:null,ext:'webm',name:''}};
 var voiceRec={mr:null,stream:null,chunks:[],target:null,discard:false,want:false,session:0};
+var practiceRecBaseText=''; /* ban ghi co TRUOC phien ghi practice hien tai — Whisper chi thay doan vua noi, giu phan cu */
 var VOICE_BOX={practice:'audioPlayback',mock:'mtAudioPlayback',shadow:'shadowAudioPlayback'};
 function audioSupported(){try{return !!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia&&window.MediaRecorder);}catch(e){return false;}}
 function voicePickMime(){if(!window.MediaRecorder||!MediaRecorder.isTypeSupported)return '';var cands=['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg;codecs=opus','audio/ogg'];for(var i=0;i<cands.length;i++){try{if(MediaRecorder.isTypeSupported(cands[i]))return cands[i];}catch(e){}}return '';}
@@ -1110,6 +1114,7 @@ function voiceFinalize(target,mr,stream){
   s.name='damu-speaking-'+target+'-'+new Date().toISOString().replace(/[:.]/g,'-').slice(0,19)+'.'+s.ext;
   s.url=URL.createObjectURL(blob);
   renderVoicePlayback(target);
+  if(target==='practice'){try{startWhisperTranscription(blob,practiceRecBaseText,($('transcript')?$('transcript').value:''));}catch(e){}} /* WHISPER: vua chot ban ghi la cho AI nghe lai ngay (chay nen, khong chan nghe lai/cham) */
   if(target==='shadow')shadowResetUI('Đã dừng ghi — nghe lại giọng của bạn ở ngay dưới rồi so với giọng mẫu nhé.');
 }
 function stopVoiceCapture(){
@@ -1160,7 +1165,7 @@ var AI_KEYLS='damuSpeaking.geminiKey';
 var GROQ_KEYLS='damuSpeaking.groqKey';
 var AI_GROQ_TIMEOUT_MS=18000,AI_GROQ_MODELS=['llama-3.3-70b-versatile','llama-3.1-8b-instant'];
 var AI_MODELLS='damuSpeaking.modelcache',AI_MODEL_CACHE_TTL=7*24*3600*1000;
-var AI_TIMEOUT_MS=18000,AI_GEMINI_TIMEOUT_MS=18000,AI_GEMINI_MAX_MODELS=3,AI_FALLBACK_TIMEOUT_MS=45000,AI_LIST_TIMEOUT_MS=15000;
+var AI_TIMEOUT_MS=18000,AI_GEMINI_TIMEOUT_MS=18000,AI_GEMINI_MAX_MODELS=3,AI_FALLBACK_TIMEOUT_MS=45000,AI_MAIN_FREE_TIMEOUT_MS=25000,AI_LIST_TIMEOUT_MS=15000; /* GOI TOC DO (22/10): luot cham CHINH qua tang mien phi chi cho 25s (opts.timeoutMs) de fail-over nhanh; cac luot cuu ho (bien doi/fix/bo sung/vi mo/audit) giu 45s mac dinh */
 var AI_MODELS=['gemini-3.8-flash','gemini-3.7-flash','gemini-3.6-flash','gemini-3.5-flash']; /* như web cũ: chỉ còn là dự phòng khi không liệt kê được model */
 var aiPreferFallback=false,aiGrading=false;
 function aiGetKey(){try{return (localStorage.getItem(AI_KEYLS)||'').trim();}catch(e){return '';}}
@@ -1300,7 +1305,7 @@ async function geminiAsk(prompt,opts){var key=aiGetKey();if(!key)throw new Error
   }
   throw lastErr||new Error('server|Cả '+cand.length+' model Gemini đều bận/lỗi.');}
 
-async function pollinationsAsk(prompt,sysOverride,opts){aiSetStatus('Đang chấm bằng AI dự phòng (Pollinations)...');var sys=sysOverride||'You are damu, a pink capybara and strict IELTS Speaking examiner (examiner-coach persona): roast candidates in English, blunt and sarcastic, grade seriously and strictly with no grade inflation. Follow the user instruction exactly and output ONLY the requested JSON.';
+async function pollinationsAsk(prompt,sysOverride,opts){aiSetStatus('Đang chấm bằng AI dự phòng (Pollinations)...');var fbTmo=(opts&&typeof opts.timeoutMs==='number'&&opts.timeoutMs>0)?opts.timeoutMs:AI_FALLBACK_TIMEOUT_MS;var sys=sysOverride||'You are damu, a pink capybara and strict IELTS Speaking examiner (examiner-coach persona): roast candidates in English, blunt and sarcastic, grade seriously and strictly with no grade inflation. Follow the user instruction exactly and output ONLY the requested JSON.';
   /* opts.temperature / opts.seed (chi luot BIEN DOI chong cache/dump truyen vao): dua vao
      body POST + query GET du phong de Pollinations khong phat lai phan hoi da cache cho
      prompt gan giong het va giam kha nang lap lai dung ban reasoning dump cu. */
@@ -1311,15 +1316,15 @@ async function pollinationsAsk(prompt,sysOverride,opts){aiSetStatus('Đang chấ
       var pBody={model:'openai',private:true,messages:[{role:'system',content:sys},{role:'user',content:prompt}]};
       if(pTemp!=null)pBody.temperature=pTemp;
       if(pSeed!=null)pBody.seed=pSeed;
-      var r=await fetchTimeout('https://text.pollinations.ai/',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(pBody)},AI_FALLBACK_TIMEOUT_MS);
+      var r=await fetchTimeout('https://text.pollinations.ai/',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(pBody)},fbTmo);
       if(!r.ok){var btx='';try{btx=await r.text();}catch(x){}if(r.status===402||aiIsLimitText(btx))throw new Error('quota|Pollinations free limit reached (HTTP 402)');throw new Error('HTTP '+r.status);}
       var tx=await r.text();if(!String(tx).trim())throw new Error('empty');if(aiIsLimitText(tx))throw new Error('quota|Pollinations free limit reached (HTTP 402)');return tx;
     }catch(e){
       if(String((e&&e.message)||'').indexOf('quota|')===0)throw e;
       var url='https://text.pollinations.ai/'+encodeURIComponent(prompt)+'?model=openai&system='+encodeURIComponent(sys)+'&private=true'+(pTemp!=null?('&temperature='+pTemp):'')+(pSeed!=null?('&seed='+pSeed):'');
-      var r2=await fetchTimeout(url,{},AI_FALLBACK_TIMEOUT_MS);if(!r2.ok){var btx2='';try{btx2=await r2.text();}catch(x){}if(r2.status===402||aiIsLimitText(btx2))throw new Error('quota|Pollinations free limit reached (HTTP 402)');throw new Error('HTTP '+r2.status);}var tx2=await r2.text();if(aiIsLimitText(tx2))throw new Error('quota|Pollinations free limit reached (HTTP 402)');return tx2;}
+      var r2=await fetchTimeout(url,{},fbTmo);if(!r2.ok){var btx2='';try{btx2=await r2.text();}catch(x){}if(r2.status===402||aiIsLimitText(btx2))throw new Error('quota|Pollinations free limit reached (HTTP 402)');throw new Error('HTTP '+r2.status);}var tx2=await r2.text();if(aiIsLimitText(tx2))throw new Error('quota|Pollinations free limit reached (HTTP 402)');return tx2;}
   })();
-  var guard=new Promise(function(_,rej){setTimeout(function(){rej(new Error('slow:text.pollinations.ai'));},AI_FALLBACK_TIMEOUT_MS);});
+  var guard=new Promise(function(_,rej){setTimeout(function(){rej(new Error('slow:text.pollinations.ai'));},fbTmo);});
   return await Promise.race([work,guard]);}
 
 /* ===== DONG CO GEN (Pollinations Gen — cong MOI, ngan sach RIENG, 22/10 toi) =====
@@ -1330,7 +1335,7 @@ async function pollinationsAsk(prompt,sysOverride,opts){aiSetStatus('Đang chấ
    OpenAI (choices[0].message.content). Gen la tang mien phi CHINH moi; text cu giu
    lam tang cuoi. Loi gioi han (402 / van ban ngan sach / can key) duoc phat hien bang
    CHINH aiIsLimitText va nem 'quota|...' nhu cac tang khac de aiFreeTierAsk cho+thu lai. */
-async function pollinationsGenAsk(prompt,sysOverride,opts){aiSetStatus('Đang chấm bằng AI dự phòng (Pollinations Gen)...');var sys=sysOverride||'You are damu, a pink capybara and strict IELTS Speaking examiner (examiner-coach persona): roast candidates in English, blunt and sarcastic, grade seriously and strictly with no grade inflation. Follow the user instruction exactly and output ONLY the requested JSON.';
+async function pollinationsGenAsk(prompt,sysOverride,opts){aiSetStatus('Đang chấm bằng AI dự phòng (Pollinations Gen)...');var fbTmo=(opts&&typeof opts.timeoutMs==='number'&&opts.timeoutMs>0)?opts.timeoutMs:AI_FALLBACK_TIMEOUT_MS;var sys=sysOverride||'You are damu, a pink capybara and strict IELTS Speaking examiner (examiner-coach persona): roast candidates in English, blunt and sarcastic, grade seriously and strictly with no grade inflation. Follow the user instruction exactly and output ONLY the requested JSON.';
   var gTemp=(opts&&typeof opts.temperature==='number'&&isFinite(opts.temperature))?opts.temperature:null;
   var gSeed=(opts&&typeof opts.seed==='number'&&isFinite(opts.seed))?Math.floor(opts.seed):null;
   var gBody={model:'openai-fast',messages:[{role:'system',content:sys},{role:'user',content:String(prompt||'')}]};
@@ -1338,7 +1343,7 @@ async function pollinationsGenAsk(prompt,sysOverride,opts){aiSetStatus('Đang ch
   if(gSeed!=null)gBody.seed=gSeed;
   var work=(async function(){
     var r;
-    try{r=await fetchTimeout('https://gen.pollinations.ai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(gBody)},AI_FALLBACK_TIMEOUT_MS);}
+    try{r=await fetchTimeout('https://gen.pollinations.ai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(gBody)},fbTmo);}
     catch(e){throw classifyErr(e,'gen.pollinations.ai');}
     var raw='';try{raw=await r.text();}catch(x){}
     if(!r.ok){if(r.status===401||r.status===403)throw new Error('auth|Pollinations Gen requires key (HTTP '+r.status+')');if(r.status===402||aiIsLimitText(raw))throw new Error('quota|Pollinations Gen free limit reached (HTTP '+r.status+')');throw new Error('HTTP '+r.status+(raw?(' '+raw.slice(0,160)):''));}
@@ -1364,7 +1369,7 @@ async function pollinationsGenAsk(prompt,sysOverride,opts){aiSetStatus('Đang ch
     if(aiIsLimitText(out))throw new Error('quota|Pollinations Gen free limit reached (HTTP 402)');
     return out;
   })();
-  var guard=new Promise(function(_,rej){setTimeout(function(){rej(new Error('slow:gen.pollinations.ai'));},AI_FALLBACK_TIMEOUT_MS);});
+  var guard=new Promise(function(_,rej){setTimeout(function(){rej(new Error('slow:gen.pollinations.ai'));},fbTmo);});
   return await Promise.race([work,guard]);}
 /* ===== DOI CHO THONG MINH (22/10 toi) =====
    Tang mien phi (Gen hoac text) nem loi quota/gioi han -> CHO 30 GIAY (dem nguoc qua
@@ -1536,6 +1541,137 @@ async function groqAsk(prompt,opts){
     }
   }
   throw lastErr||new Error('server-groq|Cả 2 model Groq đều bận/lỗi.');}
+/* ===== WHISPER: AI NGHE TRUC TIEP BAN GHI AM (22/10) =====
+   Sau khi dung ghi am (tab Luyen tap), app gui file ghi am (voiceStore.practice.blob)
+   len Groq Whisper de ra ban ghi chuan hon Web Speech API (hay nghe nham kieu
+   'feel and ease' -> 'tattoo Few and east').
+   - Duong song DUY NHAT (team probe do THAT 22/10, probe-report.md): Groq voi key
+     nguoi dung — POST multipart https://api.groq.com/openai/v1/audio/transcriptions,
+     model 'whisper-large-v3-turbo' (loi thi thu 'whisper-large-v3'), response_format
+     json, language 'en', timeout 30s/luot. Khong key -> goi thu tra 401 (endpoint
+     ton tai, chi thieu key).
+   - Duong KEYLESS da chet het, KHONG cam: gen.pollinations.ai/v1/audio/transcriptions
+     tra 401 'A valid API key is required' cho MOI model (whisper-1, whisper-large-v3,
+     gpt-transcribe, mai-transcribe-2, scribe-v2...), ca duong vong chat + input_audio;
+     text.pollinations.ai khong co route audio (404).
+   - Moi duong loi/rong -> giu nguyen ban ghi Web Speech. Whisper thang thi thay ban
+     ghi dung de CHAM + tinh WPM (theo thoi luong ghi that recElapsed), van hien ca 2
+     nguon cho nguoi dung va luu transcriptSource vao ban ghi lich su.
+   - Thi thu: voiceStore.mock chi giu ban ghi cua CAU TRA LOI CUOI (moi lan ghi de len),
+     khong du file am thanh cua ca buoi thi nen KHONG ap Whisper cho thi thu; cac sua
+     toc do (timeout/vi mo song song/audit) thi dung chung nen thi thu van duoc huong. */
+var WHISPER_GROQ_MODELS=['whisper-large-v3-turbo','whisper-large-v3'];
+var WHISPER_TIMEOUT_MS=30000;
+var whisperState={blob:null,baseText:'',webText:'',text:'',source:'',status:'idle',applied:false,promise:null,err:''};
+var practiceTranscriptSource='webspeech';
+function parseWhisperResponse(status,bodyText){
+  /* Parser THUAN (harness test duoc): (HTTP status, body tho) -> {ok,text}|{ok:false,reason}.
+     Chi chap nhan status 200 + JSON co truong text la chuoi khac rong. */
+  if(status==null||status===0)return{ok:false,reason:'network'};
+  if(status!==200){var rr='http'+status;try{var ej=JSON.parse(String(bodyText||''));var em=(ej&&ej.error&&(ej.error.message||ej.error.code))||(ej&&ej.message);if(em)rr+=':'+String(em).slice(0,120);}catch(e){}return{ok:false,reason:rr};}
+  var j=null;try{j=JSON.parse(String(bodyText||''));}catch(e){return{ok:false,reason:'badjson'};}
+  var t=(j&&typeof j.text==='string')?j.text.trim():'';
+  if(!t)return{ok:false,reason:'empty'};
+  return{ok:true,text:t};
+}
+function whisperPickSource(whisperText,webText){
+  /* Chon nguon ban ghi de cham: Whisper co chu thi thang, nguoc lai giu ban ghi truc tiep. */
+  var w=String(whisperText||'').trim();
+  if(w)return{text:w,source:'whisper'};
+  return{text:String(webText||''),source:'webspeech'};
+}
+async function transcribeRecording(blob){
+  /* Gui 1 blob ghi am len Groq Whisper. Tra {ok:true,text,model}|{ok:false,reason}.
+     Khong co key Groq -> {ok:false,reason:'nokey'} NGAY, khong goi mang. */
+  if(!blob||!blob.size)return{ok:false,reason:'noblob'};
+  var key='';try{key=aiGetGroqKey();}catch(e){}
+  if(!key)return{ok:false,reason:'nokey'};
+  var ext='webm';try{ext=voiceExt(blob.type||'');}catch(e){}
+  var lastReason='unknown';
+  for(var mi=0;mi<WHISPER_GROQ_MODELS.length;mi++){
+    var model=WHISPER_GROQ_MODELS[mi];
+    try{
+      var fd=new FormData();
+      fd.append('file',blob,'damu-recording.'+ext);
+      fd.append('model',model);
+      fd.append('response_format','json');
+      fd.append('language','en');
+      var r=await fetchTimeout('https://api.groq.com/openai/v1/audio/transcriptions',{method:'POST',headers:{'Authorization':'Bearer '+key},body:fd},WHISPER_TIMEOUT_MS);
+      var bodyText='';try{bodyText=await r.text();}catch(x){}
+      var parsed=parseWhisperResponse(r.status,bodyText);
+      if(parsed.ok)return{ok:true,text:parsed.text,model:model};
+      lastReason=parsed.reason;aiLogErr('whisper.'+model,new Error(parsed.reason));
+      if(r.status===401||r.status===403)break; /* key sai: thu model khac cung vo ich */
+    }catch(e){lastReason=(e&&e.name==='AbortError')?'timeout':'network';aiLogErr('whisper.'+model,e);}
+  }
+  return{ok:false,reason:lastReason};
+}
+function renderWhisperBox(){var b=null;try{b=document.getElementById('whisperBox');}catch(e){}if(!b)return;var s=whisperState;
+  if(s.status==='busy'){b.innerHTML='<div class="voicePlay"><p class="small" style="margin:0">🎧 Đang cho AI nghe lại bản ghi (Whisper)… nghe chuẩn hơn máy nghe trực tiếp của trình duyệt.</p></div>';return;}
+  if(s.status==='done'&&s.text){b.innerHTML='<div class="voicePlay"><p class="small" style="margin:0">🎧 <b>Bản ghi AI nghe lại (Whisper):</b> '+esc(s.text)+'<br>🎙️ <b>Bản ghi trực tiếp (trình duyệt nghe):</b> '+esc(s.webText||'(trống)')+'<br>✅ damu chấm theo <b>bản ghi AI nghe lại</b> vì nghe chuẩn hơn.</p></div>';return;}
+  if(s.status==='failed'){var noKey=false;try{noKey=!aiGetGroqKey();}catch(e){}
+    b.innerHTML='<div class="voicePlay"><p class="small" style="margin:0">🎧 AI nghe lại (Whisper) chưa được lần này'+(s.err?' ('+esc(s.err)+')':'')+' — damu dùng <b>bản ghi trực tiếp</b> ở trên để chấm như cũ.'+(noKey?' Muốn AI nghe trực tiếp giọng bạn cho chuẩn (thay máy nghe của trình duyệt hay nghe nhầm): nhập key Groq ở tab Cài đặt nhé.':'')+'</p></div>';return;}
+  b.innerHTML='';}
+function startWhisperTranscription(blob,baseText,webFullText){
+  /* Bat dau nghe Whisper cho 1 blob practice. webFullText = toan bo ban ghi truc tiep
+     luc dung ghi; baseText = phan ban ghi co TRUOC phien ghi nay (truong hop ghi tiep)
+     — Whisper chi thay DOAN vua noi, phan cu giu nguyen. */
+  whisperState={blob:blob,baseText:String(baseText||''),webText:String(webFullText||''),text:'',source:'',status:'busy',applied:false,promise:null,err:''};
+  renderWhisperBox();
+  var myBlob=blob;
+  var p=(async function(){
+    var res={ok:false,reason:'unknown'};
+    try{res=await transcribeRecording(myBlob);}catch(e){res={ok:false,reason:'exception'};}
+    if(whisperState.blob!==myBlob)return res; /* da co ban ghi moi hon — bo ket qua cu */
+    if(res.ok){
+      var seg=String(whisperState.webText||'');var base=String(whisperState.baseText||'');
+      if(base&&seg.indexOf(base)===0)seg=seg.slice(base.length).trim();
+      var picked=whisperPickSource(res.text,seg);
+      if(picked.source==='whisper'){
+        whisperState.text=(base?(base+' '+picked.text):picked.text).trim();
+        whisperState.source='whisper';whisperState.status='done';
+        var ta=$('transcript');
+        if(ta&&ta.value.trim()===String(whisperState.webText||'').trim()){
+          ta.value=whisperState.text;whisperState.applied=true;
+          try{finalText=whisperState.text;}catch(e){}
+          try{updateStats();}catch(e){}
+        }
+      }else{whisperState.status='failed';whisperState.err='empty';}
+    }else{whisperState.status='failed';whisperState.err=res.reason||'unknown';}
+    renderWhisperBox();
+    return res;
+  })();
+  whisperState.promise=p;
+  return p;
+}
+async function ensureWhisperBeforeGrade(){
+  /* gradeNow goi ham nay TRUOC khi mo phien cham: cho MediaRecorder chot blob (toi da
+     ~3s) neu vua dung ghi, chua nghe blob nay thi nghe ngay, dang nghe thi cho xong.
+     Tra ve transcriptSource thuc te ('whisper'|'webspeech') va ap dung ban Whisper
+     vao o ban ghi neu o do van la ban ghi truc tiep cua phien nay (nguoi dung chua sua tay). */
+  var t0=Date.now();
+  while(Date.now()-t0<3000){var busy=false;try{busy=!!(voiceRec.want||(voiceRec.mr&&voiceRec.mr.state!=='inactive'));}catch(e){}if(!busy)break;await new Promise(function(r){setTimeout(r,150);});}
+  practiceTranscriptSource='webspeech';
+  var blob=null;try{blob=voiceStore.practice.blob;}catch(e){}
+  if(!blob){try{if(typeof pendingRetryCtx!=='undefined'&&pendingRetryCtx){var pit=pendingFind(pendingRetryCtx.id);if(pit&&pit.transcriptSource)practiceTranscriptSource=pit.transcriptSource;}}catch(e){}return practiceTranscriptSource;}
+  if(whisperState.blob!==blob){try{startWhisperTranscription(blob,practiceRecBaseText,($('transcript')?$('transcript').value:''));}catch(e){}}
+  if(whisperState.promise){try{await whisperState.promise;}catch(e){}}
+  if(whisperState.blob===blob&&whisperState.status==='done'&&whisperState.text){
+    var ta=$('transcript');
+    if(ta&&!whisperState.applied){
+      var cur=ta.value.trim();
+      if(cur===String(whisperState.webText||'').trim()||cur===String((typeof finalText!=='undefined'?finalText:'')||'').trim()){
+        whisperState.webText=cur;ta.value=whisperState.text;whisperState.applied=true;
+        try{finalText=whisperState.text;}catch(e){}
+        try{updateStats();}catch(e){}
+        renderWhisperBox();
+      }
+    }
+    if(whisperState.applied&&ta&&ta.value.trim()===whisperState.text)practiceTranscriptSource='whisper';
+  }
+  return practiceTranscriptSource;
+}
+function aiHasAnyKey(){try{return !!(aiGetKey()||aiGetGroqKey());}catch(e){return false;}}
 function aiWantsJSON(prompt,opts){
   if(opts&&typeof opts.json==='boolean')return opts.json;
   return /ONLY (a |the )?(valid )?JSON|output ONLY the JSON|Reply with ONLY a JSON|Return ONLY a valid JSON/i.test(String(prompt||''));}
@@ -1762,7 +1898,11 @@ async function auditGradeIfNeeded(g,tr,ev,ctx){
     return g;
   }
   var mismatch=auditEvidenceMismatch(g,evObj);
-  if(!mismatch){
+  /* GOI TOC DO (B3): audit CHI chay khi (a) co co do bang chung (evidence mismatch)
+     HOAC (b) luot chinh phai dung PHUC HOI DUMP (prompt bien doi / fixJSON) — luot
+     chinh sach + diem khop bang chung thi bo qua han, khong ton them luot AI. */
+  var dumpRecovered=!!(ctx&&typeof ctx==='object'&&(ctx.didVariant||ctx.didFix||ctx.dumpRecovered));
+  if(!mismatch&&!dumpRecovered){
     try{g._auditSkipped=true;g._audit={verdict:'skipped',reason:'Điểm khớp số liệu EVIDENCE (tốc độ/từ đệm/độ dài câu/type-token không lệch với điểm) nên không tốn lượt kiểm định',before:g.scores,after:g.scores};g.audit=g._audit;}catch(e){}
     return g;
   }
@@ -2611,6 +2751,33 @@ async function completeGradeIfNeeded(g,res,q,part,tr,maxAttempts){
      Part 1 giu nguyen <= 1 (khong cham them); Part 2/3 <= 2 tieu chi. Tong: bo sung
      thuong <= maxA (mac dinh 2) + vi mo <= ngan sach tren; tieu chi chi thieu sau mot
      phan (da co noi dung) thi KHONG dung luot vi mo; co _microUsed chan chay lap. */
+  /* GOI TOC DO (B2): khi CO KEY (Groq/Gemini) — cac tieu chi MAT TRANG doc lap duoc
+     xin SONG SONG toi da 2 luot (Promise.allSettled) thay vi chay tuan tu tung tieu
+     chi; ket qua merge tuan tu theo thu tu tieu chi nhu cu. 0-key GIU NGUYEN vong
+     tuan tu o duoi (tran 30s/IP cua Pollinations). Pre-pass chay xong thi dat
+     _microUsed de vong tuan tu khong chay lai; chi co 0-1 tieu chi mat trang thi
+     pre-pass khong lam gi, vong tuan tu xu ly nhu cu. */
+  try{
+    if(!g._microUsed&&aiHasAnyKey()){
+      var missPre=gradeMissingFields(g,tr,part);
+      if(missPre.indexOf('criteriaFeedback')>=0&&!(gradeSessionStart&&gradeBudgetLeft()<=4000)){
+        var bkPre=gradeCfBadKeys(g,tr),pKeys=[];
+        for(var _pi=0;_pi<bkPre.length&&pKeys.length<2;_pi++){if(gradeCfCompletelyMissing(g,bkPre[_pi]))pKeys.push(bkPre[_pi]);}
+        if(pKeys.length>=2){
+          g._microUsed=true;g._microParallel=true;
+          aiSetStatus('Còn trống nguyên 2 tiêu chí ('+pKeys.join(', ')+') — đang xin SONG SONG cả 2 cho nhanh (lượt vi mô song song)...');
+          var pRes=await Promise.allSettled(pKeys.map(function(pk){return aiAsk(buildMicroPrompt(g,pk,q,part,tr,false),'You are damu, a pink capybara and strict IELTS Speaking examiner. Follow the user instruction exactly: if it asks for JSON return ONLY JSON; if it asks for plain-text sections with === markers, return ONLY those sections.',buildMicroPrompt(g,pk,q,part,tr,true),{json:true});}));
+          for(var _pj=0;_pj<pRes.length;_pj++){
+            var pr=pRes[_pj];
+            if(pr.status==='fulfilled'&&pr.value){try{g._completionVia=pr.value.via||g._completionVia;g._microVia=pr.value.via;}catch(e){}var exP=resolveExtra(pr.value.text);if(exP&&!exP._raw)mergeExtra(exP,['criteriaFeedback']);}
+            else if(pr.status==='rejected'){aiLogErr('completeGrade.microParallel',pr.reason);}
+          }
+          g._microCount=(g._microCount||0)+pKeys.length;
+          gradeScrubFlaggedFields(g,tr,part); /* QUET SACH sau luot vi mo song song nhu sau moi luot merge */
+        }
+      }
+    }
+  }catch(eMicroPar){aiLogErr('completeGrade.microParallel',eMicroPar);}
   try{
     if(!g._microUsed){
       var microBudget=gradeSessionStart?1:((part===2||part===3)?2:1); /* NGAN SACH 30s (19:33): trong phien cham chi toi da 1 tieu chi vi mo */
@@ -2767,6 +2934,11 @@ function renderGrade(g,via,wpm,ev){if(g&&g._raw){return{html:'<p>🩷 damu nhậ
 async function gradeNow(){if(aiGrading)return;var tr=$('transcript').value.trim();
   if(wordCount(tr)<3){$('chatBox').innerHTML=damuMsg('🩷 Ê, chưa nói gì mà đòi chấm? Ghi âm trả lời câu hỏi ở trên trước đi, nói ít nhất vài câu tiếng Anh vào!')+ $('chatBox').innerHTML;return;}
   if(recording)stopRecord();
+  /* WHISPER + NGAN SACH (B4): nghe Whisper chay O DAY — TRUOC khi mo phien cham
+     (gradeSessionStart chi gan tai st.t0 o duoi) nen thoi gian nghe Whisper KHONG
+     bi tinh vao ngan sach cham 30s; xong moi doc lai ban ghi + tinh WPM theo thoi
+     luong ghi that (recElapsed). */
+  try{var gbtnW=$('gradeBtn');if(gbtnW){gbtnW.disabled=true;gbtnW.innerHTML='<span class="spin"></span> 🎧 Đang cho AI nghe lại bản ghi…';}await ensureWhisperBeforeGrade();var trW=$('transcript').value.trim();if(trW)tr=trW;}catch(ew){aiLogErr('gradeNow.whisper',ew);}
   var wpm=recElapsed>2?Math.round(wordCount(tr)/(recElapsed/60)):0;var secs=Math.round(recElapsed);
   aiGrading=true;var btn=$('gradeBtn');btn.disabled=true;btn.innerHTML='<span class="spin"></span> Đang chấm… (nút đã khóa, đợi tí nhé)';
   var chat=$('chatBox');var myMsg=meMsg('<b>Part '+curPart+':</b> '+esc(curQuestion)+'<br><i>"'+esc(tr)+'"</i>');
@@ -2779,30 +2951,136 @@ async function gradeNow(){if(aiGrading)return;var tr=$('transcript').value.trim(
   function statusBubble(){chat.innerHTML=myMsg+damuMsg('<span class="spin"></span> <span id="gradeStatusTxt"></span> 🩷');paintStatus();}
   statusBubble();
   try{
-    var res=await aiAskGrade(buildPrompt(curQuestion,curPart,tr,wpm,secs),buildPromptLite(curQuestion,curPart,tr,wpm));
+    var res=await aiAskGrade(buildPrompt(curQuestion,curPart,tr,wpm,secs),buildPromptLite(curQuestion,curPart,tr,wpm),{timeoutMs:AI_MAIN_FREE_TIMEOUT_MS}); /* GOI TOC DO (B1): luot chinh qua tang mien phi timeout 25s thay 45s */
     var rec=await gradeParseWithRecovery(res,function(){return makeGradeVariantPrompts(curQuestion,curPart,tr,wpm,secs);},function(ph){if(ph==='fix'){st.phase='Bản chấm lỗi định dạng, đang gói lại JSON...';statusBubble();}else if(ph==='variant'){st.phase='AI trả bản lỗi — đang chấm lại bằng prompt biến đổi...';statusBubble();}});
     var g=rec.g;res=rec.res;var didFix=rec.didFix;var didVariant=rec.didVariant; /* ngan sach vong 2: 1 luot chinh (+1 luot BIEN DOI chi khi luot chinh hong/dump, khong tinh vao bo sung) + fixJSON neu van hong (tinh 1 luot bo sung nhu cu: didFix -> bo sung con 1) + bo sung <=2 + vi mo <=1 (trong completeGradeIfNeeded) */
     if(!validateGrade(g)){
+      if(!handleGradeFailure({tr:tr,wpm:wpm,secs:secs,err:null,res:res,myMsg:myMsg,chat:chat})){
       chat.innerHTML=myMsg+damuMsg('😵 damu chấm chưa thành công — AI trả về kết quả không đọc được điểm. Bài nói của bạn vẫn còn nguyên, bấm nút dưới để chấm lại nhé.<br><button class="btn" onclick="gradeNow()">🔁 Chấm lại</button>'+geminiErrHtml(res)+groqSuggestHtml());
       saveHistory(null,tr,wpm);
+      }
     }else{
       statusBubble();
       var missBefore=gradeMissingFields(g,tr,curPart);
       g=await completeGradeIfNeeded(g,res,curQuestion,curPart,tr,didFix?1:2); /* luon bo sung neu con thieu muc, ke ca khi da dung fixJSON (fix du diem nhung van co the thieu examinerNote/modelAnswer/criteriaFeedback); fixJSON da tinh 1 luot bo sung nen ngan sach con lai 1, tong bo sung <= 2 */
       var evNow=computeEvidence(tr,secs);
-      g=await auditGradeIfNeeded(g,tr,evNow,{via:(g._completionVia||res.via),extraUsed:didFix||didVariant||missBefore.length>0});
+      g=await auditGradeIfNeeded(g,tr,evNow,{via:(g._completionVia||res.via),extraUsed:didFix||didVariant||missBefore.length>0,didFix:didFix,didVariant:didVariant});
       var r=renderGrade(g,res.via,wpm,evNow);
       chat.innerHTML=myMsg+damuMsg(r.html+geminiErrHtml(res));
       saveHistory(r.overall,tr,wpm,(g&&!g._fallback)?g.scores:null,g);
+      if(pendingRetryCtx){var pDoneId=pendingRetryCtx.id;pendingRetryCtx=null;pendingRemove(pDoneId);renderPendingBox();chat.innerHTML+=damuMsg('✅ <b>Đã chấm xong bài đang chờ</b> trong hàng — kết quả ở ngay trên nhé!');ensurePendingTimer();}
       syncHintBandChip();
     }
   }catch(e){
     aiLogErr('gradeNow',e);
+    if(!handleGradeFailure({tr:tr,wpm:wpm,secs:secs,err:e,res:null,myMsg:myMsg,chat:chat})){
     chat.innerHTML=myMsg+damuMsg('😵 damu chấm không được: '+esc(aiFriendlyErr(e))+'<br><span class="small">Thử: kiểm tra mạng, nhập/lưu key Gemini ở tab Cài đặt (chưa có key app vẫn chấm bằng AI dự phòng khi có mạng). Rồi bấm chấm lại nhé.</span><br><button class="btn" onclick="gradeNow()">🔁 Chấm lại</button>'+groqSuggestHtml());
     saveHistory(null,tr,wpm);
+    }
   }
-  clearInterval(stTimer);aiStatusHandler=null;gradeSessionStart=0;
+  clearInterval(stTimer);aiStatusHandler=null;gradeSessionStart=0;pendingRetryCtx=null;
   aiGrading=false;btn.disabled=false;btn.textContent='🩷 DAMU CHẤM BÀI';}
+
+/* ===== HANG CHO CHAM — CHI 0-KEY (Nguyen 22:00 22/10: "dung AI nhieu qua no se bi loi") =====
+   Khi TOAN BO pipeline cham that bai vi ly do TAM THOI phia nha cung cap (quota/het
+   ngan sach chung, dump lien tiep khong doc duoc diem, timeout, server 5xx) o che do
+   0-key, thay vi bao loi chet: luu bai vao hang cho (localStorage 'damuSpeaking.
+   pendingGrades', toi da 3 bai) + hen gio nen moi 60s tu cham lai 1 bai (tai dung
+   NGUYEN gradeNow/pipeline hien co — giu moi cong chat luong + ngan sach), toi da
+   5 lan thu/bai roi moi bao loi han. Thanh cong thi render + luu lich su + forecast
+   nhu 1 lan cham thuong va bao "da cham xong bai dang cho". Tai lai trang: hang cho
+   con nguyen (init doc lai + hien o #pendingBox + chay lai hen gio).
+   KHONG ap dung khi co key: loi key (badkey/auth) la loi VINH VIEN — giu bao loi cu. */
+var PENDING_GRADES_LS='damuSpeaking.pendingGrades';
+var PENDING_MAX_ITEMS=3,PENDING_MAX_ATTEMPTS=5,PENDING_RETRY_MS=60000;
+var pendingRetryCtx=null; /* {id}: luot gradeNow dang chay la thu lai 1 bai trong hang cho */
+var pendingTimer=null;
+function pendingLoad(){try{var a=JSON.parse(localStorage.getItem(PENDING_GRADES_LS)||'[]');return Array.isArray(a)?a.filter(function(x){return x&&x.id&&x.transcript;}):[];}catch(e){return[];}}
+function pendingSaveAll(list){try{localStorage.setItem(PENDING_GRADES_LS,JSON.stringify(list||[]));}catch(e){}}
+function pendingFind(id){var a=pendingLoad();for(var i=0;i<a.length;i++)if(a[i].id===id)return a[i];return null;}
+function pendingAdd(item){
+  var a=pendingLoad();if(a.length>=PENDING_MAX_ITEMS)return null; /* hang day 3 bai: khong nhan them */
+  item.id='p'+Date.now().toString(36)+Math.floor(Math.random()*99999).toString(36);
+  item.status='queued';item.queuedAt=new Date().toISOString();a.push(item);pendingSaveAll(a);return item;
+}
+function pendingRemove(id){var a=pendingLoad().filter(function(x){return x.id!==id;});pendingSaveAll(a);if(!a.length&&pendingTimer){clearInterval(pendingTimer);pendingTimer=null;}}
+function pendingUpdate(item){var a=pendingLoad();for(var i=0;i<a.length;i++)if(a[i].id===item.id)a[i]=item;pendingSaveAll(a);}
+function gradeFailIsTemporary(e){
+  /* TAM THOI (nha cung cap): quota/het ngan sach, dump (e=null), timeout 'slow:',
+     server 5xx, empty, blocked mang. VINH VIEN: badkey/forbidden/auth/nokey -> false. */
+  if(!e)return true;
+  var m=String((e&&e.message)||e||'');
+  if(/^(badkey|forbidden|groqauth|auth\|)/.test(m))return false;
+  if(m.indexOf('nokey')===0)return false;
+  try{if(aiIsQuotaErr(e))return true;}catch(x){}
+  if(m.indexOf('slow:')===0)return true;
+  if(m.indexOf('server|')===0||m.indexOf('server-groq|')===0||m.indexOf('quota')===0)return true;
+  if(m==='empty'||m.indexOf('blocked:')===0)return true;
+  if(/HTTP 5\d\d/.test(m))return true;
+  try{if(aiIsLimitText(m))return true;}catch(x){}
+  return false;
+}
+function renderPendingBox(){
+  var b=null;try{b=document.getElementById('pendingBox');}catch(e){}if(!b)return;
+  var a=pendingLoad();
+  if(!a.length){b.innerHTML='';return;}
+  var h='<div class="voicePlay"><b>⏳ Hàng chờ chấm ('+a.length+' bài)</b>';
+  for(var i=0;i<a.length;i++){var it=a[i];
+    h+='<p class="small" style="margin:6px 0 2px">📝 <b>Part '+it.part+':</b> '+esc(it.question||'')+'<br><i>"'+esc(String(it.transcript||'').slice(0,90))+'…"</i><br>AI đang bận — damu đã xếp hàng, sẽ tự chấm lại sau ~1 phút (đã thử '+(it.attempts||1)+'/'+PENDING_MAX_ATTEMPTS+' lần).</p><div class="row"><button class="btn" onclick="pendingGradeNow(\''+it.id+'\')">▶️ Chấm ngay</button><button class="btn ghost" onclick="pendingCancel(\''+it.id+'\')">❌ Hủy xếp hàng</button></div>';
+  }
+  h+='<p class="small" style="margin:6px 0 0">Hàng chờ được lưu trên máy này — tắt trang mở lại vẫn còn, damu tự chấm tiếp.</p></div>';
+  b.innerHTML=h;
+}
+function pendingCancel(id){pendingRemove(id);renderPendingBox();var chat=$('chatBox');if(chat)chat.innerHTML=damuMsg('🗑️ Đã hủy xếp hàng bài đó — bài nói vẫn còn nguyên, muốn chấm lại thì bấm DAMU CHẤM BÀI nhé.')+chat.innerHTML;}
+function ensurePendingTimer(){
+  if(pendingTimer)return;
+  if(!pendingLoad().length)return;
+  pendingTimer=setInterval(pendingTick,PENDING_RETRY_MS);
+}
+function pendingTick(){
+  if(aiGrading||(typeof mtGrading!=='undefined'&&mtGrading)||pendingRetryCtx)return; /* dang ban cham bai khac: phut sau thu tiep */
+  var a=pendingLoad();
+  if(!a.length){if(pendingTimer){clearInterval(pendingTimer);pendingTimer=null;}renderPendingBox();return;}
+  pendingGradeNow(a[0].id); /* moi 60s chi thu 1 bai dau hang (FIFO) — nhe tai cho nha cung cap */
+}
+function pendingGradeNow(id){
+  if(aiGrading)return;
+  var it=pendingFind(id);if(!it)return;
+  try{showTab('practice');}catch(e){}
+  curPart=it.part||1;curQuestion=it.question||'';curTopicIdx=it.topicIdx||0;curQIdx=it.qIdx||0;
+  var ta=$('transcript');if(ta)ta.value=it.transcript||'';
+  try{finalText=it.transcript||'';}catch(e){}
+  recElapsed=it.secs||0;recBase=recElapsed;recSegStart=0; /* giu nguyen WPM/thoi luong cua bai cho */
+  practiceTranscriptSource=it.transcriptSource||'webspeech'; /* nguon ban ghi da luu cung bai cho (Whisper neu bai goc dung Whisper); ensureWhisperBeforeGrade cung khoi phuc lai tu hang cho khi khong con blob */
+  pendingRetryCtx={id:id};
+  gradeNow(); /* tai dung nguyen pipeline: cong chat luong + ngan sach + luu lich su + forecast */
+}
+window.pendingGradeNow=pendingGradeNow;window.pendingCancel=pendingCancel;
+function handleGradeFailure(o){
+  /* Tra TRUE neu da xu ly bang HANG CHO (gradeNow bo qua bao loi chet + saveHistory null).
+     Chi 0-KEY + loi TAM THOI; co key / loi vinh vien / hang day -> FALSE giu nguyen cu. */
+  if(aiHasAnyKey())return false;
+  if(o.err&&!gradeFailIsTemporary(o.err))return false;
+  var chat=o.chat;
+  if(pendingRetryCtx){
+    var it=pendingFind(pendingRetryCtx.id);
+    if(it){
+      it.attempts=(it.attempts||0)+1;it.lastError=o.err?String((o.err&&o.err.message)||o.err).slice(0,140):'dump';
+      if(it.attempts>=PENDING_MAX_ATTEMPTS){pendingRemove(it.id);renderPendingBox();return false;} /* da thu du 5 lan: roi ve bao loi han nhu cu */
+      it.status='queued';pendingUpdate(it);renderPendingBox();ensurePendingTimer();
+      chat.innerHTML=o.myMsg+damuMsg('⏳ AI vẫn đang bận — bài của bạn vẫn nằm trong hàng chờ (đã thử '+it.attempts+'/'+PENDING_MAX_ATTEMPTS+' lần). damu sẽ tự chấm lại sau ~1 phút; muốn thử liền thì bấm <b>Chấm ngay</b> ở khung Hàng chờ chấm bên dưới.');
+      return true;
+    }
+    pendingRetryCtx=null; /* bai vua bi huy khoi hang trong luc dang cham: coi nhu lan cham thuong */
+    return false;
+  }
+  var qid=null;try{var meta=(typeof fcFindQuestion==='function')?fcFindQuestion(curPart,curQuestion):null;if(meta&&meta.qid)qid=meta.qid;}catch(e){}
+  var item=pendingAdd({part:curPart,question:curQuestion,questionId:qid,topicIdx:curTopicIdx,qIdx:curQIdx,transcript:o.tr,wpm:o.wpm,secs:o.secs,transcriptSource:(typeof practiceTranscriptSource!=='undefined'&&practiceTranscriptSource)||'webspeech',attempts:1,lastError:o.err?String((o.err&&o.err.message)||o.err).slice(0,140):'dump'});
+  if(!item)return false; /* hang da day 3 bai: giu bao loi chet nhu cu, bai van con o o ban ghi */
+  renderPendingBox();ensurePendingTimer();
+  chat.innerHTML=o.myMsg+damuMsg('⏳ <b>AI đang bận</b> — damu đã <b>xếp hàng</b> bài này, sẽ tự chấm lại sau ~1 phút (tối đa '+PENDING_MAX_ATTEMPTS+' lần thử). Bạn cứ để yên trang này, hoặc tắt đi mở lại sau — hàng chờ đã được lưu trên máy.<br><button class="btn" onclick="pendingGradeNow(\''+item.id+'\')">▶️ Chấm ngay</button> <button class="btn ghost" onclick="pendingCancel(\''+item.id+'\')">❌ Hủy xếp hàng</button>');
+  return true;
+}
 
 /* ================= TRỢ GIẢNG GỢI Ý ================= */
 var SELFBANDLS='damuSpeaking.selfBand';
@@ -2993,7 +3271,7 @@ function histFeedbackOf(it){
   return Object.keys(f).length?f:null;
 }
 function pgNormScores(s){if(!s||typeof s!=='object')return null;var out={},any=false;['FC','LR','GRA','P'].forEach(function(k){var v=Number(s[k]);if(isFinite(v)&&v>=0&&v<=9){out[k]=v;any=true;}else out[k]=null;});return any?out:null;}
-function saveHistory(band,tr,wpm,scores,fb){var h=loadHist();h.unshift({date:new Date().toISOString(),part:curPart,question:curQuestion,transcript:tr,words:wordCount(tr),wpm:wpm,band:band,scores:pgNormScores(scores),feedback:histCompactFeedback(fb)});if(h.length>100)h=h.slice(0,100);try{localStorage.setItem(HISTLS,JSON.stringify(h));}catch(e){}touchStreak();try{if(band!=null&&typeof recordForecastAttempt==='function')recordForecastAttempt(curPart,curQuestion,band,scores,fb,tr,wpm);}catch(e){} scheduleSync();}
+function saveHistory(band,tr,wpm,scores,fb){var h=loadHist();h.unshift({date:new Date().toISOString(),part:curPart,question:curQuestion,transcript:tr,words:wordCount(tr),wpm:wpm,band:band,scores:pgNormScores(scores),feedback:histCompactFeedback(fb),transcriptSource:(typeof practiceTranscriptSource!=='undefined'&&practiceTranscriptSource)||'webspeech'});if(h.length>100)h=h.slice(0,100);try{localStorage.setItem(HISTLS,JSON.stringify(h));}catch(e){}touchStreak();try{if(band!=null&&typeof recordForecastAttempt==='function')recordForecastAttempt(curPart,curQuestion,band,scores,fb,tr,wpm);}catch(e){} scheduleSync();}
 var histOpenIdx=-1, histModelAnswer='';
 function toggleHistDetail(i){histOpenIdx=(histOpenIdx===i?-1:i);renderHistory();}
 function histDetailHtml(it){
@@ -3725,7 +4003,7 @@ async function mtGradeMock(){
   try{
     var prompt=buildMockPrompt(mt);
     var allTr=mt.answers.map(function(a){return a.transcript||'';}).join(' ').slice(0,2500);
-    var res=await aiAskGrade(prompt,buildPromptLite('Full IELTS mock test (Parts 1, 2 and 3)',0,allTr,avgWpm));
+    var res=await aiAskGrade(prompt,buildPromptLite('Full IELTS mock test (Parts 1, 2 and 3)',0,allTr,avgWpm),{timeoutMs:AI_MAIN_FREE_TIMEOUT_MS}); /* GOI TOC DO (B1): luot chinh thi thu cung 25s o tang mien phi */
     var recMt=await gradeParseWithRecovery(res,function(){var sd=1+Math.floor(Math.random()*999999);var seed='V'+sd;return{full:'Grading attempt code '+seed+'. Output the JSON object IMMEDIATELY as your entire reply: first character {, last character }. No reasoning text, no plan, no markdown — think silently, then write only the finished JSON.\n'+prompt,lite:buildPromptLiteVariant('Full IELTS mock test (Parts 1, 2 and 3)',0,allTr,avgWpm,seed),seed:seed,seedNum:sd};},function(ph){if(ph==='fix'){st.phase='Bản chấm lỗi định dạng, đang gói lại JSON...';statusBubble();}});
     var g=recMt.g;res=recMt.res;var didFix=recMt.didFix;var didVariantMt=recMt.didVariant;
     if(!validateGrade(g)){
@@ -3738,7 +4016,7 @@ async function mtGradeMock(){
     var missBeforeMt=gradeMissingFields(g,allTr,2);
     g=await completeGradeIfNeeded(g,res,'Full mock test — Part 2 cue card: '+mt.p2Card.prompt,2,allTr,didFix?1:2); /* luon bo sung neu con thieu muc, ke ca khi da dung fixJSON; fixJSON da tinh 1 luot bo sung nen ngan sach con lai 1, tong bo sung <= 2 */
     var evMock=computeEvidence(mt.answers.map(function(a){return a.transcript||'';}).join(' '),totalSecs);
-    g=await auditGradeIfNeeded(g,allTr,evMock,{via:(g._completionVia||res.via),extraUsed:didFix||didVariantMt||missBeforeMt.length>0});
+    g=await auditGradeIfNeeded(g,allTr,evMock,{via:(g._completionVia||res.via),extraUsed:didFix||didVariantMt||missBeforeMt.length>0,didFix:didFix,didVariant:didVariantMt});
     stopStatus();
     var r=renderGrade(g,res.via,avgWpm,evMock);
     mt.phase='done';
@@ -4088,6 +4366,7 @@ document.querySelectorAll('nav button').forEach(function(b){b.addEventListener('
   fillTopics();renderForecast();renderVideos();renderStreak();updateStats();initSelfBandUI();syncHintLock();syncHintBandChip();renderAIStatus();
   var k=aiGetKey();if(k)$('akey').value=k;
   var gk0=aiGetGroqKey();if(gk0&&$('groqKey'))$('groqKey').value=gk0;
+  try{renderPendingBox();ensurePendingTimer();}catch(e){} /* HANG CHO CHAM: mo app la doc lai hang cho tu localStorage + hien trang thai + hen gio tu cham tiep */
   try{var sl=localStorage.getItem('damuSpeaking.lang');var selL=document.getElementById('speechLangSel');if(selL&&sl)selL.value=sl;}catch(e){}
   if(!SR){$('srWarn').innerHTML='<div class="err">⚠️ Trình duyệt này <b>không hỗ trợ nhận diện giọng nói</b>. Hãy mở trang bằng <b>Google Chrome</b> hoặc <b>Microsoft Edge</b> để ghi âm. Bạn vẫn có thể tự gõ bài nói vào ô Bản ghi rồi bấm "DAMU CHẤM BÀI".</div>';}
 })();
