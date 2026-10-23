@@ -1164,6 +1164,14 @@ function updateStats(){var w=wordCount($('transcript').value);$('stWords').textC
 var AI_KEYLS='damuSpeaking.geminiKey';
 var GROQ_KEYLS='damuSpeaking.groqKey';
 var AI_GROQ_TIMEOUT_MS=18000,AI_GROQ_MODELS=['llama-3.3-70b-versatile','llama-3.1-8b-instant'];
+var AI_GROQ_GRADE_TIMEOUT_MS=[60000,30000],AI_GROQ_GRADE_429_WAIT_MS=6000,AI_GEMINI_GRADE_MAX_MODELS=1; /* NGAN SACH CHAM (23/10): luot CHAM (aiAskGrade, gom ca cham thi thu) qua Groq duoc ngan sach rieng theo model: 70B (model dau) toi da 60s, 8B (model sau) toi da 30s — prompt cham lon + JSON dai tren tang mien phi Groq bi dieu tiet TPM nen 18s cu thuong abort 'slow:'; luot KHONG phai cham giu 18s. Luot cham bi 429 o 70B: cho 6s roi thu lai CHINH 70B 1 lan. Cascade cham qua Gemini chi thu 1 model dau (toi da 18s/model nhu cu) roi chuyen tang mien phi; luot thuong giu 3 model. */
+function groqTimeoutMsFor(opts,mi){if(opts&&opts.groqTimeoutMs!=null){if(Array.isArray(opts.groqTimeoutMs)){var av=opts.groqTimeoutMs[mi];if(typeof av==='number'&&av>0)return av;var lv=opts.groqTimeoutMs[opts.groqTimeoutMs.length-1];if(typeof lv==='number'&&lv>0)return lv;}else if(typeof opts.groqTimeoutMs==='number'&&opts.groqTimeoutMs>0)return opts.groqTimeoutMs;}
+  if(opts&&Array.isArray(opts.timeoutMs)){var tv=opts.timeoutMs[mi];if(typeof tv==='number'&&tv>0)return tv;var tlv=opts.timeoutMs[opts.timeoutMs.length-1];if(typeof tlv==='number'&&tlv>0)return tlv;}
+  if(opts&&opts.isGrade){var gv=AI_GROQ_GRADE_TIMEOUT_MS[mi];if(typeof gv==='number'&&gv>0)return gv;return AI_GROQ_GRADE_TIMEOUT_MS[AI_GROQ_GRADE_TIMEOUT_MS.length-1];}
+  if(opts&&typeof opts.timeoutMs==='number'&&opts.timeoutMs>0)return opts.timeoutMs;
+  return AI_GROQ_TIMEOUT_MS;}
+function geminiMaxModelsFor(opts){if(opts&&typeof opts.maxModels==='number'&&opts.maxModels>0)return Math.floor(opts.maxModels);if(opts&&opts.isGrade)return AI_GEMINI_GRADE_MAX_MODELS;return AI_GEMINI_MAX_MODELS;}
+function aiDelayMs(ms){return new Promise(function(r){setTimeout(r,ms);});}
 var AI_MODELLS='damuSpeaking.modelcache',AI_MODEL_CACHE_TTL=7*24*3600*1000;
 var AI_TIMEOUT_MS=18000,AI_GEMINI_TIMEOUT_MS=18000,AI_GEMINI_MAX_MODELS=3,AI_FALLBACK_TIMEOUT_MS=45000,AI_MAIN_FREE_TIMEOUT_MS=25000,AI_LIST_TIMEOUT_MS=15000; /* GOI TOC DO (22/10): luot cham CHINH qua tang mien phi chi cho 25s (opts.timeoutMs) de fail-over nhanh; cac luot cuu ho (bien doi/fix/bo sung/vi mo/audit) giu 45s mac dinh */
 var AI_MODELS=['gemini-3.8-flash','gemini-3.7-flash','gemini-3.6-flash','gemini-3.5-flash']; /* như web cũ: chỉ còn là dự phòng khi không liệt kê được model */
@@ -1282,7 +1290,7 @@ async function geminiAsk(prompt,opts){var key=aiGetKey();if(!key)throw new Error
   try{var names=await listGeminiModels(key);for(var li=0;li<names.length;li++)push(names[li]);}
   catch(le){var lm0=String((le&&le.message)||'');if(/^(badkey|forbidden|blocked:)/.test(lm0))throw le;aiLogErr('geminiAsk.listModels',le);}
   for(var fi=0;fi<AI_MODELS.length;fi++)push(AI_MODELS[fi]);
-  cand=cand.slice(0,AI_GEMINI_MAX_MODELS);
+  cand=cand.slice(0,geminiMaxModelsFor(opts)); /* (C) luot cham chi 1 model dau, luot thuong 3 model */
   if(!cand.length)throw new Error('model404|Không gọi được model Gemini nào.');
   var lastErr=null;
   for(var mi=0;mi<cand.length;mi++){
@@ -1502,11 +1510,11 @@ function buildFixJsonLite(t){return 'Return ONLY JSON, no other text, no markdow
    Model chinh llama-3.3-70b-versatile, loi thi thu llama-3.1-8b-instant.
    Luot can JSON (cham bai) gui response_format json_object; luot van xuoi thi khong ep.
    Tra ve text tho giong geminiAsk/pollinationsAsk de cac ham phia tren khong phai sua. */
-async function groqCallOnce(key,model,prompt,sys,jsonMode,tempOverride){
+async function groqCallOnce(key,model,prompt,sys,jsonMode,tempOverride,timeoutMs){
   var body={model:model,temperature:(typeof tempOverride==='number'&&isFinite(tempOverride))?tempOverride:0.2,messages:[{role:'system',content:sys},{role:'user',content:String(prompt||'')}]};
   if(jsonMode)body.response_format={type:'json_object'};
   var r;
-  try{r=await fetchTimeout('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify(body)},AI_GROQ_TIMEOUT_MS);}
+  try{r=await fetchTimeout('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify(body)},(typeof timeoutMs==='number'&&timeoutMs>0)?timeoutMs:AI_GROQ_TIMEOUT_MS);}
   catch(e){throw classifyErr(e,'api.groq.com');}
   if(!r.ok){var tx='';try{tx=await r.text();}catch(x){}var dt='HTTP '+r.status+' '+tx.slice(0,200);
     if(r.status===401||r.status===403)throw new Error('groqauth|'+dt);
@@ -1519,23 +1527,34 @@ async function groqCallOnce(key,model,prompt,sys,jsonMode,tempOverride){
   return out;}
 async function groqAsk(prompt,opts){
   opts=opts||{};
+  var isGrade=!!opts.isGrade;
+  var grade429Retried=false; /* (B) 429-retry: toi da 1 lan, chi luot cham + chi model dau (70B) */
   var key=aiGetGroqKey();if(!key)throw new Error('nokey-groq');
   var sys=opts.system||'You are damu, a pink capybara and strict IELTS Speaking examiner (examiner-coach persona): roast candidates in English, blunt and sarcastic, grade seriously and strictly with no grade inflation. Follow the user instruction exactly and output ONLY the requested JSON.';
   var jsonMode=!!opts.json;
   var lastErr=null;
   for(var mi=0;mi<AI_GROQ_MODELS.length;mi++){
     var model=AI_GROQ_MODELS[mi];
+    var tmo=groqTimeoutMsFor(opts,mi); /* (A) ngan sach theo model: cham 60s/30s, thuong 18s */
     aiSetStatus(mi===0?('Đang chấm bằng Groq ('+model+')...'):('Groq model trước lỗi, đang thử Groq ('+model+')...'));
     var attempts=jsonMode?2:1; /* neu bi groqfmt (400 vi response_format) thi thu lai CHINH model nay khong ep JSON */
     for(var at=0;at<attempts;at++){
       try{
-        var out=await groqCallOnce(key,model,prompt,sys,jsonMode&&at===0,(typeof opts.temperature==='number'&&isFinite(opts.temperature))?opts.temperature:null);
+        var out=await groqCallOnce(key,model,prompt,sys,jsonMode&&at===0,(typeof opts.temperature==='number'&&isFinite(opts.temperature))?opts.temperature:null,tmo);
         aiGroqFailReset();aiGroqLastModel=model;return out;
       }catch(e){
         lastErr=classifyErr(e,'api.groq.com');aiLogErr('groqAsk.'+model,lastErr);
         var lm=String((lastErr&&lastErr.message)||'');
         if(lm.indexOf('groqauth|')===0||lm.indexOf('blocked:')===0)throw lastErr;
         if(lm.indexOf('groqfmt|')===0&&at<attempts-1)continue; /* bo response_format, thu lai model nay */
+        if(isGrade&&mi===0&&!grade429Retried&&lm.indexOf('quota-groq|')===0){ /* (B) luot cham + 70B bi 429: cho 6s roi thu lai CHINH 70B them 1 lan truoc khi roi xuong 8B */
+          grade429Retried=true;
+          var waitMs=(typeof opts.groq429WaitMs==='number'&&opts.groq429WaitMs>=0)?opts.groq429WaitMs:AI_GROQ_GRADE_429_WAIT_MS;
+          aiSetStatus('Groq 70B đang hết lượt (429) — damu chờ '+Math.round(waitMs/1000)+'s rồi thử lại chính model 70B...');
+          await aiDelayMs(waitMs);
+          try{var out2=await groqCallOnce(key,model,prompt,sys,jsonMode&&at===0,(typeof opts.temperature==='number'&&isFinite(opts.temperature))?opts.temperature:null,tmo);aiGroqFailReset();aiGroqLastModel=model;return out2;}
+          catch(e2){lastErr=classifyErr(e2,'api.groq.com');aiLogErr('groqAsk.'+model+'.grade429Retry',lastErr);var lm2=String((lastErr&&lastErr.message)||'');if(lm2.indexOf('groqauth|')===0||lm2.indexOf('blocked:')===0)throw lastErr;}
+        }
         break; /* 5xx/429/timeout/rong: sang model Groq tiep theo ngay */
       }
     }
@@ -1700,7 +1719,7 @@ async function aiAsk(prompt,sysOverride,litePrompt,opts){
   if(gk){
     if(aiGroqFailGet()>=2){var gi=aiGroqFailInfo();groqErr=new Error('breaker-groq: Groq tam nghi do loi 2 lan gan nhat (con khoang '+gi.remainMin+' phut) — bam nut reset breaker Groq o tab Cai dat de thu lai ngay');}
     else{
-      try{var gt=await groqAsk(prompt,{system:sysOverride,json:aiWantsJSON(prompt,opts),temperature:(opts&&typeof opts.temperature==='number')?opts.temperature:undefined});return{text:gt,via:'Groq',geminiErr:null,groqErr:null};}
+      try{var gt=await groqAsk(prompt,{system:sysOverride,json:aiWantsJSON(prompt,opts),temperature:(opts&&typeof opts.temperature==='number')?opts.temperature:undefined,isGrade:!!(opts&&opts.isGrade),groq429WaitMs:(opts&&typeof opts.groq429WaitMs==='number')?opts.groq429WaitMs:undefined});return{text:gt,via:'Groq',geminiErr:null,groqErr:null};}
       catch(ge){if(String(ge.message)==='nokey-groq'){groqErr=ge;}
         else{aiLogErr('aiAsk.groq',ge);if(aiIsGroqServerFail(ge))aiGroqFailSet(aiGroqFailGet()+1);groqErr=ge;aiSetStatus('Groq đang bận, đang chuyển sang Gemini...');}}
     }
@@ -1722,7 +1741,7 @@ async function aiAsk(prompt,sysOverride,litePrompt,opts){
   }
 }
 
-async function aiAskGrade(promptFull,promptLite,opts){var o={json:true};if(opts){for(var _ok in opts)o[_ok]=opts[_ok];}return aiAsk(promptFull,null,promptLite,o);}
+async function aiAskGrade(promptFull,promptLite,opts){var o={json:true};if(opts){for(var _ok in opts)o[_ok]=opts[_ok];}o.isGrade=true; /* moi luot qua aiAskGrade (cham bai + cham thi thu + prompt bien doi) deu la LUOT CHAM: huong ngan sach Groq 60s/30s + 429-retry 70B + Gemini 1 model */return aiAsk(promptFull,null,promptLite,o);}
 async function testKeyUI(){var key=aiGetKey();if(!key){$('keyNote').textContent='Chưa có key nào được lưu. Dán key vào ô trên, bấm Lưu key, rồi kiểm tra lại. (Không có key vẫn chấm được bằng AI dự phòng.)';return;}$('keyNote').textContent='Đang kiểm tra… (gọi generateContent thật bằng đúng cấu hình lúc chấm, tối đa 18 giây cho mỗi model)';renderAIStatus();
   try{var m=await pickModel(key);var t0=Date.now();
     var genCfg={temperature:0.35,maxOutputTokens:2500,responseMimeType:'application/json'};
