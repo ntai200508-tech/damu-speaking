@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bot damu — gia sư AI</title>
+<meta name="description" content="Bot damu — gia sư AI: luyện nói IELTS, tra từ và đố từ ngay trong app damu.">
+<meta name="theme-color" content="#ff8fab">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:linear-gradient(180deg,#fff0f3 0%,#ffe4ec 55%,#ffd6e3 100%);color:#4a2432;min-height:100dvh}
+.wrap{max-width:480px;margin:0 auto;padding:20px 14px 24px;display:flex;flex-direction:column;min-height:100dvh}
+header{text-align:center;padding:6px 0 12px}
+header .back{display:inline-block;float:left;text-decoration:none;color:#c2255c;font-weight:700;font-size:15px;background:#fff;border:2px solid #ffc2d1;border-radius:999px;padding:6px 12px}
+header h1{font-size:30px;color:#d6336c;font-weight:900;clear:both;padding-top:8px}
+header p{color:#8a4a5e;font-size:14px;margin-top:4px;line-height:1.5}
+#msgs{flex:1;overflow-y:auto;padding:6px 2px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:86%;padding:11px 14px;border-radius:18px;font-size:15px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+.msg.bot{align-self:flex-start;background:#fff;border:2px solid #ffc2d1;border-bottom-left-radius:6px}
+.msg.me{align-self:flex-end;background:#ff8fab;color:#fff;border-bottom-right-radius:6px}
+.msg.err{align-self:flex-start;background:#fff0f0;border:2px solid #ffa8a8;color:#a61e1e}
+.msg.think{opacity:.65;font-style:italic}
+.chips{display:flex;flex-wrap:wrap;gap:8px;padding:12px 2px 8px}
+.chip{border:2px solid #ffc2d1;background:#fff;color:#c2255c;font-weight:700;font-size:14px;padding:8px 13px;border-radius:999px;cursor:pointer}
+.chip:active{transform:scale(.97)}
+.bar{display:flex;gap:8px;align-items:center}
+#inp{flex:1;border:2px solid #ffc2d1;border-radius:999px;padding:12px 16px;font-size:16px;background:#fff;color:#4a2432;outline:none;min-width:0}
+#inp:focus{border-color:#ff8fab}
+.btn{border:none;cursor:pointer;border-radius:999px;font-weight:800;color:#fff;background:#d6336c;padding:12px 16px;font-size:16px}
+.btn.mic{background:#fff;color:#c2255c;border:2px solid #ffc2d1;padding:10px 13px}
+.btn.mic.rec{background:#e03131;color:#fff;border-color:#e03131}
+.btn:disabled{opacity:.5}
+footer{text-align:center;color:#b06a80;font-size:12px;margin-top:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="back" href="../">← damu</a>
+    <h1>🤖 Bot damu</h1>
+    <p>Gia sư AI của bạn: xin câu Part 1/2/3 rồi trả lời bằng chữ hoặc giọng nói để được chấm, tra từ và đố từ.</p>
+  </header>
+
+  <div id="msgs"></div>
+
+  <div class="chips">
+    <button class="chip" data-send="Câu Part 1">🎤 Câu Part 1</button>
+    <button class="chip" data-send="Câu Part 2">🎤 Câu Part 2</button>
+    <button class="chip" data-send="Câu Part 3">🎤 Câu Part 3</button>
+    <button class="chip" data-fill="đố ">🎲 Đố từ</button>
+    <button class="chip" data-fill="tra ">🔎 Tra từ</button>
+  </div>
+
+  <div class="bar">
+    <input id="inp" type="text" placeholder="Nhắn cho Bot damu…" autocomplete="off" enterkeyhint="send">
+    <button class="btn mic" id="micBtn" title="Nói để Bot chấm">🎙️</button>
+    <button class="btn" id="sendBtn">Gửi</button>
+  </div>
+  <footer>Bot damu chạy trên máy chủ của damu — không cần dán key gì cả 💗</footer>
+</div>
+<script>
+const msgs=document.getElementById('msgs'),inp=document.getElementById('inp'),sendBtn=document.getElementById('sendBtn'),micBtn=document.getElementById('micBtn');
+const ERR='Bot đang ngủ, thử lại sau ít phút 😴';
+let session=localStorage.getItem('damuBot.session');
+if(!session){session=(crypto.randomUUID?crypto.randomUUID():'s'+Date.now()+'-'+Math.random().toString(36).slice(2));localStorage.setItem('damuBot.session',session);}
+let base=null,pending=null,lastPart='',busy=false;
+function add(text,cls){const d=document.createElement('div');d.className='msg '+(cls||'bot');d.textContent=text;msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;return d;}
+function replyText(d){if(!d)return '';if(typeof d==='string')return d;return d.reply||d.text||d.message||d.answer||d.result||'';}
+function notePending(text,reply){
+  const m=text.match(/part\s*([123])/i); if(m)lastPart='Part '+m[1];
+  // Bot vừa ra câu hỏi (chưa phải bản chấm) -> ghi nhớ để gửi kèm khi thu âm / trả lời.
+  if(reply && !/band|fluency|lexical|grammatical|pronunciation/i.test(reply)){pending={part:lastPart,question:reply.split('\n')[0].slice(0,300)};}
+  if(/band|fluency|lexical|grammatical|pronunciation/i.test(reply||''))pending=null;
+}
+async function getBase(){
+  if(base)return base;
+  const r=await fetch('../../bot-endpoint.txt',{cache:'no-store'});
+  if(!r.ok)throw new Error('endpoint');
+  const t=(await r.text()).trim().replace(/\/+$/,'');
+  if(!/^https:\/\//.test(t))throw new Error('endpoint');
+  base=t;return base;
+}
+async function send(text){
+  text=(text||'').trim(); if(!text||busy)return;
+  add(text,'me'); inp.value=''; busy=true; sendBtn.disabled=true;
+  const think=add('Bot đang suy nghĩ…','bot think');
+  try{
+    const b=await getBase();
+    const r=await fetch(b+'/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session:session,text:text})});
+    if(!r.ok)throw new Error('chat '+r.status);
+    const d=await r.json().catch(()=>null);
+    const rep=replyText(d);
+    if(!rep)throw new Error('empty');
+    think.remove(); add(rep,'bot'); notePending(text,rep);
+  }catch(e){ think.remove(); add(ERR,'err'); }
+  busy=false; sendBtn.disabled=false; inp.focus();
+}
+sendBtn.addEventListener('click',()=>send(inp.value));
+inp.addEventListener('keydown',e=>{if(e.key==='Enter')send(inp.value);});
+document.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>{
+  if(c.dataset.send)send(c.dataset.send);
+  else{inp.value=c.dataset.fill;inp.focus();}
+}));
+// Micro: ghi âm rồi POST /voice kèm X-Session / X-Part / X-Question
+let recorder=null,chunks=[];
+micBtn.addEventListener('click',async()=>{
+  if(recorder&&recorder.state==='recording'){recorder.stop();return;}
+  if(busy)return;
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    chunks=[]; recorder=new MediaRecorder(stream);
+    recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
+    recorder.onstop=async()=>{
+      stream.getTracks().forEach(t=>t.stop()); micBtn.classList.remove('rec'); micBtn.textContent='🎙️';
+      const blob=new Blob(chunks,{type:recorder.mimeType||'audio/webm'});
+      busy=true; sendBtn.disabled=true; const think=add('Bot đang suy nghĩ…','bot think');
+      try{
+        const b=await getBase();
+        const r=await fetch(b+'/voice',{method:'POST',headers:{'X-Session':session,'X-Part':(pending&&pending.part)||lastPart||'','X-Question':(pending&&pending.question)||''},body:blob});
+        if(!r.ok)throw new Error('voice '+r.status);
+        const d=await r.json().catch(()=>null); const rep=replyText(d);
+        if(!rep)throw new Error('empty');
+        think.remove(); add(rep,'bot'); if(/band/i.test(rep))pending=null;
+      }catch(e){ think.remove(); add(ERR,'err'); }
+      busy=false; sendBtn.disabled=false;
+    };
+    recorder.start(); micBtn.classList.add('rec'); micBtn.textContent='⏹️';
+  }catch(e){ add(ERR,'err'); }
+});
+add('Chào bạn! Mình là Bot damu 🤖 Bấm “Câu Part 1” để mình ra câu hỏi, rồi trả lời bằng chữ hoặc bấm 🎙️ nói trực tiếp — mình chấm như giám khảo IELTS thật. Hoặc gõ “tra <từ>” / “đố <từ>”.','bot');
+getBase().catch(()=>add(ERR,'err'));
+</script>
+</body>
+</html>
