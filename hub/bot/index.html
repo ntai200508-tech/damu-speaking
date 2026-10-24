@@ -68,8 +68,8 @@ footer{text-align:center;color:#b06a80;font-size:12px;margin-top:12px}
     <button class="btn mic" id="micBtn" title="Nói để trả lời / để Bot chấm">🎙️</button>
     <button class="btn" id="sendBtn">Gửi</button>
   </div>
-  <div class="statusline" id="modeLine">Bot chạy chế độ miễn phí không cần key — bài chấm dài đôi khi phải thử lại</div>
-  <footer id="footNote">Bot damu chạy ngay trong trình duyệt của bạn — không cần dán key gì cả 💗</footer>
+  <div class="statusline" id="modeLine">Bot đang chạy trên đường riêng của damu — nhanh hơn, không cần key 💗</div>
+  <footer id="footNote">Bot damu chạy trên đường riêng của damu — không cần dán key gì cả 💗</footer>
 </div>
 <script type="application/json" id="forecastData">{
   "quarter": "Q4 2026 (Sep-Dec)",
@@ -583,20 +583,18 @@ footer{text-align:center;color:#b06a80;font-size:12px;margin-top:12px}
 <script>
 'use strict';
 /* =====================================================================
-   Bot damu — NÃO TRÌNH DUYỆT (bản 2026-10-24)
-   Chạy HOÀN TOÀN trong trình duyệt, KHÔNG key, KHÔNG phụ thuộc máy chủ.
+   Bot damu — DUONG RIENG (ban 2026-10-24, noi Worker)
+   AI chay qua Worker damu (duong rieng, KHONG key); tra tu/do tu van chay
+   ngay trong trinh duyet bang API tu dien cong khai.
    - Forecast: nhúng sẵn trong trang (thẻ forecastData).
-   - Chấm bài: NHIỀU LƯỢT MICRO tới Pollinations keyless
-     (POST https://text.pollinations.ai/openai) — mỗi tiêu chí 1 lượt nhỏ,
-     + 1 lượt lỗi trích nguyên văn + 1 lượt câu mẫu nâng band. Kỹ thuật
-     prompt nhỏ + parse/phục hồi JSON rút gọn từ app luyện nói damu
+   - Chấm bài: NHIỀU LƯỢT MICRO tới Worker /complete
+     (POST https://damu-bot.ntai200508.workers.dev/complete) — mỗi tiêu chí
+     1 lượt nhỏ, + 1 lượt lỗi trích nguyên văn + 1 lượt câu mẫu nâng band.
+     Kỹ thuật prompt nhỏ + parse/phục hồi JSON rút gọn từ app luyện nói damu
      (buildMicroPrompt / gradeParseWithRecovery / validateGrade).
    - Tra từ: Wiktionary + Datamuse song song (như app từ vựng).
    - Đố từ: Datamuse, hỏi TỪNG từ một, gợi ý tiếng Anh trước đáp án.
    - Giọng nói: Web Speech API (webkitSpeechRecognition, en-US).
-   - Nhánh tùy chọn máy chủ: CHỈ dùng khi bot-endpoint.txt là URL tunnel
-     thật (không phải api./www.) VÀ /health trả 200 trong 3.5s; ngoài ra
-     chạy não trình duyệt ngay, không treo chờ.
    ===================================================================== */
 var msgs=document.getElementById('msgs'),inp=document.getElementById('inp'),sendBtn=document.getElementById('sendBtn'),micBtn=document.getElementById('micBtn');
 var FORECAST={part1:[],part2:[],part3:[]};
@@ -604,7 +602,6 @@ try{FORECAST=JSON.parse(document.getElementById('forecastData').textContent);}ca
 var pending=null;        /* {part:Number, question:String, topic:String, askedAt:ms} */
 var quiz=null;           /* phiên đố từ đang chạy */
 var busy=false;
-var serverBase=null;     /* chỉ set khi máy chủ thật sự khỏe */
 var lastSpeech=null;     /* {durationSec:Number, at:ms} */
 var dictCache={};        /* wordLower -> entry (cho nút Thêm vào bộ nhớ) */
 var CRIT=[['FC','Fluency and Coherence'],['LR','Lexical Resource'],['GRA','Grammatical Range and Accuracy'],['P','Pronunciation']];
@@ -619,35 +616,26 @@ function wordCount(t){var m=String(t||'').trim().match(/\S+/g);return m?m.length
 function fetchTimeout(url,opts,ms){return new Promise(function(resolve,reject){var c=(typeof AbortController!=='undefined')?new AbortController():null;var t=setTimeout(function(){if(c)c.abort();reject(new Error('timeout'));},ms||15000);var o={};if(opts)for(var k in opts)o[k]=opts[k];if(c)o.signal=c.signal;fetch(url,o).then(function(r){clearTimeout(t);resolve(r);},function(e){clearTimeout(t);reject(e);});});}
 function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
 
-/* ================= POLLINATIONS KEYLESS ================= */
+/* ================= WORKER DAMU (DUONG RIENG) ================= */
+var DAMU_WORKER_URL='https://damu-bot.ntai200508.workers.dev';
 var POLLI_SYS_GRADE='You are damu, a pink capybara and strict IELTS Speaking examiner-coach, like the examiners in real mock-test feedback videos: grade strictly against the OFFICIAL IELTS band descriptors with no grade inflation; quote the candidate exact words before correcting them; explain why that evidence caps the band by referring to the descriptor; then show a concrete upgraded rewrite. Follow the user instruction exactly and output ONLY the requested JSON.';
-async function polliAskOnce(prompt,sys,timeoutMs){
-  /* Khong seed ngau nhien: Pollinations cache theo prompt — thu lai DUNG prompt cu
-     thuong duoc tra ngay tu cache neu luot truoc da chay xong phia may chu. */
-  var body={model:'openai',private:true,temperature:0.4,messages:[{role:'system',content:sys||POLLI_SYS_GRADE},{role:'user',content:prompt}]};
-  var r=await fetchTimeout('https://text.pollinations.ai/openai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},timeoutMs||25000);
-  if(!r.ok)throw new Error('HTTP '+r.status);
-  var raw=await r.text();
-  if(!raw||!raw.trim())throw new Error('empty');
-  try{var j=JSON.parse(raw);if(j&&j.choices&&j.choices[0]&&j.choices[0].message&&typeof j.choices[0].message.content==='string')return j.choices[0].message.content;}catch(e){}
-  return raw;
-}
 async function polliAsk(prompt,sys,timeoutMs){
+  /* TRANSPORT sang duong rieng (24/10): Worker /complete thay cho Pollinations
+     truc tiep. Giu nguyen signature + hanh vi thu lai (2 luot, nghi 900ms):
+     cac ham cham/tro chuyen goi polliAsk nhu cu, khong doi gi khac. Worker tu
+     fallback noi bo khi Groq loi thuong; app KHONG fallback app-level. */
   var lastErr=null;
   for(var attempt=0;attempt<2;attempt++){
-    try{return await polliAskOnce(prompt,sys,timeoutMs||25000);}catch(e){lastErr=e;if(attempt===0)await sleep(900);}
-  }
-  /* dự phòng cuối: đường GET văn bản thuần như app luyện nói vẫn dùng —
-     CHỈ khi lỗi không phải timeout (timeout mà GET lại chỉ tổ chậm thêm). */
-  if(!lastErr||!/timeout/i.test(String(lastErr.message||''))){
     try{
-      var url='https://text.pollinations.ai/'+encodeURIComponent(prompt)+'?model=openai&system='+encodeURIComponent(sys||POLLI_SYS_GRADE)+'&private=true';
-      var r2=await fetchTimeout(url,{},timeoutMs||25000);
-      if(!r2.ok)throw new Error('HTTP '+r2.status);
-      var t2=await r2.text();if(t2&&t2.trim())return t2;
-    }catch(e){lastErr=e;}
+      var body={messages:[{role:'system',content:sys||POLLI_SYS_GRADE},{role:'user',content:String(prompt||'')}],temperature:0.4};
+      var r=await fetchTimeout(DAMU_WORKER_URL+'/complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},timeoutMs||25000);
+      if(!r.ok)throw new Error('HTTP '+r.status);
+      var j=await r.json();
+      if(j&&j.ok===true&&typeof j.text==='string'&&j.text.trim())return j.text;
+      throw new Error('empty');
+    }catch(e){lastErr=e;if(attempt===0)await sleep(900);}
   }
-  throw lastErr||new Error('pollinations failed');
+  throw lastErr||new Error('worker failed');
 }
 
 /* ===== Parse / phục hồi JSON — rút gọn từ gradeParseWithRecovery + validateGrade của app luyện nói ===== */
@@ -977,31 +965,12 @@ async function freeChat(text){
   }catch(e){think.remove();add('Bot damu đang bận — thử lại sau ít giây nhé. Các chức năng tra từ / đố từ / xin câu hỏi vẫn chạy bình thường.','err');}
 }
 
-/* ================= MÁY CHỦ (nhánh tùy chọn) ================= */
-async function detectServer(){
-  try{
-    var r=await fetchTimeout('../../bot-endpoint.txt',{cache:'no-store'},3000);
-    if(!r.ok)return;var t=(await r.text()).trim().replace(/\/+$/,'');
-    if(!/^https:\/\//.test(t))return;
-    var host='';try{host=new URL(t).hostname;}catch(e){return;}
-    if(/^api\./i.test(host)||/^www\./i.test(host))return; /* con trỏ sai kiểu api.trycloudflare.com -> bỏ */
-    var h=await fetchTimeout(t+'/health',{},3500);
-    if(h.ok){serverBase=t;var ml=$('modeLine');if(ml)ml.textContent='Bot đang dùng máy chủ damu (kênh phụ) — vẫn không cần key 💗';}
-  }catch(e){/* im lặng chạy não trình duyệt */}
-}
-async function serverChat(text){
-  var session='';try{session=localStorage.getItem('damuBot.session')||'';if(!session){session=(crypto.randomUUID?crypto.randomUUID():'s'+Date.now());localStorage.setItem('damuBot.session',session);}}catch(e){}
-  var r=await fetchTimeout(serverBase+'/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session:session,text:text})},30000);
-  if(!r.ok)throw new Error('server '+r.status);var d=await r.json();var rep=d&&(d.reply||d.text||d.message||'');if(!rep)throw new Error('empty');return rep;
-}
-
 /* ================= ĐIỀU PHỐI ================= */
 async function send(text){
   text=(text||'').trim();if(!text||busy)return;
   add(text,'me');inp.value='';
   var low=text.toLowerCase();
   var mPart=low.match(/^câu part\s*([123])$/)||low.match(/^cau part\s*([123])$/);
-  if(serverBase&&!quiz&&!pending){busy=true;sendBtn.disabled=true;try{add(await serverChat(text),'bot');}catch(e){serverBase=null;add('Máy chủ vừa mất kết nối — mình chuyển sang chế độ chạy ngay trong trình duyệt, bạn gửi lại giúp mình nhé.','err');}busy=false;sendBtn.disabled=false;inp.focus();return;}
   busy=true;sendBtn.disabled=true;
   try{
     if(mPart){askQuestion(parseInt(mPart[1],10));}
@@ -1038,8 +1007,7 @@ else{
     }catch(e){recog=null;micBtn.classList.remove('rec');micBtn.textContent='🎙️';add('Không mở được micro / nhận diện giọng nói trên trình duyệt này — gõ đáp án bằng chữ nhé.','err');}
   });
 }
-add('Chào bạn! Mình là Bot damu 🤖 — mình chạy ngay trong trình duyệt, không cần key. Bấm “Câu Part 1” để mình ra câu hỏi, rồi trả lời bằng chữ hoặc bấm 🎙️ nói trực tiếp — mình chấm như giám khảo IELTS thật. Hoặc gõ “tra <từ>” / “đố <từ>”.','bot');
-detectServer();
+add('Chào bạn! Mình là Bot damu 🤖 — mình chạy trên đường riêng của damu, không cần key. Bấm “Câu Part 1” để mình ra câu hỏi, rồi trả lời bằng chữ hoặc bấm 🎙️ nói trực tiếp — mình chấm như giám khảo IELTS thật. Hoặc gõ “tra <từ>” / “đố <từ>”.','bot');
 </script>
 </body>
 </html>

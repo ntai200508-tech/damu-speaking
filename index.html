@@ -1205,7 +1205,7 @@ function aiFriendlyErr(e){var raw=String((e&&e.message)||e||'');var low=raw.toLo
   if(low.indexOf('nokey')>=0)return 'Bot damu chưa gọi được. Kiểm tra mạng rồi bấm thử lại nhé.';
   if(low.indexOf('server')>=0||/http 5\d\d/.test(low)||low.indexOf('empty')>=0||low.indexOf('rong')>=0)return 'Máy chủ AI đang bận hoặc lỗi tạm thời. Đợi ít phút rồi bấm thử lại nhé.';
   return 'Bot damu đang gặp trục trặc tạm thời nên chưa làm được. Kiểm tra mạng rồi bấm thử lại nhé.';}
-function aiIsLimitText(t){var s=String(t||'');return /free limit reached|limit reached|please wait \d+ seconds|get unlimited replies|enter\.pollinations\.ai|pollen key|switch to a pollen|http 402|payment required|reached its budget|has reached[^.]*budget|budget (has been )?(reached|exceeded|exhausted)|valid api key is required|api key is required/i.test(s);}
+function aiIsLimitText(t){var s=String(t||'');return /free limit reached|limit reached|please wait \d+ seconds|get unlimited replies|http 402|payment required|reached its budget|has reached[^.]*budget|budget (has been )?(reached|exceeded|exhausted)|valid api key is required|api key is required/i.test(s);}
 function aiIsErrorText(t){var s=String(t||'').trim();if(aiIsLimitText(s))return true;return /^(error|quota|server|badformat|badkey|forbidden|blocked|slow|nokey)[|:]/i.test(s);}
 function classifyErr(e,host){if(e&&e.name==='AbortError')return new Error('slow:'+host);if(e&&/Failed to fetch|NetworkError|Load failed/i.test(e.message||''))return new Error('blocked:'+host);return e;}
 async function fetchTimeout(url,opts,ms){var c=new AbortController();var t=setTimeout(function(){c.abort();},ms);try{opts=opts||{};opts.signal=c.signal;return await fetch(url,opts);}finally{clearTimeout(t);}}
@@ -1267,120 +1267,6 @@ async function geminiAsk(prompt,opts){var key=aiGetKey();if(!key)throw new Error
   }
   throw lastErr||new Error('server|Cả '+cand.length+' model Gemini đều bận/lỗi.');}
 
-async function pollinationsAsk(prompt,sysOverride,opts){aiSetStatus('Bot damu đang chấm...');var fbTmo=(opts&&typeof opts.timeoutMs==='number'&&opts.timeoutMs>0)?opts.timeoutMs:AI_FALLBACK_TIMEOUT_MS;var sys=sysOverride||'You are damu, a pink capybara and strict IELTS Speaking examiner (examiner-coach persona): roast candidates in English, blunt and sarcastic, grade seriously and strictly with no grade inflation. Follow the user instruction exactly and output ONLY the requested JSON.';
-  /* opts.temperature / opts.seed (chi luot BIEN DOI chong cache/dump truyen vao): dua vao
-     body POST + query GET du phong de Pollinations khong phat lai phan hoi da cache cho
-     prompt gan giong het va giam kha nang lap lai dung ban reasoning dump cu. */
-  var pTemp=(opts&&typeof opts.temperature==='number'&&isFinite(opts.temperature))?opts.temperature:null;
-  var pSeed=(opts&&typeof opts.seed==='number'&&isFinite(opts.seed))?Math.floor(opts.seed):null;
-  var work=(async function(){
-    try{ /* POST: prompt dài không nhồi vào URL như bản cũ (URL dài dễ chậm/lỗi) */
-      var pBody={model:'openai',private:true,messages:[{role:'system',content:sys},{role:'user',content:prompt}]};
-      if(pTemp!=null)pBody.temperature=pTemp;
-      if(pSeed!=null)pBody.seed=pSeed;
-      var r=await fetchTimeout('https://text.pollinations.ai/',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(pBody)},fbTmo);
-      if(!r.ok){var btx='';try{btx=await r.text();}catch(x){}if(r.status===402||aiIsLimitText(btx))throw new Error('quota|Pollinations free limit reached (HTTP 402)');throw new Error('HTTP '+r.status);}
-      var tx=await r.text();if(!String(tx).trim())throw new Error('empty');if(aiIsLimitText(tx))throw new Error('quota|Pollinations free limit reached (HTTP 402)');return tx;
-    }catch(e){
-      if(String((e&&e.message)||'').indexOf('quota|')===0)throw e;
-      var url='https://text.pollinations.ai/'+encodeURIComponent(prompt)+'?model=openai&system='+encodeURIComponent(sys)+'&private=true'+(pTemp!=null?('&temperature='+pTemp):'')+(pSeed!=null?('&seed='+pSeed):'');
-      var r2=await fetchTimeout(url,{},fbTmo);if(!r2.ok){var btx2='';try{btx2=await r2.text();}catch(x){}if(r2.status===402||aiIsLimitText(btx2))throw new Error('quota|Pollinations free limit reached (HTTP 402)');throw new Error('HTTP '+r2.status);}var tx2=await r2.text();if(aiIsLimitText(tx2))throw new Error('quota|Pollinations free limit reached (HTTP 402)');return tx2;}
-  })();
-  var guard=new Promise(function(_,rej){setTimeout(function(){rej(new Error('slow:text.pollinations.ai'));},fbTmo);});
-  return await Promise.race([work,guard]);}
-
-/* ===== DONG CO GEN (Pollinations Gen — cong MOI, ngan sach RIENG, 22/10 toi) =====
-   SU THAT DO THAT: text.pollinations.ai tra HTTP 200 nhung noi dung la thong bao het
-   ngan sach dung chung ('The API key used for this request has reached its budget...')
-   — do la ly do cham that bai 19:22. Cung luc POST https://gen.pollinations.ai/v1/
-   chat/completions {model:'openai-fast'} KHONG can key tra 200 rat nhanh, JSON chuan
-   OpenAI (choices[0].message.content). Gen la tang mien phi CHINH moi; text cu giu
-   lam tang cuoi. Loi gioi han (402 / van ban ngan sach / can key) duoc phat hien bang
-   CHINH aiIsLimitText va nem 'quota|...' nhu cac tang khac de aiFreeTierAsk cho+thu lai. */
-async function pollinationsGenAsk(prompt,sysOverride,opts){aiSetStatus('Bot damu đang chấm...');var fbTmo=(opts&&typeof opts.timeoutMs==='number'&&opts.timeoutMs>0)?opts.timeoutMs:AI_FALLBACK_TIMEOUT_MS;var sys=sysOverride||'You are damu, a pink capybara and strict IELTS Speaking examiner (examiner-coach persona): roast candidates in English, blunt and sarcastic, grade seriously and strictly with no grade inflation. Follow the user instruction exactly and output ONLY the requested JSON.';
-  var gTemp=(opts&&typeof opts.temperature==='number'&&isFinite(opts.temperature))?opts.temperature:null;
-  var gSeed=(opts&&typeof opts.seed==='number'&&isFinite(opts.seed))?Math.floor(opts.seed):null;
-  var gBody={model:'openai-fast',messages:[{role:'system',content:sys},{role:'user',content:String(prompt||'')}]};
-  if(gTemp!=null)gBody.temperature=gTemp;
-  if(gSeed!=null)gBody.seed=gSeed;
-  var work=(async function(){
-    var r;
-    try{r=await fetchTimeout('https://gen.pollinations.ai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(gBody)},fbTmo);}
-    catch(e){throw classifyErr(e,'gen.pollinations.ai');}
-    var raw='';try{raw=await r.text();}catch(x){}
-    if(!r.ok){if(r.status===401||r.status===403)throw new Error('auth|Pollinations Gen requires key (HTTP '+r.status+')');if(r.status===402||aiIsLimitText(raw))throw new Error('quota|Pollinations Gen free limit reached (HTTP '+r.status+')');throw new Error('HTTP '+r.status+(raw?(' '+raw.slice(0,160)):''));}
-    if(!String(raw).trim())throw new Error('empty');
-    if(aiIsLimitText(raw)&&raw.indexOf('"choices"')<0)throw new Error('quota|Pollinations Gen free limit reached (HTTP 402)');
-    var out='';
-    try{var j=JSON.parse(raw);
-      if(j){
-        if(j.choices&&j.choices[0]){var ch=j.choices[0];
-          if(ch.message&&typeof ch.message.content==='string')out=ch.message.content;
-          else if(typeof ch.text==='string')out=ch.text;
-          else if(typeof ch.content==='string')out=ch.content;}
-        if(!out&&typeof j.output_text==='string')out=j.output_text;
-        if(!out&&typeof j.content==='string')out=j.content;
-        if(!out&&typeof j.response==='string')out=j.response;
-        if(!out&&j.data&&typeof j.data.content==='string')out=j.data.content;
-      }
-    }catch(pe){out='';}
-    if(!out||!String(out).trim()){
-      if(/^\s*\{/.test(raw))throw new Error('empty'); /* JSON nhung khong doc duoc noi dung */
-      out=raw; /* bien the tra text tho */
-    }
-    if(aiIsLimitText(out))throw new Error('quota|Pollinations Gen free limit reached (HTTP 402)');
-    return out;
-  })();
-  var guard=new Promise(function(_,rej){setTimeout(function(){rej(new Error('slow:gen.pollinations.ai'));},fbTmo);});
-  return await Promise.race([work,guard]);}
-/* ===== DOI CHO THONG MINH (22/10 toi) =====
-   Tang mien phi (Gen hoac text) nem loi quota/gioi han -> CHO 30 GIAY (dem nguoc qua
-   aiSetStatus) roi THU LAI DUNG TANG DO 1 LAN truoc khi roi xuong tang tiep theo.
-   Toi da 1 lan cho cho MOI tang, khong lap vo han; loi khac (mang/timeout/dinh dang)
-   thi roi xuong tang sau ngay, khong cho vo ich. */
-function aiIsAuthErr(e){var m=String((e&&e.message)||e||'');return m.indexOf('auth|')===0;}
-function aiIsQuotaErr(e){var m=String((e&&e.message)||e||'');if(m.indexOf('auth|')===0)return false;return m.indexOf('quota')===0||aiIsLimitText(m);}
-var AI_FREE_WAIT_MS=30000; /* cho 30 giay khi tang mien phi het luot */
-var AI_FREE_DOWN_MS=5*60*1000; /* tang mien phi da cho+thu lai van quota -> tam nghi 5 phut (nhu breaker Gemini/Groq), tranh moi luot goi trong phien deu phai cho lai 30s */
-var aiFreeDownUntil={gen:0,text:0};
-async function aiWaitFreeTier(tierLabel){
-  var total=Math.round(AI_FREE_WAIT_MS/1000);
-  for(var s=total;s>=1;s--){
-    aiSetStatus('Bot damu đang bận — damu tự chờ 30s rồi thử tiếp... ('+tierLabel+', còn '+s+'s)');
-    await new Promise(function(res){setTimeout(res,1000);});
-  }
-  aiSetStatus('Đang thử lại '+tierLabel+' sau khi chờ...');
-}
-async function aiFreeTierAsk(kind,prompt,sysOverride,opts){
-  var isGen=(kind==='gen');
-  var label='Bot damu';
-  var fn=isGen?pollinationsGenAsk:pollinationsAsk;
-  if(isGen&&typeof window!=='undefined'&&window.__genAuthDead)throw new Error('auth|Pollinations Gen requires key (session flag)');
-  if(aiFreeDownUntil[kind]&&Date.now()<aiFreeDownUntil[kind])throw new Error('quota|'+label+' đang tạm nghỉ vài phút vì vừa hết lượt (đã chờ + thử lại không được) — app dùng tầng còn lại ngay cho nhanh.');
-  try{
-    var t=await fn(prompt,sysOverride,opts);
-    if(aiIsLimitText(t))throw new Error('quota|'+label+' free limit reached (HTTP 402)');
-    aiFreeDownUntil[kind]=0;
-    return t;
-  }catch(e){
-    if(aiIsAuthErr(e)){if(isGen)try{window.__genAuthDead=true;}catch(x){}throw e;}
-    if(!aiIsQuotaErr(e))throw e;
-    aiLogErr('aiFreeTier.waitRetry.'+kind,e);
-    await aiWaitFreeTier(label);
-    try{
-      var t2=await fn(prompt,sysOverride,opts);
-      if(aiIsLimitText(t2))throw new Error('quota|'+label+' free limit reached (HTTP 402)');
-      aiFreeDownUntil[kind]=0;
-      return t2;
-    }catch(e2){
-      if(aiIsAuthErr(e2)){if(isGen)try{window.__genAuthDead=true;}catch(x){}throw e2;}
-      if(aiIsQuotaErr(e2))aiFreeDownUntil[kind]=Date.now()+AI_FREE_DOWN_MS;
-      throw e2;
-    }
-  }
-}
-async function pollinationsGenAskWithWait(prompt,sysOverride,opts){return aiFreeTierAsk('gen',prompt,sysOverride,opts);}
-async function pollinationsAskWithWait(prompt,sysOverride,opts){return aiFreeTierAsk('text',prompt,sysOverride,opts);}
 
 function buildPromptLite(q,part,tr,wpm){
   /* Prompt RUT GON danh rieng cho Pollinations (engine 0-key / du phong) — dua tren mau THAT:
@@ -1518,11 +1404,10 @@ async function groqAsk(prompt,opts){
    Sau khi dung ghi am (tab Luyen tap), app gui file ghi am (voiceStore.practice.blob)
    len Groq Whisper de ra ban ghi chuan hon Web Speech API (hay nghe nham kieu
    'feel and ease' -> 'tattoo Few and east').
-   - Duong song DUY NHAT (team probe do THAT 22/10, probe-report.md): Groq voi key
-     nguoi dung — POST multipart https://api.groq.com/openai/v1/audio/transcriptions,
-     model 'whisper-large-v3-turbo' (loi thi thu 'whisper-large-v3'), response_format
-     json, language 'en', timeout 30s/luot. Khong key -> goi thu tra 401 (endpoint
-     ton tai, chi thieu key).
+   - Duong song DUY NHAT (tu 24/10): Worker damu /voice — POST raw audio, cau hoi
+     qua ?question=, timeout 150s/luot (Whisper + cham trong Worker). Key Groq chi
+     nam tren Worker, KHONG con trong trinh duyet. Khong nghe duoc -> tra 422,
+     app giu nguyen ban ghi Web Speech.
    - Duong KEYLESS da chet het, KHONG cam: gen.pollinations.ai/v1/audio/transcriptions
      tra 401 'A valid API key is required' cho MOI model (whisper-1, whisper-large-v3,
      gpt-transcribe, mai-transcribe-2, scribe-v2...), ca duong vong chat + input_audio;
@@ -1533,20 +1418,10 @@ async function groqAsk(prompt,opts){
    - Thi thu: voiceStore.mock chi giu ban ghi cua CAU TRA LOI CUOI (moi lan ghi de len),
      khong du file am thanh cua ca buoi thi nen KHONG ap Whisper cho thi thu; cac sua
      toc do (timeout/vi mo song song/audit) thi dung chung nen thi thu van duoc huong. */
-var WHISPER_GROQ_MODELS=['whisper-large-v3-turbo','whisper-large-v3'];
-var WHISPER_TIMEOUT_MS=30000;
+/* Model Whisper gio nam tren Worker (whisper-large-v3-turbo -> large-v3); app khong giu model/key nua. */
+var WHISPER_TIMEOUT_MS=150000; /* /voice = Whisper + cham trong Worker nen timeout dai hon */
 var whisperState={blob:null,baseText:'',webText:'',text:'',source:'',status:'idle',applied:false,promise:null,err:''};
 var practiceTranscriptSource='webspeech';
-function parseWhisperResponse(status,bodyText){
-  /* Parser THUAN (harness test duoc): (HTTP status, body tho) -> {ok,text}|{ok:false,reason}.
-     Chi chap nhan status 200 + JSON co truong text la chuoi khac rong. */
-  if(status==null||status===0)return{ok:false,reason:'network'};
-  if(status!==200){var rr='http'+status;try{var ej=JSON.parse(String(bodyText||''));var em=(ej&&ej.error&&(ej.error.message||ej.error.code))||(ej&&ej.message);if(em)rr+=':'+String(em).slice(0,120);}catch(e){}return{ok:false,reason:rr};}
-  var j=null;try{j=JSON.parse(String(bodyText||''));}catch(e){return{ok:false,reason:'badjson'};}
-  var t=(j&&typeof j.text==='string')?j.text.trim():'';
-  if(!t)return{ok:false,reason:'empty'};
-  return{ok:true,text:t};
-}
 function whisperPickSource(whisperText,webText){
   /* Chon nguon ban ghi de cham: Whisper co chu thi thang, nguoc lai giu ban ghi truc tiep. */
   var w=String(whisperText||'').trim();
@@ -1554,30 +1429,33 @@ function whisperPickSource(whisperText,webText){
   return{text:String(webText||''),source:'webspeech'};
 }
 async function transcribeRecording(blob){
-  /* Gui 1 blob ghi am len Groq Whisper. Tra {ok:true,text,model}|{ok:false,reason}.
-     Khong co key Groq -> {ok:false,reason:'nokey'} NGAY, khong goi mang. */
+  /* NGHE LAI QUA WORKER DAMU (duong rieng, 24/10): gui raw audio toi Worker
+     /voice (key Groq chi nam tren Worker, KHONG con trong trinh duyet).
+     Tra ve dung contract cu: {ok,text,model} | {ok:false,reason}. /voice tra
+     {transcript, reply, grade, via} — chi lay transcript, BO phan grade
+     (tranh cham 2 lan; ban ghi duoc cham o gradeNow nhu cu). */
   if(!blob||!blob.size)return{ok:false,reason:'noblob'};
-  var key='';try{key=aiGetGroqKey();}catch(e){}
-  if(!key)return{ok:false,reason:'nokey'};
-  var ext='webm';try{ext=voiceExt(blob.type||'');}catch(e){}
-  var lastReason='unknown';
-  for(var mi=0;mi<WHISPER_GROQ_MODELS.length;mi++){
-    var model=WHISPER_GROQ_MODELS[mi];
-    try{
-      var fd=new FormData();
-      fd.append('file',blob,'damu-recording.'+ext);
-      fd.append('model',model);
-      fd.append('response_format','json');
-      fd.append('language','en');
-      var r=await fetchTimeout('https://api.groq.com/openai/v1/audio/transcriptions',{method:'POST',headers:{'Authorization':'Bearer '+key},body:fd},WHISPER_TIMEOUT_MS);
-      var bodyText='';try{bodyText=await r.text();}catch(x){}
-      var parsed=parseWhisperResponse(r.status,bodyText);
-      if(parsed.ok)return{ok:true,text:parsed.text,model:model};
-      lastReason=parsed.reason;aiLogErr('whisper.'+model,new Error(parsed.reason));
-      if(r.status===401||r.status===403)break; /* key sai: thu model khac cung vo ich */
-    }catch(e){lastReason=(e&&e.name==='AbortError')?'timeout':'network';aiLogErr('whisper.'+model,e);}
+  var q='';
+  try{var cq=String((typeof curQuestion!=='undefined'&&curQuestion)||'');if(cq)q='?question='+encodeURIComponent(cq);}catch(e){}
+  try{
+    var r=await fetchTimeout(DAMU_WORKER_URL+'/voice'+q,{method:'POST',headers:{'X-Part':String((typeof curPart!=='undefined'&&curPart)||1)},body:blob},WHISPER_TIMEOUT_MS);
+    var bodyText='';
+    try{bodyText=await r.text();}catch(e){}
+    var j=null;try{j=JSON.parse(bodyText);}catch(e){}
+    if(r.status!==200){
+      if(r.status===422)return{ok:false,reason:'empty'};
+      if(r.status===413)return{ok:false,reason:'toolarge'};
+      return{ok:false,reason:'http'+r.status};
+    }
+    if(!j)return{ok:false,reason:'badjson'};
+    var t=(typeof j.transcript==='string')?j.transcript.trim():'';
+    if(!t)return{ok:false,reason:'empty'};
+    return{ok:true,text:t,model:'whisper-via-worker'};
+  }catch(e){
+    var nm=(e&&e.name)||'';var m=String((e&&e.message)||e||'');
+    if(nm==='AbortError'||m.indexOf('timeout')>=0||m.indexOf('aborted')>=0||m.indexOf('abort')>=0)return{ok:false,reason:'timeout'};
+    return{ok:false,reason:'network'};
   }
-  return{ok:false,reason:lastReason};
 }
 function renderWhisperBox(){var b=null;try{b=document.getElementById('whisperBox');}catch(e){}if(!b)return;var s=whisperState;
   if(s.status==='busy'){b.innerHTML='<div class="voicePlay"><p class="small" style="margin:0">🎧 Đang cho AI nghe lại bản ghi (Whisper)… nghe chuẩn hơn máy nghe trực tiếp của trình duyệt.</p></div>';return;}
@@ -1648,58 +1526,37 @@ function aiHasAnyKey(){try{return !!(aiGetKey()||aiGetGroqKey());}catch(e){retur
 function aiWantsJSON(prompt,opts){
   if(opts&&typeof opts.json==='boolean')return opts.json;
   return /ONLY (a |the )?(valid )?JSON|output ONLY the JSON|Reply with ONLY a JSON|Return ONLY a valid JSON/i.test(String(prompt||''));}
-/* THU TU DONG CO trong aiAsk (cap nhat 22/10 toi — cam dong co Gen):
-   - CO key Groq: Groq (2 model) -> Gemini (failover 3 model) -> Gen -> text Pollinations.
-   - CHUA co key Groq: Gemini -> Gen -> text Pollinations.
-   - 0-KEY: Gen (gen.pollinations.ai, ngan sach rieng) -> text Pollinations (tang cuoi).
-   Tang mien phi nem quota thi CHO 30s + THU LAI 1 LAN (aiFreeTierAsk) truoc khi roi
-   xuong tang tiep theo. Moi duong goi dung chung (cham bai, bo sung, vi mo, tro giang,
-   chien luoc, audit, thi thu) deu di qua aiAsk/aiAskGrade nen deu duoc huong thu tu nay.
-   Breaker RIENG tung dong co: Groq loi chi tang bo dem Groq, Gemini loi chi tang bo dem Gemini. */
-/* ================= DONG CO BOT DAMU KEYLESS — ENGINE CHAM DUY NHAT (RESTORE+BOT 24/10) =================
+/* DONG CO BOT DAMU — DUONG RIENG (24/10, thay the Pollinations truc tiep):
    Nguyen dinh chinh: CHI thay phan MAY AI ben duoi, giu nguyen trang ket qua/prompt cu.
    Moi loi goi AI (cham bai, thi thu, bo sung, audit, tro giang, chien luoc, cai thien
-   cau) di qua MOT engine duy nhat: Bot damu keyless — Pollinations POST
-   https://text.pollinations.ai/openai (model openai, khong key), loi thi thu lai 1
-   lan, sau do du phong trong cung Bot qua Gen/text Pollinations keyless. KHONG con
-   cascade Groq/Gemini cho cham, KHONG breaker cham, KHONG hang cho. Trang thai
-   nguoi dung thay: 'Bot damu đang chấm...'. Key Groq cu (neu co) CHI con dung cho
-   Whisper nghe lai ban ghi — khong phai dieu kien de cham. */
-function botFetchTimeout(url,opts,ms){return new Promise(function(resolve,reject){var c=(typeof AbortController!=='undefined')?new AbortController():null;var t=setTimeout(function(){if(c)c.abort();reject(new Error('slow:bot.pollinations'));},ms||60000);var o={};if(opts)for(var k in opts)o[k]=opts[k];if(c)o.signal=c.signal;fetch(url,o).then(function(r){clearTimeout(t);resolve(r);},function(e){clearTimeout(t);reject(e);});});}
-async function botPolliAskOnce(prompt,sysOverride,opts){
-  var tmo=(opts&&typeof opts.timeoutMs==='number'&&opts.timeoutMs>0)?opts.timeoutMs:60000;
-  var sys=sysOverride||'You are damu, a pink capybara and strict IELTS Speaking examiner (examiner-coach persona): roast candidates in English, blunt and sarcastic, grade seriously and strictly with no grade inflation. Follow the user instruction exactly and output ONLY the requested JSON.';
-  var body={model:'openai',private:true,messages:[{role:'system',content:sys},{role:'user',content:String(prompt||'')}]};
-  if(opts&&typeof opts.temperature==='number'&&isFinite(opts.temperature))body.temperature=opts.temperature;
-  if(opts&&typeof opts.seed==='number'&&isFinite(opts.seed))body.seed=Math.floor(opts.seed);
-  var r=await botFetchTimeout('https://text.pollinations.ai/openai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},tmo);
-  if(!r.ok){var btx='';try{btx=await r.text();}catch(x){}if(r.status===402||aiIsLimitText(btx))throw new Error('quota|Bot damu free limit reached (HTTP 402)');throw new Error('HTTP '+r.status);}
-  var raw=await r.text();
-  if(!raw||!String(raw).trim())throw new Error('empty');
-  try{var j=JSON.parse(raw);if(j&&j.choices&&j.choices[0]&&j.choices[0].message){
-    if(typeof j.choices[0].message.content==='string'&&j.choices[0].message.content.trim())return j.choices[0].message.content;
-    if(typeof j.choices[0].message.reasoning==='string'&&j.choices[0].message.reasoning.trim())return j.choices[0].message.reasoning;
-  }}catch(e){}
-  if(aiIsLimitText(raw))throw new Error('quota|Bot damu free limit reached (HTTP 402)');
-  return raw;
-}
-async function botPolliAsk(prompt,sysOverride,opts){
-  aiSetStatus('Bot damu đang chấm...');
-  var lastErr=null;
-  for(var attempt=0;attempt<2;attempt++){
-    try{return await botPolliAskOnce(prompt,sysOverride,opts);}catch(e){lastErr=e;aiLogErr('botPolliAsk.'+attempt,e);if(attempt===0)await aiDelayMs(1200);}
-  }
-  /* Du phong TRONG CUNG Bot (van keyless, van Pollinations): Gen roi text — chi khi
-     cong /openai loi ca 2 lan (quota/timeout/mang). */
-  try{return await pollinationsGenAskWithWait(prompt,sysOverride,opts);}catch(e2){aiLogErr('botPolliAsk.gen',e2);}
-  try{return await pollinationsAskWithWait(prompt,sysOverride,opts);}catch(e3){aiLogErr('botPolliAsk.text',e3);throw (lastErr||e3);}
+   cau) di qua MOT transport duy nhat: Worker damu POST /complete (OpenAI-style
+   messages, tra text tho, app tu parse nhu cu) + /voice cho nghe lai. Worker giu key
+   Groq lam secret, tu fallback noi bo khi Groq loi thuong; app KHONG goi Pollinations
+   truc tiep, KHONG fallback app-level, KHONG o nhap key, KHONG breaker cham.
+   Trang thai nguoi dung thay: 'Bot damu đang chấm...'. */
+function botFetchTimeout(url,opts,ms){return new Promise(function(resolve,reject){var c=(typeof AbortController!=='undefined')?new AbortController():null;var t=setTimeout(function(){if(c)c.abort();reject(new Error('slow:damu-worker'));},ms||60000);var o={};if(opts)for(var k in opts)o[k]=opts[k];if(c)o.signal=c.signal;fetch(url,o).then(function(r){clearTimeout(t);resolve(r);},function(e){clearTimeout(t);reject(e);});});}
+async function workerComplete(prompt,sys,temp,timeoutMs){
+  /* TRANSPORT DUY NHAT sang duong rieng (24/10): POST Worker /complete,
+     OpenAI-style messages, tra text tho. Worker tu chon Groq (key tren Worker)
+     hoac fallback noi bo; app KHONG goi Pollinations truc tiep nua. Loi 502
+     (may ban) nem 'quota|...' de panel Tro giang tu cho 15s->30s roi thu lai
+     nhu cu; timeout nem 'slow:damu-worker' (botFetchTimeout). */
+  var body={messages:[{role:'system',content:sys},{role:'user',content:String(prompt||'')}]};
+  if(typeof temp==='number'&&isFinite(temp))body.temperature=temp;
+  var r=await botFetchTimeout(DAMU_WORKER_URL+'/complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},timeoutMs||60000);
+  var j=null;try{j=await r.json();}catch(e){}
+  if(r.status!==200||!j||j.ok!==true||typeof j.text!=='string'||!j.text.trim())throw new Error('quota|Bot damu đang bận — thử lại sau ít giây nhé.');
+  return j.text;
 }
 async function aiAsk(prompt,sysOverride,litePrompt,opts){
   aiSetStatus('Bot damu đang chấm...');
   var full=String(prompt||'');var lite=(litePrompt&&String(litePrompt)!==full)?String(litePrompt):null;
-  try{var t=await botPolliAsk(full,sysOverride,opts);return{text:t,via:BOT_VIA,geminiErr:null,groqErr:null};}
-  catch(e){aiLogErr('aiAsk.bot.full',e);
-    if(lite){try{var t2=await botPolliAsk(lite,sysOverride,opts);return{text:t2,via:BOT_VIA,geminiErr:null,groqErr:null};}catch(e2){aiLogErr('aiAsk.bot.lite',e2);throw e2;}}
+  var sys=sysOverride||'You are damu, a pink capybara and strict IELTS Speaking examiner (examiner-coach persona): roast candidates in English, blunt and sarcastic, grade seriously and strictly with no grade inflation. Follow the user instruction exactly and output ONLY the requested JSON.';
+  var temp=(opts&&typeof opts.temperature==='number'&&isFinite(opts.temperature))?opts.temperature:undefined;
+  var tmo=(opts&&typeof opts.timeoutMs==='number'&&opts.timeoutMs>0)?opts.timeoutMs:60000;
+  try{var t=await workerComplete(full,sys,temp,tmo);return{text:t,via:BOT_VIA,geminiErr:null,groqErr:null};}
+  catch(e){aiLogErr('aiAsk.worker.full',e);
+    if(lite){try{var t2=await workerComplete(lite,sys,temp,tmo);return{text:t2,via:BOT_VIA,geminiErr:null,groqErr:null};}catch(e2){aiLogErr('aiAsk.worker.lite',e2);throw e2;}}
     throw e;
   }
 }
@@ -1965,6 +1822,9 @@ function auditNoteHtml(g){
    co cham sang Bot damu keyless. Nguon rubric: damu-speaking/research/
    band-descriptors-public.md (IELTS Speaking Band Descriptors, public version). */
 var BOT_VIA='Bot damu (không cần key)';
+/* DUONG RIENG DAMU (24/10): Worker Cloudflare cua Nguyen giu key Groq lam secret;
+   app chi goi Worker, KHONG goi Pollinations truc tiep nua. */
+var DAMU_WORKER_URL='https://damu-bot.ntai200508.workers.dev';
 var BOT_DESC={
 FC:'Band 4: cannot keep going without noticeable pauses; slow speech with frequent repetition and self-correction; links simple sentences only, with repetitious connectives; some breakdowns in coherence. Band 5: usually keeps going but relies on repetition and self-correction and/or slow speech; hesitations often mid-sentence while searching for fairly basic lexis and grammar; overuses certain discourse markers and connectives; complex speech usually causes disfluency but simpler language may be fluent. Band 6: keeps going and willing to produce long turns; coherence may be lost at times through hesitation, repetition and/or self-correction; uses a range of discourse markers, connectives and cohesive features though not always appropriately. Band 7: long turns produced without noticeable effort; some hesitation, repetition or self-correction, often mid-sentence, but coherence is not affected; flexible use of discourse markers, connectives and cohesive features. Band 8: fluent with only very occasional repetition or self-correction; hesitation mostly to find content, not language; topic development coherent, appropriate and relevant. Band 9 (summary): fluent; hesitation only to prepare content; fully coherent, appropriately extended topic development.',
 LR:'Band 4: resource sufficient for familiar topics but only basic meaning conveyed on unfamiliar topics; frequent inappropriacies and errors in word choice; rarely attempts paraphrase. Band 5: resource sufficient for familiar and unfamiliar topics but limited flexibility; attempts paraphrase but not always with success. Band 6: resource sufficient to discuss topics at length; vocabulary use may be inappropriate but meaning is clear; generally able to paraphrase successfully. Band 7: resource flexibly used for a variety of topics; some less common and idiomatic items, with awareness of style and collocation though inappropriacies occur; effective paraphrase as required. Band 8: wide resource readily and flexibly used for all topics and precise meaning; skilful use of less common and idiomatic items despite occasional word-choice and collocation inaccuracies; effective paraphrase. Band 9 (summary): total flexibility and precise use in all contexts; sustained accurate idiomatic language.',
@@ -2859,14 +2719,14 @@ async function completeGradeIfNeeded(g,res,q,part,tr,maxAttempts){
      Part 1 giu nguyen <= 1 (khong cham them); Part 2/3 <= 2 tieu chi. Tong: bo sung
      thuong <= maxA (mac dinh 2) + vi mo <= ngan sach tren; tieu chi chi thieu sau mot
      phan (da co noi dung) thi KHONG dung luot vi mo; co _microUsed chan chay lap. */
-  /* GOI TOC DO (B2): khi CO KEY (Groq/Gemini) — cac tieu chi MAT TRANG doc lap duoc
-     xin SONG SONG toi da 2 luot (Promise.allSettled) thay vi chay tuan tu tung tieu
-     chi; ket qua merge tuan tu theo thu tu tieu chi nhu cu. 0-key GIU NGUYEN vong
-     tuan tu o duoi (tran 30s/IP cua Pollinations). Pre-pass chay xong thi dat
-     _microUsed de vong tuan tu khong chay lai; chi co 0-1 tieu chi mat trang thi
-     pre-pass khong lam gi, vong tuan tu xu ly nhu cu. */
+  /* GOI TOC DO (B2): tu 24/10 qua Worker (key tren Worker, khong con tran 30s/IP
+     cua Pollinations) — cac tieu chi MAT TRANG doc lap duoc xin SONG SONG toi da
+     2 luot (Promise.allSettled) thay vi chay tuan tu tung tieu chi; ket qua merge
+     tuan tu theo thu tu tieu chi nhu cu. Pre-pass chay xong thi dat _microUsed de
+     vong tuan tu khong chay lai; chi co 0-1 tieu chi mat trang thi pre-pass khong
+     lam gi, vong tuan tu xu ly nhu cu. */
   try{
-    if(!g._microUsed&&aiHasAnyKey()){
+    if(!g._microUsed){
       var missPre=gradeMissingFields(g,tr,part);
       if(missPre.indexOf('criteriaFeedback')>=0&&!(gradeSessionStart&&gradeBudgetLeft()<=4000)){
         var bkPre=gradeCfBadKeys(g,tr),pKeys=[];
