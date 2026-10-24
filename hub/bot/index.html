@@ -974,7 +974,7 @@ async function freeChat(text){
   try{
     var raw=await polliAsk('User says: "'+String(text).slice(0,500)+'". Reply in Vietnamese, short and helpful (max 6 sentences). If they ask about English or IELTS, teach briefly. Gently suggest the chips: Cau Part 1/2/3, tra <tu>, do <tu>.','You are damu, a pink capybara English tutor inside the damu app. Be warm, blunt and funny in Vietnamese. Output ONLY your reply text, no JSON, no reasoning.',20000);
     think.remove();add(unwrapEnvelope(raw).trim().slice(0,1500)||'Mình chưa nghĩ ra câu trả lời — thử hỏi cách khác nhé.','bot');
-  }catch(e){think.remove();add('AI miễn phí đang bận hoặc mạng chậm — thử lại sau ít giây nhé. Các chức năng tra từ / đố từ / xin câu hỏi vẫn chạy bình thường.','err');}
+  }catch(e){think.remove();add('Bot damu đang bận — thử lại sau ít giây nhé. Các chức năng tra từ / đố từ / xin câu hỏi vẫn chạy bình thường.','err');}
 }
 
 /* ================= MÁY CHỦ (nhánh tùy chọn) ================= */
