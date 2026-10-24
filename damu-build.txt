@@ -1,1 +1,1 @@
-damu-speaking build b021dcca 2026-10-24 restore-oldpage-botengine
+damu-speaking build 47be05f8 2026-10-24 one-bot-cleanup

@@ -251,7 +251,7 @@ nav button#nav-mocktest.on{background:#f59e0b;color:#fff;border-color:#f59e0b}
       <p class="small">🔒 Khi thi thử, trợ giảng gợi ý ở tab Luyện nói bị khóa hoàn toàn — đúng như phòng thi thật, không ai nhắc bài cho bạn.</p>
     <div id="mtIdle">
       <button class="btn big" onclick="mtStartTest()">🎓 BẮT ĐẦU BUỔI THI THỬ</button>
-      <p class="small" style="margin-top:8px">Chưa có key Gemini vẫn thi được — phần chấm cuối buổi sẽ tự dùng AI dự phòng (Pollinations) nếu Google bận. Điểm Pronunciation vẫn là ước tính từ transcript như ở tab Luyện nói.</p>
+      <p class="small" style="margin-top:8px">Thi được ngay, không cần key — phần chấm cuối buổi do Bot damu chấm, nghiêm như giám khảo thật. Điểm Pronunciation vẫn là ước tính từ transcript như ở tab Luyện nói.</p>
     </div>
   </div>
   <div id="mtMain" style="display:none"></div>
@@ -340,34 +340,13 @@ nav button#nav-mocktest.on{background:#f59e0b;color:#fff;border-color:#f59e0b}
     <p class="small" id="syncStatus"></p>
   </div>
   <div class="card">
-    <h2>🚀 Groq API key (miễn phí, tốc độ cao) — động cơ chấm CHÍNH ⭐</h2>
-    <p>Groq là động cơ AI <b>rất nhanh và ổn định</b> mà damu ưu tiên dùng trước để chấm bài. Bạn tạo 1 key Groq <b>miễn phí</b> (bắt đầu bằng <b>gsk_</b>) rồi dán vào đây. Key cũng <b>chỉ lưu trong trình duyệt này</b>, không nằm trong file, không gửi cho ai khác.</p>
-    <div class="row"><input type="password" id="groqKey" placeholder="Dán Groq API key (gsk_...) vào đây"><button class="btn" style="flex:0 0 130px" onclick="saveGroqKeyUI()">Lưu key Groq</button></div>
-    <div style="height:8px"></div>
-    <div class="row"><button class="btn ghost" onclick="clearGroqKeyUI()">Xóa key Groq</button><button class="btn ghost" onclick="testGroqKeyUI()">🔧 Kiểm tra key Groq</button></div>
-    <p class="small" id="groqNote"></p>
-    <h3>Cách lấy key Groq miễn phí (làm 1 lần)</h3>
-    <p class="small">1) Mở trang <b>console.groq.com</b> và đăng nhập (có thể dùng tài khoản Google).<br>2) Vào mục <b>API Keys</b> → bấm <b>Create API Key</b>, đặt tên tùy ý rồi bấm tạo.<br>3) Copy dãy ký tự bắt đầu bằng <b>gsk_</b> hiện ra (chỉ hiện 1 lần — lưu lại cẩn thận), dán vào ô phía trên rồi bấm <b>Lưu key Groq</b>.<br>4) Thứ tự động cơ khi chấm: <b>Groq → Gemini → AI dự phòng Pollinations</b>. Chưa có key Groq thì app giữ thứ tự cũ Gemini → Pollinations.</p>
+    <h2>🤖 Chấm bài bằng Bot damu</h2>
+    <p>Chấm bài giờ chỉ qua <b>Bot damu</b>, <b>không cần key</b> — mở app là chấm được ngay. Bot chấm nghiêm theo band descriptors chính thức của IELTS, đủ 4 tiêu chí + lỗi + câu mẫu, mỏ hỗn đúng chất giám khảo thật.</p>
+    <p class="small">Nghe lại bản ghi (Whisper): nếu máy này từng lưu key Groq thì tính năng nghe lại vẫn dùng key đó; không có key thì damu dùng bản ghi trực tiếp của trình duyệt để chấm như cũ.</p>
   </div>
   <div class="card">
-    <h2>⚙️ Cài đặt — Gemini API key (động cơ dự phòng 1)</h2>
-    <p>Để damu chấm bài bằng AI Gemini của Google, bạn dán API key của mình vào đây. <b>Key chỉ lưu trong trình duyệt này</b> (localStorage, theo đúng địa chỉ web này), không nằm trong file, không gửi cho ai khác — nên bạn bè dùng chung file này vẫn phải nhập key của riêng họ.</p>
-    <div class="row"><input type="password" id="akey" placeholder="Dán Gemini API key vào đây"><button class="btn" style="flex:0 0 110px" onclick="saveKeyUI()">Lưu key</button></div>
-    <div style="height:8px"></div>
-    <div class="row"><button class="btn ghost" onclick="clearKeyUI()">Xóa key</button><button class="btn ghost" onclick="testKeyUI()">🔧 Kiểm tra key &amp; kết nối</button></div>
-    <p class="small" id="keyNote"></p>
-    <h3>Cách lấy key miễn phí (làm 1 lần)</h3>
-    <p class="small">1) Mở trang <b>aistudio.google.com</b> và đăng nhập bằng tài khoản Google.<br>2) Bấm <b>"Get API key"</b> → <b>"Create API key"</b>.<br>3) Copy dãy ký tự hiện ra, dán vào ô phía trên rồi bấm <b>Lưu key</b>.<br>4) Lưu ý: key lưu theo từng trình duyệt + từng địa chỉ web — nếu bạn mở web bằng link khác (ví dụ GitHub Pages thay vì file trên máy), phải nhập lại key 1 lần ở địa chỉ đó.</p>
-    <h3>AI dự phòng miễn phí</h3>
-    <p class="small">Thứ tự động cơ đầy đủ: <b>Groq (nếu có key) → Gemini → AI dự phòng Pollinations.ai</b> (miễn phí, không cần key). Động cơ nào lỗi liên tiếp 2 lần trong 10 phút sẽ bị breaker ghim tạm riêng động cơ đó (breaker Groq và Gemini độc lập nhau), app tự dùng các động cơ còn lại để việc chấm bài không bị gián đoạn.</p>
-  </div>
-  <div class="card">
-    <h2>🩺 Trạng thái AI</h2>
+    <h2>🩺 Trạng thái Bot damu</h2>
     <div id="aiStatusBox"><p class="small">Đang đọc trạng thái…</p></div>
-    <div class="row"><button class="btn ghost" onclick="resetGeminiUI()">🔁 Thử lại Gemini ngay (bẻ ghim / reset breaker)</button></div>
-    <div style="height:8px"></div>
-    <div class="row"><button class="btn ghost" onclick="resetGroqUI()">🔁 Thử lại Groq ngay (bẻ ghim / reset breaker Groq)</button></div>
-    <p class="small">Mỗi động cơ có breaker riêng: lỗi liên tiếp 2 lần trong 10 phút thì bị ghim tạm, app dùng các động cơ còn lại. Bấm các nút trên để reset breaker của từng động cơ và thử lại ngay. Lưu key mới cũng tự reset breaker của động cơ đó.</p>
   </div>
   <div class="card">
     <h2>🎯 Band Speaking hiện tại của bạn</h2>
@@ -1176,8 +1155,6 @@ var AI_TIMEOUT_MS=18000,AI_GEMINI_TIMEOUT_MS=18000,AI_GEMINI_MAX_MODELS=3,AI_FAL
 var AI_MODELS=['gemini-3.8-flash','gemini-3.7-flash','gemini-3.6-flash','gemini-3.5-flash']; /* như web cũ: chỉ còn là dự phòng khi không liệt kê được model */
 var aiPreferFallback=false,aiGrading=false;
 function aiGetKey(){try{return (localStorage.getItem(AI_KEYLS)||'').trim();}catch(e){return '';}}
-function saveKeyUI(){var k=$('akey').value.trim();if(!k){$('keyNote').textContent='Dán key vào ô trước khi bấm Lưu nhé.';return;}try{localStorage.setItem(AI_KEYLS,k);aiModelCacheClear();aiGfailReset();aiPreferFallback=false;renderAIStatus();$('keyNote').textContent='✅ Đã lưu key vào trình duyệt này. Qua tab Luyện nói và bấm chấm bài thôi!';}catch(e){$('keyNote').textContent='⚠️ Không lưu được key (trình duyệt chặn bộ nhớ?). Tắt chế độ ẩn danh rồi thử lại.';}try{fbTouchSettingsUpdatedAt();}catch(e){} scheduleSync();}
-function clearKeyUI(){try{localStorage.removeItem(AI_KEYLS);}catch(e){}$('akey').value='';aiModelCacheClear();$('keyNote').textContent='Đã xóa key khỏi máy này. App vẫn chấm được bằng AI dự phòng miễn phí (Pollinations).';try{fbTouchSettingsUpdatedAt();}catch(e){} scheduleSync();}
 function aiKeyHash(k){var h=5381;for(var i=0;i<k.length;i++)h=((h<<5)+h+k.charCodeAt(i))|0;return (h>>>0).toString(36);}
 var aiModelCache=null;
 function aiModelCacheGet(key){if(aiModelCache&&aiModelCache.key===key)return aiModelCache.model;try{var o=JSON.parse(localStorage.getItem(AI_MODELLS)||'null');if(o&&o.kh===aiKeyHash(key)&&Date.now()-o.ts<AI_MODEL_CACHE_TTL){aiModelCache={key:key,model:o.model};return o.model;}}catch(e){}return null;}
@@ -1201,55 +1178,33 @@ function aiGfailInfo(){try{var o=JSON.parse(localStorage.getItem('damuSpeaking.g
 /* ===== GROQ: key rieng + breaker RIENG (loi Groq khong ghim Gemini va nguoc lai) ===== */
 var aiGroqLastModel='';
 function aiGetGroqKey(){try{return (localStorage.getItem(GROQ_KEYLS)||'').trim();}catch(e){return '';}}
-function saveGroqKeyUI(){var el=$('groqKey');var k=el?el.value.trim():'';if(!k){$('groqNote').textContent='Dán key Groq vào ô trước khi bấm Lưu nhé.';return;}try{localStorage.setItem(GROQ_KEYLS,k);aiGroqFailReset();renderAIStatus();$('groqNote').textContent='✅ Đã lưu key Groq vào trình duyệt này. Từ giờ damu chấm bằng Groq trước (rất nhanh), Gemini/Pollinations chỉ là dự phòng.';}catch(e){$('groqNote').textContent='⚠️ Không lưu được key (trình duyệt chặn bộ nhớ?). Tắt chế độ ẩn danh rồi thử lại.';}try{fbTouchSettingsUpdatedAt();}catch(e){} scheduleSync();}
-function clearGroqKeyUI(){try{localStorage.removeItem(GROQ_KEYLS);}catch(e){}var el=$('groqKey');if(el)el.value='';renderAIStatus();$('groqNote').textContent='Đã xóa key Groq khỏi máy này. App quay lại thứ tự cũ: Gemini → AI dự phòng.';try{fbTouchSettingsUpdatedAt();}catch(e){} scheduleSync();}
 function aiGroqFailGet(){try{var o=JSON.parse(localStorage.getItem('damuSpeaking.groqfail')||'null');if(o&&Date.now()-o.lastFail<10*60*1000)return o.count||0;}catch(e){}return 0;}
 function aiGroqFailSet(c){try{localStorage.setItem('damuSpeaking.groqfail',JSON.stringify({count:c,lastFail:Date.now()}));}catch(e){}}
 function aiGroqFailReset(){try{localStorage.removeItem('damuSpeaking.groqfail');}catch(e){}}
 function aiGroqFailInfo(){try{var o=JSON.parse(localStorage.getItem('damuSpeaking.groqfail')||'null');if(o&&o.lastFail){var remainMs=10*60*1000-(Date.now()-o.lastFail);return{count:o.count||0,lastFail:o.lastFail,remainMin:remainMs>0?Math.ceil(remainMs/60000):0,active:remainMs>0&&(o.count||0)>=2};}}catch(e){}return{count:0,lastFail:0,remainMin:0,active:false};}
 function aiIsGroqServerFail(e){var m=String((e&&e.message)||'');return m.indexOf('slow:')===0||m.indexOf('server-groq|')===0||m.indexOf('quota-groq|')===0||m.indexOf('groqfmt|')===0;}
-function aiFriendlyGroqErr(e){var m=String((e&&e.message)||'');
-  if(m.indexOf('groqauth|')===0)return 'Key Groq bị Groq từ chối — kiểm tra lại key ở tab Cài đặt, hoặc tạo key mới ở console.groq.com nhé.';
-  if(m.indexOf('quota-groq|')===0||m.indexOf('quota|')===0)return 'Groq đang hết lượt hoặc tạm bận. App sẽ tự dùng Gemini/AI dự phòng; thử lại sau ít phút cũng được.';
-  if(m.indexOf('slow:')===0)return 'Groq trả lời quá chậm (quá '+Math.round(AI_GROQ_TIMEOUT_MS/1000)+' giây). App sẽ tự dùng động cơ khác.';
-  if(m.indexOf('blocked:')===0)return 'Không gọi được máy chủ Groq — kiểm tra mạng/VPN rồi thử lại nhé.';
-  if(m.indexOf('groqfmt|')===0||m.indexOf('server-groq|')===0)return 'Máy chủ Groq đang bận hoặc lỗi tạm thời. App sẽ tự dùng Gemini/AI dự phòng.';
-  return aiFriendlyErr(e);}
 function groqSuggestHtml(){return '';} /* RESTORE+BOT: cham bang Bot damu keyless — khong con goi y them key de cham */
-async function testGroqKeyUI(){var n=$('groqNote');var key=aiGetGroqKey();if(!key){if(n)n.textContent='Chưa có key Groq nào được lưu. Dán key (bắt đầu bằng gsk_) vào ô trên, bấm Lưu key Groq, rồi kiểm tra lại.';return;}if(n)n.textContent='Đang kiểm tra key Groq… (bắn 1 lượt generate thật nhỏ bằng model '+AI_GROQ_MODELS[0]+')';
-  try{var t0=Date.now();var out=await groqAsk('Reply with only this JSON: {"ok":true}',{json:true});if(!out||!String(out).trim())throw new Error('server-groq|Groq trả về rỗng.');var secs=((Date.now()-t0)/1000).toFixed(1);if(n)n.textContent='✅ Key Groq dùng được THẬT (đã gọi generate thành công)! Model: '+(aiGroqLastModel||AI_GROQ_MODELS[0])+' • Thời gian phản hồi: '+secs+' giây.';renderAIStatus();}
-  catch(e){aiLogErr('testGroqKeyUI',e);if(n)n.textContent='⚠️ Kiểm tra key Groq thất bại: '+aiFriendlyGroqErr(e);renderAIStatus();}}
-function resetGroqUI(){aiGroqFailReset();renderAIStatus();var n=$('groqNote');if(n)n.textContent='🔁 Đã reset breaker Groq — lần chấm sau app sẽ gọi Groq thật ngay.';}
-
-function renderAIStatus(){var box=$('aiStatusBox');if(!box)return;var info=aiGfailInfo();var h='';
-  if(info.active)h+='<p>⛔ <b>Breaker đang GHIM Gemini</b>: đã lỗi '+info.count+' lần gần nhất, còn khoảng '+info.remainMin+' phút nữa app mới tự thử lại Gemini.</p>';
-  else if(info.count>0)h+='<p>⚠️ Gemini đã lỗi '+info.count+' lần trong 10 phút gần đây (chưa tới mức ghim 2 lần).</p>';
-  else h+='<p>✅ Breaker: <b>không ghim</b> — Gemini đang được dùng bình thường.</p>';
-  var ginfo=aiGroqFailInfo();var hasGk=!!aiGetGroqKey();
-  h+='<p>'+(hasGk?'✅':'⚠️')+' <b>Groq (động cơ chính):</b> '+(hasGk?('đã có key'+(aiGroqLastModel?' • model chạy tốt gần nhất: '+esc(aiGroqLastModel):'')):'chưa có key — thêm key Groq miễn phí ở mục Groq phía trên để chấm nhanh và ổn định hơn.')+'</p>';
-  if(ginfo.active)h+='<p>⛔ <b>Breaker đang GHIM Groq</b>: đã lỗi '+ginfo.count+' lần gần nhất, còn khoảng '+ginfo.remainMin+' phút nữa app mới tự thử lại Groq (breaker Groq riêng — Gemini vẫn dùng bình thường).</p>';
-  else if(ginfo.count>0)h+='<p>⚠️ Groq đã lỗi '+ginfo.count+' lần trong 10 phút gần đây (chưa tới mức ghim 2 lần).</p>';
-  else h+='<p>✅ Breaker Groq: <b>không ghim</b> — Groq đang được dùng bình thường.</p>';
-  try{var a=JSON.parse(localStorage.getItem('damuSpeaking.errlog')||'[]');if(a.length){var last=a[a.length-1];h+='<p class="small">Lỗi gần nhất ['+esc(last.w)+'] '+esc(last.t)+': '+esc(aiFriendlyErr(new Error(last.m)))+'</p>';}else h+='<p class="small">Chưa ghi nhận lỗi AI nào.</p>';}catch(e){}
+function renderAIStatus(){var box=$('aiStatusBox');if(!box)return;var h='';
+  h+='<p>✅ <b>Bot damu</b> đang trực — chấm nghiêm theo band descriptors chính thức, không cần key, không nương tay.</p>';
+  try{var a=JSON.parse(localStorage.getItem('damuSpeaking.errlog')||'[]');if(a.length){var last=a[a.length-1];h+='<p class="small">Lỗi gần nhất ['+esc(last.w)+'] '+esc(last.t)+': '+esc(aiFriendlyErr(new Error(last.m)))+'</p>';}else h+='<p class="small">Chưa ghi nhận lỗi nào.</p>';}catch(e){}
   box.innerHTML=h;}
-function resetGeminiUI(){aiGfailReset();aiPreferFallback=false;renderAIStatus();var n=$('keyNote');if(n)n.textContent='🔁 Đã reset breaker Gemini — lần chấm sau app sẽ thử lại Gemini. Qua tab Luyện nói bấm chấm lại nhé.';}
 function aiLogErr(where,e){try{var k='damuSpeaking.errlog';var a=JSON.parse(localStorage.getItem(k)||'[]');a.push({t:new Date().toISOString(),w:String(where),m:String((e&&e.message)||e).slice(0,300)});if(a.length>20)a=a.slice(a.length-20);localStorage.setItem(k,JSON.stringify(a));}catch(x){}}
 function aiIsGoogleFail(e){var m=String((e&&e.message)||'');if(m.indexOf('slow:')===0)return true;if(m.indexOf('quota|')===0||m.indexOf('model404|')===0)return true;return m.indexOf('server|')===0;}
 function aiCanFallback(e){var m=String((e&&e.message)||'');if(m.indexOf('slow:')===0)return true;var b=m.split('|')[0];return b==='server'||b==='quota'||b==='model404';}
 function aiFriendlyErr(e){var raw=String((e&&e.message)||e||'');var low=raw.toLowerCase();
   /* Cat MOI prefix code (badformat|..., server|..., quota|..., slow:..., groqauth|...):
      nguoi dung CHI thay tieng Viet than thien, khong bao gio thay ma tho hay dau | */
-  if(/free limit reached|limit reached|http 402|\b402\b|quota|\b429\b|too many requests/.test(low))return 'AI miễn phí đang hết lượt tạm thời (đang bị giới hạn tốc độ). Đợi khoảng 30 giây rồi bấm thử lại, hoặc thêm key Groq/Gemini miễn phí ở tab Cài đặt để dùng ổn định hơn nhé.';
-  if(low.indexOf('badkey')>=0||/http 400/.test(low))return 'Google từ chối yêu cầu — có thể do key hoặc cấu hình gửi đi, chưa kết luận là key sai. Kiểm tra lại key ở tab Cài đặt rồi thử lại nhé.';
-  if(low.indexOf('forbidden')>=0||low.indexOf('groqauth')>=0||/http 40[13]/.test(low))return 'Key AI bị từ chối quyền truy cập. Thử tạo key mới rồi dán lại ở tab Cài đặt nhé.';
+  if(/free limit reached|limit reached|http 402|\b402\b|quota|\b429\b|too many requests/.test(low))return 'Bot damu đang bận — nhiều người gọi cùng lúc quá nên nghẽn tạm thời. Đợi ít phút rồi bấm thử lại nhé.';
+  if(low.indexOf('badkey')>=0||/http 400/.test(low))return 'Bot damu bị từ chối yêu cầu tạm thời. Bấm thử lại nhé.';
+  if(low.indexOf('forbidden')>=0||low.indexOf('groqauth')>=0||/http 40[13]/.test(low))return 'Bot damu bị từ chối quyền truy cập tạm thời. Đợi ít phút rồi bấm thử lại nhé.';
   if(low.indexOf('badformat')>=0||low.indexOf('thieu noi dung')>=0||low.indexOf('unparsable')>=0||low.indexOf('khong doc duoc')>=0)return 'AI trả về kết quả chưa đúng định dạng nên damu chưa đọc được. Bấm thử lại nhé — thường thử lại là được.';
   if(low.indexOf('slow')>=0||low.indexOf('timeout')>=0||low.indexOf('abort')>=0)return 'Máy chủ AI trả lời quá chậm. Đợi ít phút rồi bấm thử lại nhé.';
   if(low.indexOf('blocked')>=0||low.indexOf('failed to fetch')>=0||low.indexOf('network')>=0)return 'Không gọi được máy chủ AI — kiểm tra mạng hoặc VPN rồi bấm thử lại nhé.';
   if(low.indexOf('model404')>=0||/http 404/.test(low))return 'Model AI không còn khả dụng nữa. Bấm thử lại — app sẽ tự chọn model khác cho bạn.';
-  if(low.indexOf('breaker')>=0)return 'Động cơ AI đang tạm nghỉ vì lỗi liên tiếp. App sẽ tự dùng động cơ dự phòng, hoặc vào tab Cài đặt bấm nút thử lại động cơ chính nhé.';
-  if(low.indexOf('nokey')>=0)return 'Bot damu chưa gọi được AI miễn phí. Kiểm tra mạng rồi bấm thử lại nhé.';
+  if(low.indexOf('breaker')>=0)return 'Bot damu đang tạm nghỉ vì lỗi liên tiếp. Đợi ít phút rồi bấm thử lại nhé.';
+  if(low.indexOf('nokey')>=0)return 'Bot damu chưa gọi được. Kiểm tra mạng rồi bấm thử lại nhé.';
   if(low.indexOf('server')>=0||/http 5\d\d/.test(low)||low.indexOf('empty')>=0||low.indexOf('rong')>=0)return 'Máy chủ AI đang bận hoặc lỗi tạm thời. Đợi ít phút rồi bấm thử lại nhé.';
-  return 'AI đang gặp trục trặc tạm thời nên chưa làm được. Kiểm tra mạng rồi bấm thử lại nhé.';}
+  return 'Bot damu đang gặp trục trặc tạm thời nên chưa làm được. Kiểm tra mạng rồi bấm thử lại nhé.';}
 function aiIsLimitText(t){var s=String(t||'');return /free limit reached|limit reached|please wait \d+ seconds|get unlimited replies|enter\.pollinations\.ai|pollen key|switch to a pollen|http 402|payment required|reached its budget|has reached[^.]*budget|budget (has been )?(reached|exceeded|exhausted)|valid api key is required|api key is required/i.test(s);}
 function aiIsErrorText(t){var s=String(t||'').trim();if(aiIsLimitText(s))return true;return /^(error|quota|server|badformat|badkey|forbidden|blocked|slow|nokey)[|:]/i.test(s);}
 function classifyErr(e,host){if(e&&e.name==='AbortError')return new Error('slow:'+host);if(e&&/Failed to fetch|NetworkError|Load failed/i.test(e.message||''))return new Error('blocked:'+host);return e;}
@@ -1391,7 +1346,7 @@ var aiFreeDownUntil={gen:0,text:0};
 async function aiWaitFreeTier(tierLabel){
   var total=Math.round(AI_FREE_WAIT_MS/1000);
   for(var s=total;s>=1;s--){
-    aiSetStatus('AI miễn phí đang bận — damu tự chờ 30s rồi thử tiếp... ('+tierLabel+', còn '+s+'s)');
+    aiSetStatus('Bot damu đang bận — damu tự chờ 30s rồi thử tiếp... ('+tierLabel+', còn '+s+'s)');
     await new Promise(function(res){setTimeout(res,1000);});
   }
   aiSetStatus('Đang thử lại '+tierLabel+' sau khi chờ...');
@@ -1627,8 +1582,8 @@ async function transcribeRecording(blob){
 function renderWhisperBox(){var b=null;try{b=document.getElementById('whisperBox');}catch(e){}if(!b)return;var s=whisperState;
   if(s.status==='busy'){b.innerHTML='<div class="voicePlay"><p class="small" style="margin:0">🎧 Đang cho AI nghe lại bản ghi (Whisper)… nghe chuẩn hơn máy nghe trực tiếp của trình duyệt.</p></div>';return;}
   if(s.status==='done'&&s.text){b.innerHTML='<div class="voicePlay"><p class="small" style="margin:0">🎧 <b>Bản ghi AI nghe lại (Whisper):</b> '+esc(s.text)+'<br>🎙️ <b>Bản ghi trực tiếp (trình duyệt nghe):</b> '+esc(s.webText||'(trống)')+'<br>✅ damu chấm theo <b>bản ghi AI nghe lại</b> vì nghe chuẩn hơn.</p></div>';return;}
-  if(s.status==='failed'){var noKey=false;try{noKey=!aiGetGroqKey();}catch(e){}
-    b.innerHTML='<div class="voicePlay"><p class="small" style="margin:0">🎧 AI nghe lại (Whisper) chưa được lần này'+(s.err?' ('+esc(s.err)+')':'')+' — damu dùng <b>bản ghi trực tiếp</b> ở trên để chấm như cũ.'+(noKey?' Muốn AI nghe trực tiếp giọng bạn cho chuẩn (thay máy nghe của trình duyệt hay nghe nhầm): nhập key Groq ở tab Cài đặt nhé.':'')+'</p></div>';return;}
+  if(s.status==='failed'){
+    b.innerHTML='<div class="voicePlay"><p class="small" style="margin:0">🎧 AI nghe lại (Whisper) chưa được lần này'+(s.err?' ('+esc(s.err)+')':'')+' — damu dùng <b>bản ghi trực tiếp</b> ở trên để chấm như cũ.'+'</p></div>';return;}
   b.innerHTML='';}
 function startWhisperTranscription(blob,baseText,webFullText){
   /* Bat dau nghe Whisper cho 1 blob practice. webFullText = toan bo ban ghi truc tiep
@@ -1750,17 +1705,6 @@ async function aiAsk(prompt,sysOverride,litePrompt,opts){
 }
 
 async function aiAskGrade(promptFull,promptLite,opts){var o={json:true};if(opts){for(var _ok in opts)o[_ok]=opts[_ok];}o.isGrade=true; /* moi luot qua aiAskGrade (cham bai + cham thi thu + prompt bien doi) deu la LUOT CHAM: huong ngan sach Groq 60s/30s + 429-retry 70B + Gemini 1 model */return aiAsk(promptFull,null,promptLite,o);}
-async function testKeyUI(){var key=aiGetKey();if(!key){$('keyNote').textContent='Chưa có key nào được lưu. Dán key vào ô trên, bấm Lưu key, rồi kiểm tra lại. (Không có key vẫn chấm được bằng AI dự phòng.)';return;}$('keyNote').textContent='Đang kiểm tra… (gọi generateContent thật bằng đúng cấu hình lúc chấm, tối đa 18 giây cho mỗi model)';renderAIStatus();
-  try{var m=await pickModel(key);var t0=Date.now();
-    var genCfg={temperature:0.35,maxOutputTokens:2500,responseMimeType:'application/json'};
-    var r=await fetchTimeout('https://generativelanguage.googleapis.com/v1beta/models/'+m+':generateContent?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:'Reply with only this JSON: {"ok":true}'}]}],generationConfig:genCfg})},AI_TIMEOUT_MS);
-    if(!r.ok){var tx='';try{tx=await r.text();}catch(x){}throw new Error('server|HTTP '+r.status+' khi gọi generateContent thật — '+tx.slice(0,200));}
-    var j=await r.json();var parts=(((j.candidates||[])[0]||{}).content||{}).parts||[];var out='';for(var p=0;p<parts.length;p++)if(parts[p].text)out+=parts[p].text;
-    if(!out)throw new Error('server|generateContent trả về rỗng.');
-    var secs=((Date.now()-t0)/1000).toFixed(1);var inf=aiGfailInfo();
-    $('keyNote').textContent='✅ Key dùng được THẬT (đã gọi generateContent thành công)! Model: '+m+' • Thời gian phản hồi: '+secs+' giây • Breaker: '+(inf.active?('đang ghim, còn ~'+inf.remainMin+' phút'):('không ghim (lỗi gần đây: '+inf.count+')'))+'.';
-  }catch(e){aiLogErr('testKeyUI',e);$('keyNote').textContent='⚠️ Kiểm tra thất bại: '+aiFriendlyErr(e);renderAIStatus();}}
-
 /* ================= CHẤM BÀI ================= */
 function roundBand(avg){var f=Math.floor(avg),frac=avg-f;if(frac<0.25)return f;if(frac<0.75)return f+0.5;return f+1;}
 /* ================= SO LIEU KHACH QUAN (EVIDENCE - tinh cuc bo bang JS, KHONG goi AI) ================= */
@@ -2020,7 +1964,7 @@ function auditNoteHtml(g){
    descriptors chinh thuc nay VAO PROMPT cham (khong dua len giao dien) va doi dong
    co cham sang Bot damu keyless. Nguon rubric: damu-speaking/research/
    band-descriptors-public.md (IELTS Speaking Band Descriptors, public version). */
-var BOT_VIA='Bot damu (AI miễn phí, không cần key)';
+var BOT_VIA='Bot damu (không cần key)';
 var BOT_DESC={
 FC:'Band 4: cannot keep going without noticeable pauses; slow speech with frequent repetition and self-correction; links simple sentences only, with repetitious connectives; some breakdowns in coherence. Band 5: usually keeps going but relies on repetition and self-correction and/or slow speech; hesitations often mid-sentence while searching for fairly basic lexis and grammar; overuses certain discourse markers and connectives; complex speech usually causes disfluency but simpler language may be fluent. Band 6: keeps going and willing to produce long turns; coherence may be lost at times through hesitation, repetition and/or self-correction; uses a range of discourse markers, connectives and cohesive features though not always appropriately. Band 7: long turns produced without noticeable effort; some hesitation, repetition or self-correction, often mid-sentence, but coherence is not affected; flexible use of discourse markers, connectives and cohesive features. Band 8: fluent with only very occasional repetition or self-correction; hesitation mostly to find content, not language; topic development coherent, appropriate and relevant. Band 9 (summary): fluent; hesitation only to prepare content; fully coherent, appropriately extended topic development.',
 LR:'Band 4: resource sufficient for familiar topics but only basic meaning conveyed on unfamiliar topics; frequent inappropriacies and errors in word choice; rarely attempts paraphrase. Band 5: resource sufficient for familiar and unfamiliar topics but limited flexibility; attempts paraphrase but not always with success. Band 6: resource sufficient to discuss topics at length; vocabulary use may be inappropriate but meaning is clear; generally able to paraphrase successfully. Band 7: resource flexibly used for a variety of topics; some less common and idiomatic items, with awareness of style and collocation though inappropriacies occur; effective paraphrase as required. Band 8: wide resource readily and flexibly used for all topics and precise meaning; skilful use of less common and idiomatic items despite occasional word-choice and collocation inaccuracies; effective paraphrase. Band 9 (summary): total flexibility and precise use in all contexts; sustained accurate idiomatic language.',
@@ -2975,12 +2919,12 @@ async function completeGradeIfNeeded(g,res,q,part,tr,maxAttempts){
 
 function geminiErrHtml(res){if(!res)return '';var groqNote='';
   if(res.groqErr&&res.via!=='Groq'){var gm=String((res.groqErr&&res.groqErr.message)||res.groqErr);var gcode='';var gmm=/HTTP (\d{3})/.exec(gm);if(gmm)gcode='HTTP '+gmm[1];else if(gm.indexOf('slow:')===0)gcode='quá chậm/timeout';else if(gm.indexOf('quota-groq|')===0)gcode='hết lượt 429';else if(gm.indexOf('breaker-groq:')===0)gcode='đang tạm nghỉ (breaker)';
-    groqNote='<p class="small">⚠️ Groq lỗi'+(gcode?' ('+gcode+')':'')+' — bài này do động cơ khác chấm.</p>';}
+    groqNote='<p class="small">⚠️ Một lượt gọi gặp lỗi tạm thời'+(gcode?' ('+gcode+')':'')+' — bài này do Bot damu chấm.</p>';}
   if(!res.geminiErr)return groqNote;var ge=res.geminiErr;var m=String((ge&&ge.message)||ge);
-  if(m.indexOf('breaker:')===0)return groqNote+'<p class="small">⚠️ Gemini đang tạm nghỉ (đã lỗi toàn bộ model 2 lần gần nhất) — bài này do AI dự phòng chấm. Muốn thử lại Gemini ngay: tab Cài đặt → nút reset breaker.</p>';
-  if(m.indexOf('prefer:')===0)return groqNote+'<p class="small">⚠️ Gemini vừa lỗi toàn bộ model ở lần chấm trước — lần này đi thẳng AI dự phòng cho nhanh. Muốn thử lại Gemini ngay: tab Cài đặt → nút reset breaker.</p>';
+  if(m.indexOf('breaker:')===0)return groqNote+'<p class="small">⚠️ Bot damu gặp lỗi liên tiếp nên đang thử lại — bài này do Bot damu chấm.</p>';
+  if(m.indexOf('prefer:')===0)return groqNote+'<p class="small">⚠️ Bot damu gặp lỗi ở lượt trước — bài này do Bot damu chấm.</p>';
   var code='';var mm=/HTTP (\d{3})/.exec(m);if(mm)code='HTTP '+mm[1];else if(m.indexOf('slow:')===0)code='quá chậm/timeout';else if(m.indexOf('quota|')===0)code='hết lượt 429';
-  return groqNote+'<p class="small">⚠️ Gemini lỗi'+(code?' ('+code+')':'')+' — đã thử hết các model, bài này do AI dự phòng chấm.</p>';}
+  return groqNote+'<p class="small">⚠️ Bot damu gặp lỗi tạm thời'+(code?' ('+code+')':'')+' — bài này do Bot damu chấm.</p>';}
 
 /* ================= TTS: TRO GIANG DOC MAU ================= */
 var lastModelAnswer='', lastHintSample='';
@@ -3134,7 +3078,7 @@ async function gradeNow(){if(aiGrading)return;var tr=$('transcript').value.trim(
     }
   }catch(e){
     aiLogErr('gradeNow',e);
-    chat.innerHTML=myMsg+damuMsg('😵 damu chấm không được: '+esc(aiFriendlyErr(e))+'<br><span class="small">Thử: kiểm tra mạng rồi bấm chấm lại nhé — Bot damu chấm bằng AI miễn phí, không cần key.</span><br><button class="btn" onclick="gradeNow()">🔁 Chấm lại</button>'+groqSuggestHtml());
+    chat.innerHTML=myMsg+damuMsg('😵 damu chấm không được: '+esc(aiFriendlyErr(e))+'<br><span class="small">Thử: kiểm tra mạng rồi bấm chấm lại nhé — Bot damu chấm, không cần key.</span><br><button class="btn" onclick="gradeNow()">🔁 Chấm lại</button>'+groqSuggestHtml());
     saveHistory(null,tr,wpm);
   }
   clearInterval(stTimer);aiStatusHandler=null;gradeSessionStart=0;
@@ -3184,9 +3128,9 @@ function buildHintPrompt(q, part, points, cur, tgt){
     + 'Respond with ONLY a valid JSON object (no markdown fences, no text outside JSON) in EXACTLY this shape:\n'
     + '{"ideas":["...","..."],"phrases":[{"en":"...","vi":"..."}],"sampleAnswer":"...","sampleBand":' + tgt.display.toFixed(1) + '}\n'
     + 'Rules:\n'
-    + '- ideas: 2-3 items, each a short VIETNAMESE suggestion (max 18 words) giving a CONCRETE direction for THIS exact question — what to talk about, which personal detail, example or small story to use. No generic advice (never write things like speak fluently or practice more).\n'
-    + '- phrases: 4-6 items. en = a natural English phrase, collocation or sentence starter that is genuinely useful for THIS question and learnable at Band ' + tgt.display.toFixed(1) + '; vi = a very short Vietnamese meaning (max 8 words).\n'
-    + '- sampleAnswer: ONE complete model answer in natural spoken English, first person, which the learner can shadow and then adapt with their own details. Length: ' + lenRule + '. It must stay at Band ' + tgt.display.toFixed(1) + ' as defined above — simple, correct and natural beats fancy and wrong. Do not mention bands or levels inside the answer.\n'
+    + '- ideas: 2-3 items, each a short VIETNAMESE suggestion (max 18 words) giving a CONCRETE direction for THIS exact question — what to talk about, which personal detail, example or small story to use. No generic advice.\n'
+    + '- phrases: 4-6 items. en = a natural English phrase, collocation or sentence starter genuinely useful for THIS question and learnable at Band ' + tgt.display.toFixed(1) + '; vi = a very short Vietnamese meaning (max 8 words).\n'
+    + '- sampleAnswer: ONE complete model answer in natural spoken English, first person, which the learner can shadow and then adapt with their own details. Length: ' + lenRule + '. It must stay at Band ' + tgt.display.toFixed(1) + ' — simple, correct and natural beats fancy and wrong. Do not mention bands or levels inside the answer.\n'
     + '- sampleBand: exactly ' + tgt.display.toFixed(1) + '.\n'
     + '- CRITICAL JSON RULES: output ONLY the JSON object; NEVER use a double-quote character inside any string value — use single quotes instead; keep ideas and phrases within the word limits above.';
 }
@@ -3202,6 +3146,28 @@ function renderHint(g,info,via){var body=$('hintBody');if(!body)return;var tgt=h
   h+='<div class="ttsRow"><button type="button" class="btn" onclick="speakText(lastHintSample,1)">🔊 Nghe đọc mẫu</button><button type="button" class="btn ghost" onclick="speakText(lastHintSample,0.75)">🐢 Đọc chậm</button><button type="button" class="btn ghost" onclick="stopSpeak()">⏹ Dừng đọc</button></div>';
   h+='<p class="small">Đọc mẫu để lấy ý + cụm từ, rồi TỰ nói lại theo trải nghiệm của bạn — đừng học thuộc lòng nhé.</p><p class="small">Gợi ý bởi: '+esc(via)+'</p>';
   body.innerHTML=h;}
+async function hintAskWithLimitRetry(prompt,sys,lite){
+  var waits=[15000,30000];
+  for(var a=0;a<=waits.length;a++){
+    var res;
+    try{res=await aiAsk(prompt,sys,lite,{json:true});}
+    catch(e){
+      if(a<waits.length&&/quota|\b429\b|\b402\b|limit/i.test(String((e&&e.message)||e))){
+        aiSetStatus('Bot damu đang bận, chờ '+(waits[a]/1000)+'s rồi thử lại…');
+        await aiDelayMs(waits[a]);continue;
+      }
+      throw e;
+    }
+    if(aiIsLimitText(res.text)){
+      if(a<waits.length){
+        aiSetStatus('Bot damu đang bận, chờ '+(waits[a]/1000)+'s rồi thử lại…');
+        await aiDelayMs(waits[a]);continue;
+      }
+      throw new Error('quota|Bot damu đang bận (giới hạn tốc độ)');
+    }
+    return res;
+  }
+}
 async function requestHint(force){var body=$('hintBody');if(!body)return;
   if(hintLocked()){body.innerHTML='<p>🔒 Trợ giảng đang khóa vì đang trong buổi thi thử — thi thật không ai nhắc bài. Kết thúc buổi thi thử là trợ giảng mở lại ngay.</p>';return;}
   if(hintLoading)return;
@@ -3213,8 +3179,7 @@ async function requestHint(force){var body=$('hintBody');if(!body)return;
   hintLoading=true;var btn=$('hintBtn');if(btn)btn.disabled=true;
   try{
     var lite=buildHintPromptLite(curQuestion,curPart,info.band,tgt);
-    var res=await aiAsk(buildHintPrompt(curQuestion,curPart,points,info.band,tgt),HINT_SYS,lite,{json:true});
-    if(aiIsLimitText(res.text))throw new Error('quota|Pollinations free limit reached (HTTP 402)');
+    var res=await hintAskWithLimitRetry(buildHintPrompt(curQuestion,curPart,points,info.band,tgt),HINT_SYS,lite);
     var g=parseHint(res.text);
     if(!isValidHint(g)){
       /* RETRY 1 bang prompt CUC NGAN (lite lam ca prompt chinh lan lite):
@@ -3222,8 +3187,7 @@ async function requestHint(force){var body=$('hintBody');if(!body)return;
          Ket qua duoc GOP (mergeHints) voi phan da trich duoc o luot truoc chu khong bo di:
          ca that HINT_LITE_1 bi cat cut dung o '"phrases":[' nen chi co ideas — gop giu tron ideas. */
       aiSetStatus('Trợ giảng đang thử lại bằng prompt ngắn…');
-      var res2=await aiAsk(buildHintPromptUltra(curQuestion,curPart,tgt),HINT_SYS,lite,{json:true});
-      if(aiIsLimitText(res2.text))throw new Error('quota|Pollinations free limit reached (HTTP 402)');
+      var res2=await hintAskWithLimitRetry(buildHintPromptUltra(curQuestion,curPart,tgt),HINT_SYS,lite);
       var g2=parseHint(res2.text);
       var merged=mergeHints(g,g2);
       if(isValidHint(merged)){g=merged;res=res2;}
@@ -3234,8 +3198,7 @@ async function requestHint(force){var body=$('hintBody');if(!body)return;
         g=merged;
         aiSetStatus('Trợ giảng đang xin bổ sung phần còn thiếu…');
         var compPrompt=buildHintCompletionPrompt(curQuestion,curPart,tgt,g);
-        var res3=await aiAsk(compPrompt,HINT_SYS,compPrompt,{json:true});
-        if(aiIsLimitText(res3.text))throw new Error('quota|Pollinations free limit reached (HTTP 402)');
+        var res3=await hintAskWithLimitRetry(compPrompt,HINT_SYS,compPrompt);
         var g3=parseHint(res3.text);
         var merged3=mergeHints(g,g3);
         if(isValidHint(merged3)){g=merged3;res=res3;}
@@ -3246,7 +3209,7 @@ async function requestHint(force){var body=$('hintBody');if(!body)return;
     if(!isValidHint(g))throw new Error('badformat|AI trả gợi ý thiếu nội dung');
     hintCache[ck]={g:g,info:info,via:res.via};renderHint(g,info,res.via);
   }catch(e){aiLogErr('hint',e);
-    body.innerHTML='<p>😅 Trợ giảng chưa nghĩ ra kịp (lỗi: '+esc(aiFriendlyErr(e))+'). Kiểm tra mạng/key rồi thử lại nhé.</p><button class="btn ghost" onclick="requestHint(true)">↻ Thử lại</button>';
+    body.innerHTML='<p>😅 Trợ giảng chưa nghĩ ra kịp (lỗi: '+esc(aiFriendlyErr(e))+'). Bấm thử lại nhé.</p><button class="btn ghost" onclick="requestHint(true)">↻ Thử lại</button>';
   }finally{hintLoading=false;syncHintLock();}
 }
 
@@ -4086,7 +4049,7 @@ async function mtGradeMock(){
   }catch(e){
     stopStatus();
     aiLogErr('mtGradeMock',e);
-    if(chat)chat.innerHTML=damuMsg('😵 damu chấm tổng không được: '+esc(aiFriendlyErr(e))+'<br><span class="small">Thử: kiểm tra mạng rồi bấm lại nút chấm ở trên nhé — Bot damu chấm bằng AI miễn phí, không cần key. Buổi thi vẫn còn nguyên.</span>'+groqSuggestHtml());
+    if(chat)chat.innerHTML=damuMsg('😵 damu chấm tổng không được: '+esc(aiFriendlyErr(e))+'<br><span class="small">Thử: kiểm tra mạng rồi bấm lại nút chấm ở trên nhé — Bot damu chấm, không cần key. Buổi thi vẫn còn nguyên.</span>'+groqSuggestHtml());
     if(btn){btn.disabled=false;btn.textContent='🩷 XEM KẾT QUẢ CHẤM TỔNG';}
     saveMockHistory(null,mt,avgWpm,totalWords,null);
   }
@@ -4424,8 +4387,6 @@ document.querySelectorAll('nav button').forEach(function(b){b.addEventListener('
   $('capyHead').src=CAPY_IMG;
   document.querySelectorAll('.msg img').forEach(function(im){im.src=CAPY_IMG;});
   fillTopics();renderForecast();renderVideos();renderStreak();updateStats();initSelfBandUI();syncHintLock();syncHintBandChip();renderAIStatus();
-  var k=aiGetKey();if(k)$('akey').value=k;
-  var gk0=aiGetGroqKey();if(gk0&&$('groqKey'))$('groqKey').value=gk0;
   /* RESTORE+BOT: khong con hang cho cham */ /* HANG CHO CHAM: mo app la doc lai hang cho tu localStorage + hien trang thai + hen gio tu cham tiep */
   try{var sl=localStorage.getItem('damuSpeaking.lang');var selL=document.getElementById('speechLangSel');if(selL&&sl)selL.value=sl;}catch(e){}
   if(!SR){$('srWarn').innerHTML='<div class="err">⚠️ Trình duyệt này <b>không hỗ trợ nhận diện giọng nói</b>. Hãy mở trang bằng <b>Google Chrome</b> hoặc <b>Microsoft Edge</b> để ghi âm. Bạn vẫn có thể tự gõ bài nói vào ô Bản ghi rồi bấm "DAMU CHẤM BÀI".</div>';}
