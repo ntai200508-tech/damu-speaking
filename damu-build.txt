@@ -1,1 +1,1 @@
-damu-speaking build f6feb5b4 2026-10-22 whisper-speed-queue
+damu-speaking build 4db5bc9c 2026-10-24 one-bot-grading
