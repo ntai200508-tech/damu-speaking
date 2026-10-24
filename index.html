@@ -251,7 +251,7 @@ nav button#nav-mocktest.on{background:#f59e0b;color:#fff;border-color:#f59e0b}
       <p class="small">🔒 Khi thi thử, trợ giảng gợi ý ở tab Luyện nói bị khóa hoàn toàn — đúng như phòng thi thật, không ai nhắc bài cho bạn.</p>
     <div id="mtIdle">
       <button class="btn big" onclick="mtStartTest()">🎓 BẮT ĐẦU BUỔI THI THỬ</button>
-      <p class="small" style="margin-top:8px">Phần chấm cuối buổi do Bot damu chạy ngay trong trang bằng AI miễn phí — không cần key. Điểm Pronunciation vẫn là ước tính từ transcript như ở tab Luyện nói.</p>
+      <p class="small" style="margin-top:8px">Chưa có key Gemini vẫn thi được — phần chấm cuối buổi sẽ tự dùng AI dự phòng (Pollinations) nếu Google bận. Điểm Pronunciation vẫn là ước tính từ transcript như ở tab Luyện nói.</p>
     </div>
   </div>
   <div id="mtMain" style="display:none"></div>
@@ -340,10 +340,34 @@ nav button#nav-mocktest.on{background:#f59e0b;color:#fff;border-color:#f59e0b}
     <p class="small" id="syncStatus"></p>
   </div>
   <div class="card">
-    <h2>🤖 Bot damu — AI ngay trong trang, không cần key</h2>
-    <p>Mọi lượt chấm bài (luyện nói, thi thử), trợ giảng gợi ý và cải thiện câu đều do <b>Bot damu</b> chạy ngay trong trang bằng AI miễn phí (Pollinations) — <b>không cần API key nữa</b>: không còn động cơ dự phòng, không xếp hàng chờ. Mỗi tiêu chí được chấm bằng 1 lượt micro riêng kèm <b>band descriptors chính thức của IELTS</b> và dòng đối chiếu descriptor xác định từ rubric.</p>
+    <h2>🚀 Groq API key (miễn phí, tốc độ cao) — động cơ chấm CHÍNH ⭐</h2>
+    <p>Groq là động cơ AI <b>rất nhanh và ổn định</b> mà damu ưu tiên dùng trước để chấm bài. Bạn tạo 1 key Groq <b>miễn phí</b> (bắt đầu bằng <b>gsk_</b>) rồi dán vào đây. Key cũng <b>chỉ lưu trong trình duyệt này</b>, không nằm trong file, không gửi cho ai khác.</p>
+    <div class="row"><input type="password" id="groqKey" placeholder="Dán Groq API key (gsk_...) vào đây"><button class="btn" style="flex:0 0 130px" onclick="saveGroqKeyUI()">Lưu key Groq</button></div>
+    <div style="height:8px"></div>
+    <div class="row"><button class="btn ghost" onclick="clearGroqKeyUI()">Xóa key Groq</button><button class="btn ghost" onclick="testGroqKeyUI()">🔧 Kiểm tra key Groq</button></div>
+    <p class="small" id="groqNote"></p>
+    <h3>Cách lấy key Groq miễn phí (làm 1 lần)</h3>
+    <p class="small">1) Mở trang <b>console.groq.com</b> và đăng nhập (có thể dùng tài khoản Google).<br>2) Vào mục <b>API Keys</b> → bấm <b>Create API Key</b>, đặt tên tùy ý rồi bấm tạo.<br>3) Copy dãy ký tự bắt đầu bằng <b>gsk_</b> hiện ra (chỉ hiện 1 lần — lưu lại cẩn thận), dán vào ô phía trên rồi bấm <b>Lưu key Groq</b>.<br>4) Thứ tự động cơ khi chấm: <b>Groq → Gemini → AI dự phòng Pollinations</b>. Chưa có key Groq thì app giữ thứ tự cũ Gemini → Pollinations.</p>
+  </div>
+  <div class="card">
+    <h2>⚙️ Cài đặt — Gemini API key (động cơ dự phòng 1)</h2>
+    <p>Để damu chấm bài bằng AI Gemini của Google, bạn dán API key của mình vào đây. <b>Key chỉ lưu trong trình duyệt này</b> (localStorage, theo đúng địa chỉ web này), không nằm trong file, không gửi cho ai khác — nên bạn bè dùng chung file này vẫn phải nhập key của riêng họ.</p>
+    <div class="row"><input type="password" id="akey" placeholder="Dán Gemini API key vào đây"><button class="btn" style="flex:0 0 110px" onclick="saveKeyUI()">Lưu key</button></div>
+    <div style="height:8px"></div>
+    <div class="row"><button class="btn ghost" onclick="clearKeyUI()">Xóa key</button><button class="btn ghost" onclick="testKeyUI()">🔧 Kiểm tra key &amp; kết nối</button></div>
+    <p class="small" id="keyNote"></p>
+    <h3>Cách lấy key miễn phí (làm 1 lần)</h3>
+    <p class="small">1) Mở trang <b>aistudio.google.com</b> và đăng nhập bằng tài khoản Google.<br>2) Bấm <b>"Get API key"</b> → <b>"Create API key"</b>.<br>3) Copy dãy ký tự hiện ra, dán vào ô phía trên rồi bấm <b>Lưu key</b>.<br>4) Lưu ý: key lưu theo từng trình duyệt + từng địa chỉ web — nếu bạn mở web bằng link khác (ví dụ GitHub Pages thay vì file trên máy), phải nhập lại key 1 lần ở địa chỉ đó.</p>
+    <h3>AI dự phòng miễn phí</h3>
+    <p class="small">Thứ tự động cơ đầy đủ: <b>Groq (nếu có key) → Gemini → AI dự phòng Pollinations.ai</b> (miễn phí, không cần key). Động cơ nào lỗi liên tiếp 2 lần trong 10 phút sẽ bị breaker ghim tạm riêng động cơ đó (breaker Groq và Gemini độc lập nhau), app tự dùng các động cơ còn lại để việc chấm bài không bị gián đoạn.</p>
+  </div>
+  <div class="card">
+    <h2>🩺 Trạng thái AI</h2>
     <div id="aiStatusBox"><p class="small">Đang đọc trạng thái…</p></div>
-    <p class="small">Key Groq/Gemini bạn từng lưu (nếu có) không còn được dùng để chấm nữa. Key Groq cũ chỉ còn tác dụng tùy chọn cho tính năng nghe lại bản ghi (Whisper) nếu máy bạn đã lưu từ trước — không có thì app chấm theo bản ghi trực tiếp của trình duyệt như thường, Whisper không phải điều kiện để chấm.</p>
+    <div class="row"><button class="btn ghost" onclick="resetGeminiUI()">🔁 Thử lại Gemini ngay (bẻ ghim / reset breaker)</button></div>
+    <div style="height:8px"></div>
+    <div class="row"><button class="btn ghost" onclick="resetGroqUI()">🔁 Thử lại Groq ngay (bẻ ghim / reset breaker Groq)</button></div>
+    <p class="small">Mỗi động cơ có breaker riêng: lỗi liên tiếp 2 lần trong 10 phút thì bị ghim tạm, app dùng các động cơ còn lại. Bấm các nút trên để reset breaker của từng động cơ và thử lại ngay. Lưu key mới cũng tự reset breaker của động cơ đó.</p>
   </div>
   <div class="card">
     <h2>🎯 Band Speaking hiện tại của bạn</h2>
@@ -1131,44 +1155,98 @@ function updateStats(){var w=wordCount($('transcript').value);$('stWords').textC
 </script>
 
 <script>
-/* ================= AI ENGINE — BOT DAMU KEYLESS (lenh Nguyen 24/10) =================
-   Moi luot AI trong trang (cham bai, thi thu, bo sung, audit, tro giang, chien luoc,
-   cai thien cau) di qua engine keyless kieu Bot damu (Pollinations, khong can key).
-   Luot CHAM di qua chuoi micro botGradeAnswer kem band descriptors chinh thuc (xem
-   khoi BOT DAMU o duoi). KHONG con cascade Groq/Gemini cho cham, khong hang cho,
-   khong nhan 'AI du phong', khong breaker cham. Key cu trong localStorage (neu co)
-   chi con dung cho Whisper nghe lai ban ghi (tuy chon, khong phai dieu kien de cham). */
+/* ================= AI ENGINE (tái dùng cơ chế của web damu cũ) =================
+   - Key Gemini do người dùng nhập ở Cài đặt, lưu localStorage theo origin.
+   - Tự hỏi Google key dùng được model nào (GET /v1beta/models), chọn flash mới nhất hỗ trợ generateContent; cache model 7 ngày.
+   - Mỗi lượt Gemini tối đa 45s (đầu ra chấm bài đã rút ngắn + JSON mode nên nhanh hơn hẳn), lỗi chậm tự retry 1 lần với model dự phòng; liệt kê model tối đa 15s.
+   - Circuit breaker: Gemini fail >=2 lần trong 10 phút -> đi thẳng Pollinations (miễn phí, không cần key). */
 var AI_KEYLS='damuSpeaking.geminiKey';
 var GROQ_KEYLS='damuSpeaking.groqKey';
 var AI_GROQ_TIMEOUT_MS=18000,AI_GROQ_MODELS=['llama-3.3-70b-versatile','llama-3.1-8b-instant'];
 var AI_GROQ_GRADE_TIMEOUT_MS=[60000,30000],AI_GROQ_GRADE_429_WAIT_MS=6000,AI_GEMINI_GRADE_MAX_MODELS=1; /* NGAN SACH CHAM (23/10): luot CHAM (aiAskGrade, gom ca cham thi thu) qua Groq duoc ngan sach rieng theo model: 70B (model dau) toi da 60s, 8B (model sau) toi da 30s — prompt cham lon + JSON dai tren tang mien phi Groq bi dieu tiet TPM nen 18s cu thuong abort 'slow:'; luot KHONG phai cham giu 18s. Luot cham bi 429 o 70B: cho 6s roi thu lai CHINH 70B 1 lan. Cascade cham qua Gemini chi thu 1 model dau (toi da 18s/model nhu cu) roi chuyen tang mien phi; luot thuong giu 3 model. */
-var BOT_VIA='Bot damu (AI miễn phí, không cần key)';
+function groqTimeoutMsFor(opts,mi){if(opts&&opts.groqTimeoutMs!=null){if(Array.isArray(opts.groqTimeoutMs)){var av=opts.groqTimeoutMs[mi];if(typeof av==='number'&&av>0)return av;var lv=opts.groqTimeoutMs[opts.groqTimeoutMs.length-1];if(typeof lv==='number'&&lv>0)return lv;}else if(typeof opts.groqTimeoutMs==='number'&&opts.groqTimeoutMs>0)return opts.groqTimeoutMs;}
+  if(opts&&Array.isArray(opts.timeoutMs)){var tv=opts.timeoutMs[mi];if(typeof tv==='number'&&tv>0)return tv;var tlv=opts.timeoutMs[opts.timeoutMs.length-1];if(typeof tlv==='number'&&tlv>0)return tlv;}
+  if(opts&&opts.isGrade){var gv=AI_GROQ_GRADE_TIMEOUT_MS[mi];if(typeof gv==='number'&&gv>0)return gv;return AI_GROQ_GRADE_TIMEOUT_MS[AI_GROQ_GRADE_TIMEOUT_MS.length-1];}
+  if(opts&&typeof opts.timeoutMs==='number'&&opts.timeoutMs>0)return opts.timeoutMs;
+  return AI_GROQ_TIMEOUT_MS;}
+function geminiMaxModelsFor(opts){if(opts&&typeof opts.maxModels==='number'&&opts.maxModels>0)return Math.floor(opts.maxModels);if(opts&&opts.isGrade)return AI_GEMINI_GRADE_MAX_MODELS;return AI_GEMINI_MAX_MODELS;}
 function aiDelayMs(ms){return new Promise(function(r){setTimeout(r,ms);});}
 var AI_MODELLS='damuSpeaking.modelcache',AI_MODEL_CACHE_TTL=7*24*3600*1000;
-var AI_TIMEOUT_MS=18000,AI_GEMINI_TIMEOUT_MS=18000,AI_GEMINI_MAX_MODELS=3,AI_FALLBACK_TIMEOUT_MS=45000,AI_MAIN_FREE_TIMEOUT_MS=25000,AI_LIST_TIMEOUT_MS=15000; /* GOI TOC DO (22/10): luot cham CHINH qua tang mien phi chi cho 25s (opts.timeoutMs) de fail-over nhanh; cac luot cuu ho (bien doi/fix/bo sung/vi mo/audit) giu 45s mac dinh */
+var AI_TIMEOUT_MS=18000,AI_GEMINI_TIMEOUT_MS=18000,AI_GEMINI_MAX_MODELS=3,AI_FALLBACK_TIMEOUT_MS=60000,AI_MAIN_FREE_TIMEOUT_MS=60000,AI_LIST_TIMEOUT_MS=15000; /* GOI TOC DO (22/10): luot cham CHINH qua tang mien phi chi cho 25s (opts.timeoutMs) de fail-over nhanh; cac luot cuu ho (bien doi/fix/bo sung/vi mo/audit) giu 45s mac dinh */
 var AI_MODELS=['gemini-3.8-flash','gemini-3.7-flash','gemini-3.6-flash','gemini-3.5-flash']; /* như web cũ: chỉ còn là dự phòng khi không liệt kê được model */
-var aiGrading=false;
+var aiPreferFallback=false,aiGrading=false;
 function aiGetKey(){try{return (localStorage.getItem(AI_KEYLS)||'').trim();}catch(e){return '';}}
+function saveKeyUI(){var k=$('akey').value.trim();if(!k){$('keyNote').textContent='Dán key vào ô trước khi bấm Lưu nhé.';return;}try{localStorage.setItem(AI_KEYLS,k);aiModelCacheClear();aiGfailReset();aiPreferFallback=false;renderAIStatus();$('keyNote').textContent='✅ Đã lưu key vào trình duyệt này. Qua tab Luyện nói và bấm chấm bài thôi!';}catch(e){$('keyNote').textContent='⚠️ Không lưu được key (trình duyệt chặn bộ nhớ?). Tắt chế độ ẩn danh rồi thử lại.';}try{fbTouchSettingsUpdatedAt();}catch(e){} scheduleSync();}
+function clearKeyUI(){try{localStorage.removeItem(AI_KEYLS);}catch(e){}$('akey').value='';aiModelCacheClear();$('keyNote').textContent='Đã xóa key khỏi máy này. App vẫn chấm được bằng AI dự phòng miễn phí (Pollinations).';try{fbTouchSettingsUpdatedAt();}catch(e){} scheduleSync();}
+function aiKeyHash(k){var h=5381;for(var i=0;i<k.length;i++)h=((h<<5)+h+k.charCodeAt(i))|0;return (h>>>0).toString(36);}
+var aiModelCache=null;
+function aiModelCacheGet(key){if(aiModelCache&&aiModelCache.key===key)return aiModelCache.model;try{var o=JSON.parse(localStorage.getItem(AI_MODELLS)||'null');if(o&&o.kh===aiKeyHash(key)&&Date.now()-o.ts<AI_MODEL_CACHE_TTL){aiModelCache={key:key,model:o.model};return o.model;}}catch(e){}return null;}
+function aiModelCacheSet(key,model){aiModelCache={key:key,model:model};try{localStorage.setItem(AI_MODELLS,JSON.stringify({kh:aiKeyHash(key),model:model,ts:Date.now()}));}catch(e){}}
+function aiModelCacheClear(){aiModelCache=null;try{localStorage.removeItem(AI_MODELLS);localStorage.removeItem(AI_MODELLISTLS);}catch(e){}}
+var AI_MODELLISTLS='damuSpeaking.modellist';
+function aiModelListGet(key){try{var o=JSON.parse(localStorage.getItem(AI_MODELLISTLS)||'null');if(o&&o.kh===aiKeyHash(key)&&Date.now()-o.ts<AI_MODEL_CACHE_TTL&&Array.isArray(o.list)&&o.list.length)return o.list.slice();}catch(e){}return null;}
+function aiModelListSet(key,list){try{localStorage.setItem(AI_MODELLISTLS,JSON.stringify({kh:aiKeyHash(key),list:list,ts:Date.now()}));}catch(e){}}
+/* Sticky model: model Gemini cham thanh cong gan nhat - lan sau thu no TRUOC */
+var AI_STICKYLS='damuSpeaking.stickyModel';
+function aiStickyGet(){try{var o=JSON.parse(localStorage.getItem(AI_STICKYLS)||'null');if(o&&o.m&&Date.now()-(o.ts||0)<7*24*3600*1000)return String(o.m);}catch(e){}return null;}
+function aiStickySet(m){if(!m)return;try{localStorage.setItem(AI_STICKYLS,JSON.stringify({m:String(m),ts:Date.now()}));}catch(e){}}
+function aiStickyClear(m){try{var o=JSON.parse(localStorage.getItem(AI_STICKYLS)||'null');if(o&&(!m||o.m===m))localStorage.removeItem(AI_STICKYLS);}catch(e){}}
+/* Trang thai cham bai (UX toc do): gradeNow/mtGradeMock gan handler de aiAsk/geminiAsk bao giai doan */
 var aiStatusHandler=null;
 function aiSetStatus(t){if(aiStatusHandler)try{aiStatusHandler(t);}catch(e){}}
+function aiGfailGet(){try{var o=JSON.parse(localStorage.getItem('damuSpeaking.gfail')||'null');if(o&&Date.now()-o.lastFail<10*60*1000)return o.count||0;}catch(e){}return 0;}
+function aiGfailSet(c){try{localStorage.setItem('damuSpeaking.gfail',JSON.stringify({count:c,lastFail:Date.now()}));}catch(e){}}
+function aiGfailReset(){try{localStorage.removeItem('damuSpeaking.gfail');}catch(e){}}
+function aiGfailInfo(){try{var o=JSON.parse(localStorage.getItem('damuSpeaking.gfail')||'null');if(o&&o.lastFail){var remainMs=10*60*1000-(Date.now()-o.lastFail);return{count:o.count||0,lastFail:o.lastFail,remainMin:remainMs>0?Math.ceil(remainMs/60000):0,active:remainMs>0&&(o.count||0)>=2};}}catch(e){}return{count:0,lastFail:0,remainMin:0,active:false};}
+/* ===== GROQ: key rieng + breaker RIENG (loi Groq khong ghim Gemini va nguoc lai) ===== */
+var aiGroqLastModel='';
 function aiGetGroqKey(){try{return (localStorage.getItem(GROQ_KEYLS)||'').trim();}catch(e){return '';}}
-function groqSuggestHtml(){return '';}
-function renderAIStatus(){var box=$('aiStatusBox');if(!box)return;
-  box.innerHTML='<p class="small" style="margin:0">🤖 <b>Bot damu đang bật</b> — chấm bài (luyện nói + thi thử), trợ giảng gợi ý và cải thiện câu đều chạy bằng AI miễn phí ngay trong trang (Pollinations keyless, chuỗi micro kèm band descriptors chính thức của IELTS). Không cần key, không hàng chờ — chỉ cần có mạng là chấm được.</p>';}
+function saveGroqKeyUI(){var el=$('groqKey');var k=el?el.value.trim():'';if(!k){$('groqNote').textContent='Dán key Groq vào ô trước khi bấm Lưu nhé.';return;}try{localStorage.setItem(GROQ_KEYLS,k);aiGroqFailReset();renderAIStatus();$('groqNote').textContent='✅ Đã lưu key Groq vào trình duyệt này. Từ giờ damu chấm bằng Groq trước (rất nhanh), Gemini/Pollinations chỉ là dự phòng.';}catch(e){$('groqNote').textContent='⚠️ Không lưu được key (trình duyệt chặn bộ nhớ?). Tắt chế độ ẩn danh rồi thử lại.';}try{fbTouchSettingsUpdatedAt();}catch(e){} scheduleSync();}
+function clearGroqKeyUI(){try{localStorage.removeItem(GROQ_KEYLS);}catch(e){}var el=$('groqKey');if(el)el.value='';renderAIStatus();$('groqNote').textContent='Đã xóa key Groq khỏi máy này. App quay lại thứ tự cũ: Gemini → AI dự phòng.';try{fbTouchSettingsUpdatedAt();}catch(e){} scheduleSync();}
+function aiGroqFailGet(){try{var o=JSON.parse(localStorage.getItem('damuSpeaking.groqfail')||'null');if(o&&Date.now()-o.lastFail<10*60*1000)return o.count||0;}catch(e){}return 0;}
+function aiGroqFailSet(c){try{localStorage.setItem('damuSpeaking.groqfail',JSON.stringify({count:c,lastFail:Date.now()}));}catch(e){}}
+function aiGroqFailReset(){try{localStorage.removeItem('damuSpeaking.groqfail');}catch(e){}}
+function aiGroqFailInfo(){try{var o=JSON.parse(localStorage.getItem('damuSpeaking.groqfail')||'null');if(o&&o.lastFail){var remainMs=10*60*1000-(Date.now()-o.lastFail);return{count:o.count||0,lastFail:o.lastFail,remainMin:remainMs>0?Math.ceil(remainMs/60000):0,active:remainMs>0&&(o.count||0)>=2};}}catch(e){}return{count:0,lastFail:0,remainMin:0,active:false};}
+function aiIsGroqServerFail(e){var m=String((e&&e.message)||'');return m.indexOf('slow:')===0||m.indexOf('server-groq|')===0||m.indexOf('quota-groq|')===0||m.indexOf('groqfmt|')===0;}
+function aiFriendlyGroqErr(e){var m=String((e&&e.message)||'');
+  if(m.indexOf('groqauth|')===0)return 'Key Groq bị Groq từ chối — kiểm tra lại key ở tab Cài đặt, hoặc tạo key mới ở console.groq.com nhé.';
+  if(m.indexOf('quota-groq|')===0||m.indexOf('quota|')===0)return 'Groq đang hết lượt hoặc tạm bận. App sẽ tự dùng Gemini/AI dự phòng; thử lại sau ít phút cũng được.';
+  if(m.indexOf('slow:')===0)return 'Groq trả lời quá chậm (quá '+Math.round(AI_GROQ_TIMEOUT_MS/1000)+' giây). App sẽ tự dùng động cơ khác.';
+  if(m.indexOf('blocked:')===0)return 'Không gọi được máy chủ Groq — kiểm tra mạng/VPN rồi thử lại nhé.';
+  if(m.indexOf('groqfmt|')===0||m.indexOf('server-groq|')===0)return 'Máy chủ Groq đang bận hoặc lỗi tạm thời. App sẽ tự dùng Gemini/AI dự phòng.';
+  return aiFriendlyErr(e);}
+function groqSuggestHtml(){return '';} /* RESTORE+BOT: cham bang Bot damu keyless — khong con goi y them key de cham */
+async function testGroqKeyUI(){var n=$('groqNote');var key=aiGetGroqKey();if(!key){if(n)n.textContent='Chưa có key Groq nào được lưu. Dán key (bắt đầu bằng gsk_) vào ô trên, bấm Lưu key Groq, rồi kiểm tra lại.';return;}if(n)n.textContent='Đang kiểm tra key Groq… (bắn 1 lượt generate thật nhỏ bằng model '+AI_GROQ_MODELS[0]+')';
+  try{var t0=Date.now();var out=await groqAsk('Reply with only this JSON: {"ok":true}',{json:true});if(!out||!String(out).trim())throw new Error('server-groq|Groq trả về rỗng.');var secs=((Date.now()-t0)/1000).toFixed(1);if(n)n.textContent='✅ Key Groq dùng được THẬT (đã gọi generate thành công)! Model: '+(aiGroqLastModel||AI_GROQ_MODELS[0])+' • Thời gian phản hồi: '+secs+' giây.';renderAIStatus();}
+  catch(e){aiLogErr('testGroqKeyUI',e);if(n)n.textContent='⚠️ Kiểm tra key Groq thất bại: '+aiFriendlyGroqErr(e);renderAIStatus();}}
+function resetGroqUI(){aiGroqFailReset();renderAIStatus();var n=$('groqNote');if(n)n.textContent='🔁 Đã reset breaker Groq — lần chấm sau app sẽ gọi Groq thật ngay.';}
+
+function renderAIStatus(){var box=$('aiStatusBox');if(!box)return;var info=aiGfailInfo();var h='';
+  if(info.active)h+='<p>⛔ <b>Breaker đang GHIM Gemini</b>: đã lỗi '+info.count+' lần gần nhất, còn khoảng '+info.remainMin+' phút nữa app mới tự thử lại Gemini.</p>';
+  else if(info.count>0)h+='<p>⚠️ Gemini đã lỗi '+info.count+' lần trong 10 phút gần đây (chưa tới mức ghim 2 lần).</p>';
+  else h+='<p>✅ Breaker: <b>không ghim</b> — Gemini đang được dùng bình thường.</p>';
+  var ginfo=aiGroqFailInfo();var hasGk=!!aiGetGroqKey();
+  h+='<p>'+(hasGk?'✅':'⚠️')+' <b>Groq (động cơ chính):</b> '+(hasGk?('đã có key'+(aiGroqLastModel?' • model chạy tốt gần nhất: '+esc(aiGroqLastModel):'')):'chưa có key — thêm key Groq miễn phí ở mục Groq phía trên để chấm nhanh và ổn định hơn.')+'</p>';
+  if(ginfo.active)h+='<p>⛔ <b>Breaker đang GHIM Groq</b>: đã lỗi '+ginfo.count+' lần gần nhất, còn khoảng '+ginfo.remainMin+' phút nữa app mới tự thử lại Groq (breaker Groq riêng — Gemini vẫn dùng bình thường).</p>';
+  else if(ginfo.count>0)h+='<p>⚠️ Groq đã lỗi '+ginfo.count+' lần trong 10 phút gần đây (chưa tới mức ghim 2 lần).</p>';
+  else h+='<p>✅ Breaker Groq: <b>không ghim</b> — Groq đang được dùng bình thường.</p>';
+  try{var a=JSON.parse(localStorage.getItem('damuSpeaking.errlog')||'[]');if(a.length){var last=a[a.length-1];h+='<p class="small">Lỗi gần nhất ['+esc(last.w)+'] '+esc(last.t)+': '+esc(aiFriendlyErr(new Error(last.m)))+'</p>';}else h+='<p class="small">Chưa ghi nhận lỗi AI nào.</p>';}catch(e){}
+  box.innerHTML=h;}
+function resetGeminiUI(){aiGfailReset();aiPreferFallback=false;renderAIStatus();var n=$('keyNote');if(n)n.textContent='🔁 Đã reset breaker Gemini — lần chấm sau app sẽ thử lại Gemini. Qua tab Luyện nói bấm chấm lại nhé.';}
 function aiLogErr(where,e){try{var k='damuSpeaking.errlog';var a=JSON.parse(localStorage.getItem(k)||'[]');a.push({t:new Date().toISOString(),w:String(where),m:String((e&&e.message)||e).slice(0,300)});if(a.length>20)a=a.slice(a.length-20);localStorage.setItem(k,JSON.stringify(a));}catch(x){}}
 function aiIsGoogleFail(e){var m=String((e&&e.message)||'');if(m.indexOf('slow:')===0)return true;if(m.indexOf('quota|')===0||m.indexOf('model404|')===0)return true;return m.indexOf('server|')===0;}
 function aiCanFallback(e){var m=String((e&&e.message)||'');if(m.indexOf('slow:')===0)return true;var b=m.split('|')[0];return b==='server'||b==='quota'||b==='model404';}
 function aiFriendlyErr(e){var raw=String((e&&e.message)||e||'');var low=raw.toLowerCase();
   /* Cat MOI prefix code (badformat|..., server|..., quota|..., slow:..., groqauth|...):
      nguoi dung CHI thay tieng Viet than thien, khong bao gio thay ma tho hay dau | */
-  if(/free limit reached|limit reached|http 402|\b402\b|quota|\b429\b|too many requests/.test(low))return 'AI miễn phí đang hết lượt tạm thời (đang bị giới hạn tốc độ). Đợi khoảng 30 giây rồi bấm thử lại nhé.';
-  if(low.indexOf('badkey')>=0||/http 400/.test(low))return 'AI miễn phí từ chối yêu cầu tạm thời — chưa rõ nguyên nhân. Bấm thử lại nhé.';
-  if(low.indexOf('forbidden')>=0||low.indexOf('groqauth')>=0||/http 40[13]/.test(low))return 'AI miễn phí từ chối quyền truy cập tạm thời. Đợi ít phút rồi bấm thử lại nhé.';
+  if(/free limit reached|limit reached|http 402|\b402\b|quota|\b429\b|too many requests/.test(low))return 'AI miễn phí đang hết lượt tạm thời (đang bị giới hạn tốc độ). Đợi khoảng 30 giây rồi bấm thử lại, hoặc thêm key Groq/Gemini miễn phí ở tab Cài đặt để dùng ổn định hơn nhé.';
+  if(low.indexOf('badkey')>=0||/http 400/.test(low))return 'Google từ chối yêu cầu — có thể do key hoặc cấu hình gửi đi, chưa kết luận là key sai. Kiểm tra lại key ở tab Cài đặt rồi thử lại nhé.';
+  if(low.indexOf('forbidden')>=0||low.indexOf('groqauth')>=0||/http 40[13]/.test(low))return 'Key AI bị từ chối quyền truy cập. Thử tạo key mới rồi dán lại ở tab Cài đặt nhé.';
   if(low.indexOf('badformat')>=0||low.indexOf('thieu noi dung')>=0||low.indexOf('unparsable')>=0||low.indexOf('khong doc duoc')>=0)return 'AI trả về kết quả chưa đúng định dạng nên damu chưa đọc được. Bấm thử lại nhé — thường thử lại là được.';
   if(low.indexOf('slow')>=0||low.indexOf('timeout')>=0||low.indexOf('abort')>=0)return 'Máy chủ AI trả lời quá chậm. Đợi ít phút rồi bấm thử lại nhé.';
   if(low.indexOf('blocked')>=0||low.indexOf('failed to fetch')>=0||low.indexOf('network')>=0)return 'Không gọi được máy chủ AI — kiểm tra mạng hoặc VPN rồi bấm thử lại nhé.';
   if(low.indexOf('model404')>=0||/http 404/.test(low))return 'Model AI không còn khả dụng nữa. Bấm thử lại — app sẽ tự chọn model khác cho bạn.';
-  if(low.indexOf('breaker')>=0)return 'Bot damu đang tạm nghỉ vì lỗi liên tiếp. Đợi ít phút rồi bấm thử lại nhé.';
+  if(low.indexOf('breaker')>=0)return 'Động cơ AI đang tạm nghỉ vì lỗi liên tiếp. App sẽ tự dùng động cơ dự phòng, hoặc vào tab Cài đặt bấm nút thử lại động cơ chính nhé.';
   if(low.indexOf('nokey')>=0)return 'Bot damu chưa gọi được AI miễn phí. Kiểm tra mạng rồi bấm thử lại nhé.';
   if(low.indexOf('server')>=0||/http 5\d\d/.test(low)||low.indexOf('empty')>=0||low.indexOf('rong')>=0)return 'Máy chủ AI đang bận hoặc lỗi tạm thời. Đợi ít phút rồi bấm thử lại nhé.';
   return 'AI đang gặp trục trặc tạm thời nên chưa làm được. Kiểm tra mạng rồi bấm thử lại nhé.';}
@@ -1176,7 +1254,65 @@ function aiIsLimitText(t){var s=String(t||'');return /free limit reached|limit r
 function aiIsErrorText(t){var s=String(t||'').trim();if(aiIsLimitText(s))return true;return /^(error|quota|server|badformat|badkey|forbidden|blocked|slow|nokey)[|:]/i.test(s);}
 function classifyErr(e,host){if(e&&e.name==='AbortError')return new Error('slow:'+host);if(e&&/Failed to fetch|NetworkError|Load failed/i.test(e.message||''))return new Error('blocked:'+host);return e;}
 async function fetchTimeout(url,opts,ms){var c=new AbortController();var t=setTimeout(function(){c.abort();},ms);try{opts=opts||{};opts.signal=c.signal;return await fetch(url,opts);}finally{clearTimeout(t);}}
-async function pollinationsAsk(prompt,sysOverride,opts){aiSetStatus('Bot damu đang xử lý (Pollinations)...');var fbTmo=(opts&&typeof opts.timeoutMs==='number'&&opts.timeoutMs>0)?opts.timeoutMs:AI_FALLBACK_TIMEOUT_MS;var sys=sysOverride||'You are damu, a pink capybara and strict IELTS Speaking examiner (examiner-coach persona): roast candidates in English, blunt and sarcastic, grade seriously and strictly with no grade inflation. Follow the user instruction exactly and output ONLY the requested JSON.';
+async function listGeminiModels(key){var cachedList=aiModelListGet(key);if(cachedList)return cachedList;
+  var r;try{r=await fetchTimeout('https://generativelanguage.googleapis.com/v1beta/models?key='+encodeURIComponent(key),{},AI_LIST_TIMEOUT_MS);}catch(e){throw classifyErr(e,'generativelanguage.googleapis.com');}
+  if(!r.ok){var dt='HTTP '+r.status+' khi liệt kê model';try{var ej=await r.json();var em=ej&&ej.error&&ej.error.message;if(em)dt+=' — '+String(em).slice(0,200);}catch(x){}
+    if(r.status===400)throw new Error('badkey|'+dt);if(r.status===403)throw new Error('forbidden|'+dt);throw new Error('server|'+dt);}
+  var j;try{j=await r.json();}catch(e){throw new Error('server|HTTP 200 nhưng không đọc được danh sách model của Google.');}
+  var ms=((j&&j.models)||[]).map(function(m){return{name:String((m&&m.name)||'').replace(/^models\//,''),methods:(m&&m.supportedGenerationMethods)||[]};}).filter(function(m){return m.name&&m.methods.indexOf('generateContent')>=0&&/flash/i.test(m.name)&&!/image|tts|live|embed|transcribe|omni|veo/i.test(m.name);});
+  if(!ms.length)throw new Error('model404|Key này không có model flash nào hỗ trợ tạo câu trả lời.');
+  function verNum(n){var mm=/(\d+)\.(\d+)/.exec(n);return mm?(+mm[1])*1000+(+mm[2]):0;}
+  ms.sort(function(a,b){var d=verNum(b.name)-verNum(a.name);if(d)return d;return (/lite/i.test(a.name)?1:0)-(/lite/i.test(b.name)?1:0);});
+  var names=ms.map(function(m){return m.name;});
+  aiModelListSet(key,names);aiModelCacheSet(key,names[0]);return names;}
+async function pickModel(key){var cached=aiModelCacheGet(key);if(cached)return cached;var names=await listGeminiModels(key);return names[0];}
+async function geminiCallOnce(key,model,prompt,minimal,tempOverride){
+  var gTemp=(typeof tempOverride==='number'&&isFinite(tempOverride))?tempOverride:0.35;
+  var genCfg=minimal?{temperature:gTemp,maxOutputTokens:2500}:{temperature:gTemp,maxOutputTokens:2500,responseMimeType:'application/json'}; /* JSON mode: ep Gemini tra JSON sach; KHONG gui thinkingConfig (web tu vung chay on khong can) */
+  var r;
+  try{r=await fetchTimeout('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:genCfg})},AI_GEMINI_TIMEOUT_MS);}
+  catch(e){throw classifyErr(e,'generativelanguage.googleapis.com');}
+  if(r.status===404)throw new Error('model404|HTTP 404 — model '+model+' đã bị Google gỡ');
+  if(!r.ok){var tx='';try{tx=await r.text();}catch(e){}var dt='HTTP '+r.status+' '+tx.slice(0,200);
+    if(r.status===400)throw new Error('badkey|'+dt);if(r.status===403)throw new Error('forbidden|'+dt);if(r.status===429)throw new Error('quota|'+dt);throw new Error('server|'+dt);}
+  var j;try{j=await r.json();}catch(e){throw new Error('server|HTTP 200 nhưng không đọc được kết quả của Google.');}
+  var parts=(((j.candidates||[])[0]||{}).content||{}).parts||[];var out='';for(var p=0;p<parts.length;p++)if(parts[p].text)out+=parts[p].text;
+  if(!out)throw new Error('server|Google trả về rỗng.');
+  return out;}
+async function geminiAsk(prompt,opts){var key=aiGetKey();if(!key)throw new Error('nokey');var gTempOpt=(opts&&typeof opts.temperature==='number'&&isFinite(opts.temperature))?opts.temperature:null;
+  /* FAILOVER NHIEU MODEL: thu tu thu = sticky (model thanh cong gan nhat) -> model cache -> danh sach model that cua key -> ten du phong cu.
+     Toi da 3 model, moi model timeout NGAN 25s. Loi 503/429/timeout/rong/404 o 1 model = thu NGAY model tiep theo;
+     chi khi CA 3 model deu that bai geminiAsk moi throw (luc do aiAsk moi tinh breaker + roi xuong Pollinations). */
+  var cand=[],seen={};
+  function push(m){if(m&&!seen[m]){seen[m]=1;cand.push(m);}}
+  push(aiStickyGet());push(aiModelCacheGet(key));
+  try{var names=await listGeminiModels(key);for(var li=0;li<names.length;li++)push(names[li]);}
+  catch(le){var lm0=String((le&&le.message)||'');if(/^(badkey|forbidden|blocked:)/.test(lm0))throw le;aiLogErr('geminiAsk.listModels',le);}
+  for(var fi=0;fi<AI_MODELS.length;fi++)push(AI_MODELS[fi]);
+  cand=cand.slice(0,geminiMaxModelsFor(opts)); /* (C) luot cham chi 1 model dau, luot thuong 3 model */
+  if(!cand.length)throw new Error('model404|Không gọi được model Gemini nào.');
+  var lastErr=null;
+  for(var mi=0;mi<cand.length;mi++){
+    var model=cand[mi];
+    aiSetStatus(mi===0?('Đang chấm bằng Gemini ('+model+')...'):('Google đang bận, đang thử model Gemini khác ('+(mi+1)+'/'+cand.length+': '+model+')...'));
+    try{
+      var out=await geminiCallOnce(key,model,prompt,false,gTempOpt);
+      aiGfailReset();aiPreferFallback=false;aiModelCacheSet(key,model);aiStickySet(model);return out;
+    }catch(e){lastErr=classifyErr(e,'generativelanguage.googleapis.com');var lm2=String(lastErr.message);
+      if(lm2.indexOf('badkey|')===0){
+        /* 400 co the do JSON mode: thu lai CHINH model nay 1 lan voi cau hinh toi gian truoc khi ket luan */
+        try{var out2=await geminiCallOnce(key,model,prompt,true,gTempOpt);aiGfailReset();aiPreferFallback=false;aiModelCacheSet(key,model);aiStickySet(model);return out2;}
+        catch(e2){if(String((e2&&e2.message)||'').indexOf('badkey|')===0)throw e2;lastErr=e2;aiLogErr('geminiAsk.model:'+model,lastErr);continue;}
+      }
+      if(/^(forbidden|blocked:)/.test(lm2))throw lastErr;
+      if(lm2.indexOf('model404|')===0){if(aiStickyGet()===model)aiStickyClear(model);if(aiModelCacheGet(key)===model)aiModelCacheClear();}
+      aiLogErr('geminiAsk.model:'+model,lastErr);
+      continue; /* 503/429/timeout/rong/404: thu model tiep theo ngay */
+    }
+  }
+  throw lastErr||new Error('server|Cả '+cand.length+' model Gemini đều bận/lỗi.');}
+
+async function pollinationsAsk(prompt,sysOverride,opts){aiSetStatus('Bot damu đang chấm...');var fbTmo=(opts&&typeof opts.timeoutMs==='number'&&opts.timeoutMs>0)?opts.timeoutMs:AI_FALLBACK_TIMEOUT_MS;var sys=sysOverride||'You are damu, a pink capybara and strict IELTS Speaking examiner (examiner-coach persona): roast candidates in English, blunt and sarcastic, grade seriously and strictly with no grade inflation. Follow the user instruction exactly and output ONLY the requested JSON.';
   /* opts.temperature / opts.seed (chi luot BIEN DOI chong cache/dump truyen vao): dua vao
      body POST + query GET du phong de Pollinations khong phat lai phan hoi da cache cho
      prompt gan giong het va giam kha nang lap lai dung ban reasoning dump cu. */
@@ -1206,7 +1342,7 @@ async function pollinationsAsk(prompt,sysOverride,opts){aiSetStatus('Bot damu đ
    OpenAI (choices[0].message.content). Gen la tang mien phi CHINH moi; text cu giu
    lam tang cuoi. Loi gioi han (402 / van ban ngan sach / can key) duoc phat hien bang
    CHINH aiIsLimitText va nem 'quota|...' nhu cac tang khac de aiFreeTierAsk cho+thu lai. */
-async function pollinationsGenAsk(prompt,sysOverride,opts){aiSetStatus('Bot damu đang xử lý (Pollinations Gen)...');var fbTmo=(opts&&typeof opts.timeoutMs==='number'&&opts.timeoutMs>0)?opts.timeoutMs:AI_FALLBACK_TIMEOUT_MS;var sys=sysOverride||'You are damu, a pink capybara and strict IELTS Speaking examiner (examiner-coach persona): roast candidates in English, blunt and sarcastic, grade seriously and strictly with no grade inflation. Follow the user instruction exactly and output ONLY the requested JSON.';
+async function pollinationsGenAsk(prompt,sysOverride,opts){aiSetStatus('Bot damu đang chấm...');var fbTmo=(opts&&typeof opts.timeoutMs==='number'&&opts.timeoutMs>0)?opts.timeoutMs:AI_FALLBACK_TIMEOUT_MS;var sys=sysOverride||'You are damu, a pink capybara and strict IELTS Speaking examiner (examiner-coach persona): roast candidates in English, blunt and sarcastic, grade seriously and strictly with no grade inflation. Follow the user instruction exactly and output ONLY the requested JSON.';
   var gTemp=(opts&&typeof opts.temperature==='number'&&isFinite(opts.temperature))?opts.temperature:null;
   var gSeed=(opts&&typeof opts.seed==='number'&&isFinite(opts.seed))?Math.floor(opts.seed):null;
   var gBody={model:'openai-fast',messages:[{role:'system',content:sys},{role:'user',content:String(prompt||'')}]};
@@ -1255,14 +1391,14 @@ var aiFreeDownUntil={gen:0,text:0};
 async function aiWaitFreeTier(tierLabel){
   var total=Math.round(AI_FREE_WAIT_MS/1000);
   for(var s=total;s>=1;s--){
-    aiSetStatus('Bot damu đang chờ lượt AI miễn phí — tự chờ 30s rồi thử tiếp... ('+tierLabel+', còn '+s+'s)');
+    aiSetStatus('AI miễn phí đang bận — damu tự chờ 30s rồi thử tiếp... ('+tierLabel+', còn '+s+'s)');
     await new Promise(function(res){setTimeout(res,1000);});
   }
   aiSetStatus('Đang thử lại '+tierLabel+' sau khi chờ...');
 }
 async function aiFreeTierAsk(kind,prompt,sysOverride,opts){
   var isGen=(kind==='gen');
-  var label=isGen?'Bot damu (Pollinations Gen)':'Bot damu (Pollinations)';
+  var label='Bot damu';
   var fn=isGen?pollinationsGenAsk:pollinationsAsk;
   if(isGen&&typeof window!=='undefined'&&window.__genAuthDead)throw new Error('auth|Pollinations Gen requires key (session flag)');
   if(aiFreeDownUntil[kind]&&Date.now()<aiFreeDownUntil[kind])throw new Error('quota|'+label+' đang tạm nghỉ vài phút vì vừa hết lượt (đã chờ + thử lại không được) — app dùng tầng còn lại ngay cho nhanh.');
@@ -1295,11 +1431,11 @@ function buildPromptLite(q,part,tr,wpm){
   /* Prompt RUT GON danh rieng cho Pollinations (engine 0-key / du phong) — dua tren mau THAT:
      prompt lite cu 3.2k ky tu mat 42.3s va tra JSON nhay don bi cat cut; ban rut gon ~1.4k ky tu
      (hinh dang toi thieu, moi chuoi ngan, nhan manh Return ONLY JSON) tra ket qua trong ~23s. */
-  var trC=String(tr||'').slice(0,1200);
+  var trC=String(tr||'').slice(0,3000);
   var evLine='';
   try{var _ev=computeEvidence(trC,0);if(_ev)evLine=' Evidence: '+_ev.words+' words, type-token ratio '+_ev.ttr+', filler words '+_ev.fillers+' — if speed is low or fillers are many, cap Fluency; if type-token is low, cap Lexical Resource.';}catch(e){}
   var maLen=(part===2)?'Band 8 rewrite of the learner answer, 150-200 words':'Band 8 rewrite of the learner answer, 3-5 sentences, fully developed (at least 35 words, never one short sentence)';
-  return 'Return ONLY JSON, no other text, no markdown. Grade this IELTS Speaking Part '+part+' answer strictly (no grade inflation). Question: \''+String(q||'')+'\' Transcript: \''+trC+'\' Speed about '+wpm+' wpm.'+evLine+' Use EXACTLY this JSON shape: {"opening":"1 short roast sentence in English","scores":{"FC":5.0,"LR":5.0,"GRA":5.0,"P":5.0},"errors":[{"wrong":"exact phrase from transcript","fix":"corrected version","why":"short reason in Vietnamese"}],"upgrades":[{"original":"simple phrase from transcript","better":"band 7 version"}],"tips":["tip in Vietnamese","tip in Vietnamese","tip in Vietnamese"],"praise":"1 sentence in Vietnamese","examinerNote":"2 sentences in English, name the biggest lever to gain band","modelAnswer":"'+maLen+'","rewriteNotes":"1 short line in Vietnamese: what was kept, fixed or added","criteriaFeedback":{"FC":{"strength":"1 short strength in Vietnamese","errors":[{"wrong":"exact phrase from transcript","fix":"corrected version","why":"short reason in Vietnamese"},{"wrong":"another exact phrase from transcript","fix":"corrected version of that other phrase","why":"short reason in Vietnamese"}],"fix":"specific fix in Vietnamese","drill":"1 practice drill in Vietnamese","bandLink":"1 band bridge sentence in Vietnamese"},"LR":{"strength":"1 short strength in Vietnamese","errors":[{"wrong":"exact phrase from transcript","fix":"corrected version","why":"short reason in Vietnamese"},{"wrong":"another exact phrase from transcript","fix":"corrected version of that other phrase","why":"short reason in Vietnamese"}],"fix":"specific fix in Vietnamese","drill":"1 practice drill in Vietnamese","bandLink":"1 band bridge sentence in Vietnamese"},"GRA":{"strength":"1 short strength in Vietnamese","errors":[{"wrong":"exact phrase from transcript","fix":"corrected version","why":"short reason in Vietnamese"},{"wrong":"another exact phrase from transcript","fix":"corrected version of that other phrase","why":"short reason in Vietnamese"}],"fix":"specific fix in Vietnamese","drill":"1 practice drill in Vietnamese","bandLink":"1 band bridge sentence in Vietnamese"},"P":{"strength":"1 short strength in Vietnamese","errors":[{"wrong":"exact word from transcript","fix":"how to say it right","why":"short reason in Vietnamese"},{"wrong":"another exact word from transcript","fix":"how to say that word right","why":"short reason in Vietnamese"}],"fix":"specific fix in Vietnamese","drill":"1 practice drill in Vietnamese","bandLink":"1 band bridge sentence in Vietnamese"}}} Rules: scores 0-9 in 0.5 steps; errors max 2, quote the transcript exactly word-for-word; criteriaFeedback: per criterion give strength, 2-3 errors each with its own corrected version and one-line reason, a specific fix, one practice drill tied to those errors and one band bridge sentence (fix these errors and this criterion reaches the next band); tips exactly 3; keep every string SHORT; never use a double-quote character inside string values, use single quotes instead.';
+  return 'Return ONLY JSON, no other text, no markdown. Grade this IELTS Speaking Part '+part+' answer strictly (no grade inflation). OFFICIAL IELTS BAND DESCRIPTORS (condensed): '+BOT_DESC_COMPACT+' Question: \''+String(q||'')+'\' Transcript: \''+trC+'\' Speed about '+wpm+' wpm.'+evLine+' Use EXACTLY this JSON shape: {"opening":"1 short roast sentence in English","scores":{"FC":5.0,"LR":5.0,"GRA":5.0,"P":5.0},"errors":[{"wrong":"exact phrase from transcript","fix":"corrected version","why":"short reason in Vietnamese"}],"upgrades":[{"original":"simple phrase from transcript","better":"band 7 version"}],"tips":["tip in Vietnamese","tip in Vietnamese","tip in Vietnamese"],"praise":"1 sentence in Vietnamese","examinerNote":"2 sentences in English, name the biggest lever to gain band","modelAnswer":"'+maLen+'","rewriteNotes":"1 short line in Vietnamese: what was kept, fixed or added","criteriaFeedback":{"FC":{"strength":"1 short strength in Vietnamese","errors":[{"wrong":"exact phrase from transcript","fix":"corrected version","why":"short reason in Vietnamese"},{"wrong":"another exact phrase from transcript","fix":"corrected version of that other phrase","why":"short reason in Vietnamese"}],"fix":"specific fix in Vietnamese","drill":"1 practice drill in Vietnamese","bandLink":"1 band bridge sentence in Vietnamese"},"LR":{"strength":"1 short strength in Vietnamese","errors":[{"wrong":"exact phrase from transcript","fix":"corrected version","why":"short reason in Vietnamese"},{"wrong":"another exact phrase from transcript","fix":"corrected version of that other phrase","why":"short reason in Vietnamese"}],"fix":"specific fix in Vietnamese","drill":"1 practice drill in Vietnamese","bandLink":"1 band bridge sentence in Vietnamese"},"GRA":{"strength":"1 short strength in Vietnamese","errors":[{"wrong":"exact phrase from transcript","fix":"corrected version","why":"short reason in Vietnamese"},{"wrong":"another exact phrase from transcript","fix":"corrected version of that other phrase","why":"short reason in Vietnamese"}],"fix":"specific fix in Vietnamese","drill":"1 practice drill in Vietnamese","bandLink":"1 band bridge sentence in Vietnamese"},"P":{"strength":"1 short strength in Vietnamese","errors":[{"wrong":"exact word from transcript","fix":"how to say it right","why":"short reason in Vietnamese"},{"wrong":"another exact word from transcript","fix":"how to say that word right","why":"short reason in Vietnamese"}],"fix":"specific fix in Vietnamese","drill":"1 practice drill in Vietnamese","bandLink":"1 band bridge sentence in Vietnamese"}}} Rules: scores 0-9 in 0.5 steps; errors max 2, quote the transcript exactly word-for-word; criteriaFeedback: per criterion give strength, 2-3 errors each with its own corrected version and one-line reason, a specific fix, one practice drill tied to those errors and one band bridge sentence (fix these errors and this criterion reaches the next band); tips exactly 3; keep every string SHORT; never use a double-quote character inside string values, use single quotes instead.';
 }
 /* ===== LUOT CHINH BIEN DOI CHONG CACHE + CHONG DUMP (PIN AI vong 2, 22/10) =====
    Bang chung pin vong 1: Pollinations PHAT LAI phan hoi loi da cache trong ~1s khi prompt
@@ -1317,7 +1453,7 @@ function gradeResponseLooksDump(t){var s=String(t||'');if(!s.trim())return true;
   if(u&&u!==s.trim())return true; /* envelope ma noi dung ben trong khong co diem dang so */
   return s.length>1500&&!/FC\s*[:=]\s*[0-9]/.test(s);}
 function buildPromptLiteVariant(q,part,tr,wpm,seed){
-  var trC=String(tr||'').slice(0,1200);
+  var trC=String(tr||'').slice(0,4000); /* RESTORE+BOT v2: khong cat transcript bai dai o luot bien doi */
   var evLine='';
   try{var _ev=computeEvidence(trC,0);if(_ev)evLine=' Objective evidence: '+_ev.words+' words, type-token ratio '+_ev.ttr+', filler words '+_ev.fillers+' — low speed or many fillers caps Fluency; low type-token caps Lexical Resource.';}catch(e){}
   var maLen=(part===2)?'Band 8 rewrite of the learner answer, 150-200 words':'Band 8 rewrite of the learner answer, 3-5 sentences, fully developed (at least 35 words, never one short sentence)';
@@ -1326,12 +1462,12 @@ function buildPromptLiteVariant(q,part,tr,wpm,seed){
   return 'JSON ONLY — grading attempt code '+seed+'. Your FIRST character must be { and your LAST character must be }. Decide silently: do NOT write reasoning, analysis, plans or explanations, and do NOT describe the JSON before writing it — output the finished JSON immediately, every value SHORT.\nTRANSCRIPT FIRST (grade exactly this answer, nothing else): \''+trC+'\'\nQuestion (IELTS Speaking Part '+part+'): \''+String(q||'')+'\' Speed about '+wpm+' wpm.'+evLine+'\nYou are damu, a strict IELTS Speaking examiner: grade strictly, no grade inflation, scores 0-9 in 0.5 steps. Quote rule: every wrong/original value must be copied word-for-word from the transcript above; if you cannot quote it exactly, drop that error. Never use a double-quote character inside a string value; use single quotes instead.\nUse EXACTLY this JSON shape, keys in THIS order:\n'+shape+'\nField rules: criteriaFeedback — one entry per criterion (order above: P, GRA, LR, FC), each with a real strength, 1-2 errors with their own fix and why, a specific fix, one drill tied to those errors and one band bridge sentence; errors max 2; tips exactly 3; modelAnswer is an upgraded rewrite of THIS answer keeping the learner ideas, not a new answer.';
 }
 function buildPromptVariant(q,part,tr,wpm,secs,seed){
-  var trC=String(tr||'').slice(0,1800);
+  var trC=String(tr||'').slice(0,4000);
   var evTxtP='';
   try{var _ev2=computeEvidence(trC,secs);if(_ev2)evTxtP=evidenceText(_ev2);}catch(e){}
   if(!evTxtP)evTxtP='Objective evidence: trust the transcript length and wording itself; very short answers cap Fluency and Grammar, repeated basic words cap Lexical Resource.';
   var shape='{"scores":{"P":6.0,"GRA":6.0,"LR":5.5,"FC":6.0},"criteriaFeedback":{"P":{"strength":"short strength in Vietnamese","errors":[{"wrong":"exact word from transcript","fix":"correct pronunciation","why":"short reason in Vietnamese"}],"fix":"specific fix in Vietnamese","drill":"1 drill in Vietnamese","bandLink":"1 band bridge sentence in Vietnamese"},"GRA":{"strength":"short strength in Vietnamese","errors":[{"wrong":"exact phrase from transcript","fix":"corrected version","why":"short reason in Vietnamese"}],"fix":"specific fix in Vietnamese","drill":"1 drill in Vietnamese","bandLink":"1 band bridge sentence in Vietnamese"},"LR":{"strength":"short strength in Vietnamese","errors":[{"wrong":"exact phrase from transcript","fix":"corrected version","why":"short reason in Vietnamese"}],"fix":"specific fix in Vietnamese","drill":"1 drill in Vietnamese","bandLink":"1 band bridge sentence in Vietnamese"},"FC":{"strength":"short strength in Vietnamese","errors":[{"wrong":"exact phrase from transcript","fix":"corrected version","why":"short reason in Vietnamese"}],"fix":"specific fix in Vietnamese","drill":"1 drill in Vietnamese","bandLink":"1 band bridge sentence in Vietnamese"}},"modelAnswer":"Band 8 upgraded rewrite of the learner own answer","examinerNote":"2-3 sentences in English, last sentence names the biggest lever","rewriteNotes":"1-2 short lines in Vietnamese","errors":[{"wrong":"exact phrase from transcript","fix":"corrected version","why":"short reason in Vietnamese"}],"upgrades":[{"original":"simple phrase from transcript","better":"band 7 version"}],"tips":["tip in Vietnamese","tip in Vietnamese","tip in Vietnamese"],"praise":"1 sentence in Vietnamese","opening":"1-2 short roast sentences in English"}';
-  return 'Grading attempt code '+seed+'. Output the JSON object IMMEDIATELY as your entire reply: first character {, last character }. No reasoning text, no plan, no markdown, no explanation before or after — think silently, then write only the finished JSON.\nTASK — IELTS Speaking Part '+part+', question: "'+String(q||'')+'"\nTranscript (speech recognition, some words may be mis-heard): "'+trC+'"\nSpeed about '+wpm+' wpm, duration about '+secs+' seconds.\n'+evTxtP+'\nSCORING (strict, 0.5 steps, no sympathy marks) — anchors: 5.0 = chains of short simple sentences, constant basic errors even in simple sentences, basic repetitive vocabulary; 5.5 = extended 3-4 sentence answers, some complex forms, but narrow tense range and slips in simple sentences; 6.5 = willing and natural, wide-enough lexis with few collocation errors, mostly accurate with occasional basic slips; 7.5 = fluent with precise topic lexis, hesitation for ideas only, only minor slips such as a double comparative. A score that contradicts the objective evidence must be lowered to fit it. Hunt Vietnamese-learner errors: dropped final -s/-ed, tense inconsistency, wrong articles/prepositions, translated collocations, fillers, memorised chunks.\nUse EXACTLY this JSON shape, keys in THIS order:\n'+shape+'\nRules: never use a double-quote character inside a string value (use single quotes); every quoted wrong/original MUST be a character-for-character substring of the transcript — never paraphrase or invent; each error item needs wrong, fix AND why filled; examinerNote at least 2 English sentences ending with the single biggest lever to the next band; modelAnswer REQUIRED — an upgraded rewrite of the candidate own answer (keep their ideas and order, repair logic, add at most 1-2 missing ideas only where thin; Part 1: 2-3 sentences, Part 2: 180-240 words, Part 3: 3-4 sentences); criteriaFeedback per criterion: one genuine strength, 1-2 errors quoted for THAT criterion only, a specific fix, one 5-10 minute drill tied to those errors, one band bridge sentence; tips exactly 3 in Vietnamese, one naming the band cap.';
+  return 'Grading attempt code '+seed+'. Output the JSON object IMMEDIATELY as your entire reply: first character {, last character }. No reasoning text, no plan, no markdown, no explanation before or after — think silently, then write only the finished JSON.\nTASK — IELTS Speaking Part '+part+', question: "'+String(q||'')+'"\nTranscript (speech recognition, some words may be mis-heard): "'+trC+'"\nSpeed about '+wpm+' wpm, duration about '+secs+' seconds.\n'+evTxtP+'\nOFFICIAL BAND DESCRIPTORS (condensed): '+BOT_DESC_COMPACT+'\nSCORING (strict, 0.5 steps, no sympathy marks) — anchors: 5.0 = chains of short simple sentences, constant basic errors even in simple sentences, basic repetitive vocabulary; 5.5 = extended 3-4 sentence answers, some complex forms, but narrow tense range and slips in simple sentences; 6.5 = willing and natural, wide-enough lexis with few collocation errors, mostly accurate with occasional basic slips; 7.5 = fluent with precise topic lexis, hesitation for ideas only, only minor slips such as a double comparative. A score that contradicts the objective evidence must be lowered to fit it. Hunt Vietnamese-learner errors: dropped final -s/-ed, tense inconsistency, wrong articles/prepositions, translated collocations, fillers, memorised chunks.\nUse EXACTLY this JSON shape, keys in THIS order:\n'+shape+'\nRules: never use a double-quote character inside a string value (use single quotes); every quoted wrong/original MUST be a character-for-character substring of the transcript — never paraphrase or invent; each error item needs wrong, fix AND why filled; examinerNote at least 2 English sentences ending with the single biggest lever to the next band; modelAnswer REQUIRED — an upgraded rewrite of the candidate own answer (keep their ideas and order, repair logic, add at most 1-2 missing ideas only where thin; Part 1: 2-3 sentences, Part 2: 180-240 words, Part 3: 3-4 sentences); criteriaFeedback per criterion: one genuine strength, 1-2 errors quoted for THAT criterion only, a specific fix, one 5-10 minute drill tied to those errors, one band bridge sentence; tips exactly 3 in Vietnamese, one naming the band cap.';
 }
 function makeGradeVariantPrompts(q,part,tr,wpm,secs){var seedNum=1+Math.floor(Math.random()*999999);var seed='V'+seedNum;return{full:buildPromptVariant(q,part,tr,wpm,secs,seed),lite:buildPromptLiteVariant(q,part,tr,wpm,seed),seed:seed,seedNum:seedNum};}
 /* gradeParseWithRecovery(res, makeVariant, onPhase): doc diem tu luot cham chinh; neu
@@ -1368,6 +1504,61 @@ async function gradeParseWithRecovery(res,makeVariant,onPhase){
   return{g:g,res:res,didFix:false,didVariant:didVariant};
 }
 function buildFixJsonLite(t){return 'Return ONLY JSON, no other text, no markdown. Rewrite the following broken grading result as ONE valid JSON object with EXACTLY this shape: {"opening":"short text","scores":{"FC":5.0,"LR":5.0,"GRA":5.0,"P":5.0},"errors":[{"wrong":"exact phrase","fix":"corrected","why":"short Vietnamese reason"}],"upgrades":[{"original":"simple phrase","better":"band 7 version"}],"tips":["tip in Vietnamese","tip in Vietnamese","tip in Vietnamese"],"praise":"1 sentence in Vietnamese","examinerNote":"2 sentences in English","modelAnswer":"short Band 8 rewrite","criteriaFeedback":{"FC":{"strength":"short strength in Vietnamese","errors":[{"wrong":"exact phrase","fix":"corrected","why":"short reason"},{"wrong":"another exact phrase","fix":"corrected"}],"fix":"Vietnamese fix","drill":"Vietnamese drill","bandLink":"Vietnamese band bridge"},"LR":{"strength":"short strength in Vietnamese","errors":[{"wrong":"exact phrase","fix":"corrected","why":"short reason"},{"wrong":"another exact phrase","fix":"corrected"}],"fix":"Vietnamese fix","drill":"Vietnamese drill","bandLink":"Vietnamese band bridge"},"GRA":{"strength":"short strength in Vietnamese","errors":[{"wrong":"exact phrase","fix":"corrected","why":"short reason"},{"wrong":"another exact phrase","fix":"corrected"}],"fix":"Vietnamese fix","drill":"Vietnamese drill","bandLink":"Vietnamese band bridge"},"P":{"strength":"short strength in Vietnamese","errors":[{"wrong":"exact word","fix":"corrected","why":"short reason"},{"wrong":"another exact word","fix":"corrected"}],"fix":"Vietnamese fix","drill":"Vietnamese drill","bandLink":"Vietnamese band bridge"}}} Rules: keep the SAME scores as in the text; keep strings short; never use a double-quote character inside string values. Text to fix:\n'+String(t||'').slice(0,2500);}
+/* ===== DONG CO GROQ (OpenAI-compatible) =====
+   POST https://api.groq.com/openai/v1/chat/completions, temperature 0.2, timeout 18s/model.
+   Model chinh llama-3.3-70b-versatile, loi thi thu llama-3.1-8b-instant.
+   Luot can JSON (cham bai) gui response_format json_object; luot van xuoi thi khong ep.
+   Tra ve text tho giong geminiAsk/pollinationsAsk de cac ham phia tren khong phai sua. */
+async function groqCallOnce(key,model,prompt,sys,jsonMode,tempOverride,timeoutMs){
+  var body={model:model,temperature:(typeof tempOverride==='number'&&isFinite(tempOverride))?tempOverride:0.2,messages:[{role:'system',content:sys},{role:'user',content:String(prompt||'')}]};
+  if(jsonMode)body.response_format={type:'json_object'};
+  var r;
+  try{r=await fetchTimeout('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify(body)},(typeof timeoutMs==='number'&&timeoutMs>0)?timeoutMs:AI_GROQ_TIMEOUT_MS);}
+  catch(e){throw classifyErr(e,'api.groq.com');}
+  if(!r.ok){var tx='';try{tx=await r.text();}catch(x){}var dt='HTTP '+r.status+' '+tx.slice(0,200);
+    if(r.status===401||r.status===403)throw new Error('groqauth|'+dt);
+    if(r.status===429)throw new Error('quota-groq|'+dt);
+    if(r.status===400&&jsonMode)throw new Error('groqfmt|'+dt); /* co the model khong nhan response_format: groqAsk se thu lai khong ep JSON */
+    throw new Error('server-groq|'+dt);}
+  var j;try{j=await r.json();}catch(e){throw new Error('server-groq|HTTP 200 nhưng không đọc được kết quả của Groq.');}
+  var out=(j&&j.choices&&j.choices[0]&&j.choices[0].message)?String(j.choices[0].message.content||''):'';
+  if(!out.trim())throw new Error('server-groq|Groq trả về rỗng.');
+  return out;}
+async function groqAsk(prompt,opts){
+  opts=opts||{};
+  var isGrade=!!opts.isGrade;
+  var grade429Retried=false; /* (B) 429-retry: toi da 1 lan, chi luot cham + chi model dau (70B) */
+  var key=aiGetGroqKey();if(!key)throw new Error('nokey-groq');
+  var sys=opts.system||'You are damu, a pink capybara and strict IELTS Speaking examiner (examiner-coach persona): roast candidates in English, blunt and sarcastic, grade seriously and strictly with no grade inflation. Follow the user instruction exactly and output ONLY the requested JSON.';
+  var jsonMode=!!opts.json;
+  var lastErr=null;
+  for(var mi=0;mi<AI_GROQ_MODELS.length;mi++){
+    var model=AI_GROQ_MODELS[mi];
+    var tmo=groqTimeoutMsFor(opts,mi); /* (A) ngan sach theo model: cham 60s/30s, thuong 18s */
+    aiSetStatus(mi===0?('Đang chấm bằng Groq ('+model+')...'):('Groq model trước lỗi, đang thử Groq ('+model+')...'));
+    var attempts=jsonMode?2:1; /* neu bi groqfmt (400 vi response_format) thi thu lai CHINH model nay khong ep JSON */
+    for(var at=0;at<attempts;at++){
+      try{
+        var out=await groqCallOnce(key,model,prompt,sys,jsonMode&&at===0,(typeof opts.temperature==='number'&&isFinite(opts.temperature))?opts.temperature:null,tmo);
+        aiGroqFailReset();aiGroqLastModel=model;return out;
+      }catch(e){
+        lastErr=classifyErr(e,'api.groq.com');aiLogErr('groqAsk.'+model,lastErr);
+        var lm=String((lastErr&&lastErr.message)||'');
+        if(lm.indexOf('groqauth|')===0||lm.indexOf('blocked:')===0)throw lastErr;
+        if(lm.indexOf('groqfmt|')===0&&at<attempts-1)continue; /* bo response_format, thu lai model nay */
+        if(isGrade&&mi===0&&!grade429Retried&&lm.indexOf('quota-groq|')===0){ /* (B) luot cham + 70B bi 429: cho 6s roi thu lai CHINH 70B them 1 lan truoc khi roi xuong 8B */
+          grade429Retried=true;
+          var waitMs=(typeof opts.groq429WaitMs==='number'&&opts.groq429WaitMs>=0)?opts.groq429WaitMs:AI_GROQ_GRADE_429_WAIT_MS;
+          aiSetStatus('Groq 70B đang hết lượt (429) — damu chờ '+Math.round(waitMs/1000)+'s rồi thử lại chính model 70B...');
+          await aiDelayMs(waitMs);
+          try{var out2=await groqCallOnce(key,model,prompt,sys,jsonMode&&at===0,(typeof opts.temperature==='number'&&isFinite(opts.temperature))?opts.temperature:null,tmo);aiGroqFailReset();aiGroqLastModel=model;return out2;}
+          catch(e2){lastErr=classifyErr(e2,'api.groq.com');aiLogErr('groqAsk.'+model+'.grade429Retry',lastErr);var lm2=String((lastErr&&lastErr.message)||'');if(lm2.indexOf('groqauth|')===0||lm2.indexOf('blocked:')===0)throw lastErr;}
+        }
+        break; /* 5xx/429/timeout/rong: sang model Groq tiep theo ngay */
+      }
+    }
+  }
+  throw lastErr||new Error('server-groq|Cả 2 model Groq đều bận/lỗi.');}
 /* ===== WHISPER: AI NGHE TRUC TIEP BAN GHI AM (22/10) =====
    Sau khi dung ghi am (tab Luyen tap), app gui file ghi am (voiceStore.practice.blob)
    len Groq Whisper de ra ban ghi chuan hon Web Speech API (hay nghe nham kieu
@@ -1437,7 +1628,7 @@ function renderWhisperBox(){var b=null;try{b=document.getElementById('whisperBox
   if(s.status==='busy'){b.innerHTML='<div class="voicePlay"><p class="small" style="margin:0">🎧 Đang cho AI nghe lại bản ghi (Whisper)… nghe chuẩn hơn máy nghe trực tiếp của trình duyệt.</p></div>';return;}
   if(s.status==='done'&&s.text){b.innerHTML='<div class="voicePlay"><p class="small" style="margin:0">🎧 <b>Bản ghi AI nghe lại (Whisper):</b> '+esc(s.text)+'<br>🎙️ <b>Bản ghi trực tiếp (trình duyệt nghe):</b> '+esc(s.webText||'(trống)')+'<br>✅ damu chấm theo <b>bản ghi AI nghe lại</b> vì nghe chuẩn hơn.</p></div>';return;}
   if(s.status==='failed'){var noKey=false;try{noKey=!aiGetGroqKey();}catch(e){}
-    b.innerHTML='<div class="voicePlay"><p class="small" style="margin:0">🎧 AI nghe lại (Whisper) chưa được lần này'+(s.err?' ('+esc(s.err)+')':'')+' — damu dùng <b>bản ghi trực tiếp</b> ở trên để chấm như cũ.'+'</p></div>';return;}
+    b.innerHTML='<div class="voicePlay"><p class="small" style="margin:0">🎧 AI nghe lại (Whisper) chưa được lần này'+(s.err?' ('+esc(s.err)+')':'')+' — damu dùng <b>bản ghi trực tiếp</b> ở trên để chấm như cũ.'+(noKey?' Muốn AI nghe trực tiếp giọng bạn cho chuẩn (thay máy nghe của trình duyệt hay nghe nhầm): nhập key Groq ở tab Cài đặt nhé.':'')+'</p></div>';return;}
   b.innerHTML='';}
 function startWhisperTranscription(blob,baseText,webFullText){
   /* Bat dau nghe Whisper cho 1 blob practice. webFullText = toan bo ban ghi truc tiep
@@ -1480,7 +1671,7 @@ async function ensureWhisperBeforeGrade(){
   while(Date.now()-t0<3000){var busy=false;try{busy=!!(voiceRec.want||(voiceRec.mr&&voiceRec.mr.state!=='inactive'));}catch(e){}if(!busy)break;await new Promise(function(r){setTimeout(r,150);});}
   practiceTranscriptSource='webspeech';
   var blob=null;try{blob=voiceStore.practice.blob;}catch(e){}
-  if(!blob){return practiceTranscriptSource;}
+  if(!blob){/* RESTORE+BOT: khong con hang cho */return practiceTranscriptSource;}
   if(whisperState.blob!==blob){try{startWhisperTranscription(blob,practiceRecBaseText,($('transcript')?$('transcript').value:''));}catch(e){}}
   if(whisperState.promise){try{await whisperState.promise;}catch(e){}}
   if(whisperState.blob===blob&&whisperState.status==='done'&&whisperState.text){
@@ -1502,236 +1693,73 @@ function aiHasAnyKey(){try{return !!(aiGetKey()||aiGetGroqKey());}catch(e){retur
 function aiWantsJSON(prompt,opts){
   if(opts&&typeof opts.json==='boolean')return opts.json;
   return /ONLY (a |the )?(valid )?JSON|output ONLY the JSON|Reply with ONLY a JSON|Return ONLY a valid JSON/i.test(String(prompt||''));}
-/* MOI LUOT AI TEXT (bo sung cham, audit, tro giang goi y, chien luoc forecast,
-   cai thien cau) di qua ENGINE KEYLESS kieu bot: Pollinations Gen truoc, text
-   Pollinations lam tang cuoi — KHONG key, KHONG cascade Groq/Gemini, KHONG breaker.
-   (Luot CHAM khong di qua day nua: gradeNow/mtGradeMock goi thang botGradeAnswer.) */
-async function aiAsk(prompt,sysOverride,litePrompt,opts){
-  try{var t0=await pollinationsGenAskWithWait(litePrompt||prompt,sysOverride,opts);return{text:t0,via:BOT_VIA,geminiErr:null,groqErr:null};}
-  catch(e0){aiLogErr('aiAsk.botgen',e0);
-    try{var t0b=await pollinationsAskWithWait(litePrompt||prompt,sysOverride,opts);return{text:t0b,via:BOT_VIA,geminiErr:null,groqErr:null};}
-    catch(e0b){aiLogErr('aiAsk.bottext',e0b);throw e0b;}
-  }
-}
-async function aiAskGrade(promptFull,promptLite,opts){var o={json:true};if(opts){for(var _ok in opts)o[_ok]=opts[_ok];}o.isGrade=true; /* moi luot qua aiAskGrade (cham bai + cham thi thu + prompt bien doi) deu la LUOT CHAM: huong ngan sach Groq 60s/30s + 429-retry 70B + Gemini 1 model */return aiAsk(promptFull,null,promptLite,o);}
-/* ================= BOT DAMU — ENGINE CHAM KEYLESS (port nguyen co che tu trang Bot hub/bot/) =================
-   LENH MOI (Nguyen 11:28-11:29 24/10): trang Luyen noi cham bang BOT HET — moi luot cham
-   (cham bai thuong, thi thu, bo sung, audit, tro giang, cai thien cau) di qua engine
-   keyless kieu bot, BAT KE co key hay khong. KHONG con cascade Groq/Gemini cho cham,
-   KHONG hang cho pendingGrades, KHONG nhan 'AI du phong', KHONG breaker cham.
-   Chuoi cham = nhu bot: moi tieu chi 1 luot micro rieng kem KHOI BAND DESCRIPTOR chinh
-   thuc cua rieng tieu chi do (BOT_DESC nhung san tu rubric IELTS public —
-   damu-speaking/research/band-descriptors-public.md), + 1 luot loi trich nguyen van
-   + 1 luot ban nang cap; tieu chi chet thi thu lai bang prompt phuc hoi sieu nho
-   (toi da 2 vong); van thieu thi tra BAN CHAM MOT PHAN trung thuc (hien phan da co,
-   ghi ro phan thieu) — TUYET DOI khong diem gia. Dong 'Doi chieu descriptor' XAC DINH:
-   luon lay tu rubric nhung san theo band dat duoc, khong phu thuoc AI co tra descRef. */
-var BOT_CRIT=[['FC','Fluency and Coherence'],['LR','Lexical Resource'],['GRA','Grammatical Range and Accuracy'],['P','Pronunciation']];
-var BOT_DESC={
-FC:'Band 4: cannot keep going without noticeable pauses; slow speech with frequent repetition and self-correction; links simple sentences only, with repetitious connectives; some breakdowns in coherence. Band 5: usually keeps going but relies on repetition and self-correction and/or slow speech; hesitations often mid-sentence while searching for fairly basic lexis and grammar; overuses certain discourse markers and connectives; complex speech usually causes disfluency but simpler language may be fluent. Band 6: keeps going and willing to produce long turns; coherence may be lost at times through hesitation, repetition and/or self-correction; uses a range of discourse markers, connectives and cohesive features though not always appropriately. Band 7: long turns produced without noticeable effort; some hesitation, repetition or self-correction, often mid-sentence, but coherence is not affected; flexible use of discourse markers, connectives and cohesive features. Band 8: fluent with only very occasional repetition or self-correction; hesitation mostly to find content, not language; topic development coherent, appropriate and relevant. Band 9 (summary): fluent; hesitation only to prepare content; fully coherent, appropriately extended topic development.',
-LR:'Band 4: resource sufficient for familiar topics but only basic meaning conveyed on unfamiliar topics; frequent inappropriacies and errors in word choice; rarely attempts paraphrase. Band 5: resource sufficient for familiar and unfamiliar topics but limited flexibility; attempts paraphrase but not always with success. Band 6: resource sufficient to discuss topics at length; vocabulary use may be inappropriate but meaning is clear; generally able to paraphrase successfully. Band 7: resource flexibly used for a variety of topics; some less common and idiomatic items, with awareness of style and collocation though inappropriacies occur; effective paraphrase as required. Band 8: wide resource readily and flexibly used for all topics and precise meaning; skilful use of less common and idiomatic items despite occasional word-choice and collocation inaccuracies; effective paraphrase. Band 9 (summary): total flexibility and precise use in all contexts; sustained accurate idiomatic language.',
-GRA:'Band 4: can produce basic sentence forms and some short utterances are error-free; subordinate clauses rare; turns short, structures repetitive, errors frequent. Band 5: basic sentence forms fairly well controlled for accuracy; complex structures attempted but limited in range, nearly always contain errors and may need reformulation. Band 6: mix of short and complex forms and a variety of structures with limited flexibility; errors frequently occur in complex structures but rarely impede communication. Band 7: a range of structures flexibly used; error-free sentences are frequent; simple and complex sentences used effectively despite some errors; a few basic errors persist. Band 8: wide range of structures flexibly used; the majority of sentences are error-free; only occasional inappropriacies and non-systematic errors; a few basic errors may persist. Band 9 (summary): structures precise and accurate at all times apart from native-like slips.',
-P:'Band 4: uses some acceptable phonological features but range limited; some acceptable chunking but frequent lapses in rhythm; intonation and stress attempted but control limited; individual words and phonemes frequently mispronounced causing lack of clarity; understanding requires effort and some patches cannot be understood. Band 5: displays all the positive features of Band 4 and some, but not all, of the positive features of Band 6. Band 6: uses a range of phonological features but control is variable; chunking generally appropriate but rhythm may be affected by lack of stress-timing and/or a rapid rate; some effective intonation and stress but not sustained; individual words or phonemes may be mispronounced but only occasional lack of clarity; generally understood throughout without much effort. Band 7: displays all the positive features of Band 6 and some, but not all, of the positive features of Band 8. Band 8: wide range of phonological features to convey precise and subtle meaning; can sustain appropriate rhythm; flexible stress and intonation across long utterances despite occasional lapses; easily understood throughout; accent has minimal effect on intelligibility. Band 9 (summary): full range of phonological features; effortlessly understood throughout; accent has no effect on intelligibility.'
-};
-var BOT_ANCHOR='Anchors from real mock tests: Band 5.0 = chains of short simple sentences, ends sentences with "Yeah", repeats the question stem, basic errors even in simple sentences (e.g. "when I were a child", "the story have traditional Vietnam value"), basic repetitive vocabulary, word-class slips ("physical healthy"), final sounds and final -s dropped. Band 5.5 = answers extended to 3-4 sentences, natural fillers, some relative clauses and one idiom attempt, but tense range narrow (past/present simple only) and slips still land in simple sentences. Band 6.5 = ideas developed across topics, errors only occasional slips. Band 7.5 = long fluent turns on many topics, precise topic-specific vocabulary (heavy footfall, activations), mostly error-free sentences; weakest point often double comparatives (the most hard part, the more easier).';
-
-var BOT_SCORE_RULE='SCORING RULE (official): grade by MATCHING the performance against the descriptors above. The candidate must FULLY fit ALL positive features of a band to receive that band; if the fit is incomplete, award the band BELOW. Give .0 or .5 scores only.';
-
-var BOT_EXAMINER_STYLE='EXAMINER STYLE (from real examiner feedback videos): name the criterion, QUOTE the candidate exact words, explain WHY that evidence caps the band by referring to the descriptor, then give a concrete upgrade with a rewritten example. English is the main language of the judgement; keep Vietnamese notes short.';
-
-var BOT_SYS_GRADE='You are damu, a pink capybara and strict IELTS Speaking examiner-coach, like the examiners in real mock-test feedback videos: grade strictly against the OFFICIAL IELTS band descriptors with no grade inflation; quote the candidate exact words before correcting them; explain why that evidence caps the band by referring to the descriptor; then show a concrete upgraded rewrite. Follow the user instruction exactly and output ONLY the requested JSON.';
-
-function botDescSegment(key,band){
-  var t=BOT_DESC[key]||'';var marks=[];var re=/Band (\d)(?: \(summary\))?:/g,m;
-  while((m=re.exec(t)))marks.push({b:parseInt(m[1],10),i:m.index,e:re.lastIndex});
-  for(var j=0;j<marks.length;j++){if(marks[j].b===band){var end=(j+1<marks.length)?marks[j+1].i:t.length;return t.slice(marks[j].e,end).trim().replace(/[.\s]+$/,'');}}
-  return '';
-}
-function botDescLineFor(key,score){
-  if(score==null)return '';
-  var lo=Math.floor(score);
-  if(lo<4){var s4=botDescSegment(key,4);return s4?('Band '+Number(score).toFixed(1)+' — chưa đạt đầy đủ đặc điểm Band 4: '+s4):'';}
-  if(lo>9)lo=9;
-  var seg=botDescSegment(key,lo);if(!seg)return '';
-  if(score>lo){var segHi=botDescSegment(key,lo+1);return 'Band '+lo+': '+seg+(segHi?(' — đã chạm một phần Band '+(lo+1)+': '+segHi):'');}
-  return 'Band '+lo+': '+seg;
-}
-function botMicroPrompt(key,name,q,part,tr,lim){
-  var L=lim||1100;
-  return 'Grade ONLY '+key+' ('+name+') for this IELTS Speaking answer. Be strict, never inflate.\n'
-    +'OFFICIAL IELTS BAND DESCRIPTORS for '+key+' ('+name+'):\n'+BOT_DESC[key]+'\n'
-    +BOT_SCORE_RULE+'\n'
-    +'CALIBRATION: '+BOT_ANCHOR+'\n'
-    +BOT_EXAMINER_STYLE+'\n'
-    +'Return ONLY valid JSON, no markdown: {"score":5.0,"descRef":"Band X: descriptor feature — matches or not fully, because evidence","strength":"1 short genuine strength in Vietnamese tied to this answer","wrong":"exact phrase copied word-for-word from the transcript","fix":"corrected version of that exact phrase","why":"short reason in Vietnamese referring to the descriptor","advice":"specific fix in Vietnamese","drill":"one concrete 5-10 minute drill in Vietnamese tied to that error","bandLink":"Not yet Band X because ...; fixing ... lifts this criterion to Band Y (English, plus a short Vietnamese note if needed)"}\n'
-    +'Rules: score is a multiple of 0.5 between 3.0 and 9.0. descRef MUST cite the descriptor band that decided the score. "wrong" MUST be copied character-for-character from the transcript; never invent one — if the answer has no error for '+key+', set "wrong" and "fix" to empty strings. For P (Pronunciation), judge only what a transcript can show (word stress clues, final sounds likely dropped, pausing) and note that limit in "why" if needed. Never use a double-quote character inside string values.\n'
-    +'Question (Part '+part+'): "'+String(q||'').slice(0,300)+'"\nTranscript: "'+String(tr||'').slice(0,L)+'"';
-}
-function botRecoveryPrompt(key,name,q,part,tr,lim){
-  var L=lim||1100;
-  return 'Grade ONLY '+key+' ('+name+') for this IELTS Speaking answer. Be strict, never inflate.\n'
-    +'OFFICIAL IELTS BAND DESCRIPTORS for '+key+':\n'+BOT_DESC[key]+'\n'
-    +BOT_SCORE_RULE+'\nCALIBRATION: '+BOT_ANCHOR+'\n'
-    +'Return ONLY valid JSON, no markdown: {"score":5.0,"descRef":"Band X: descriptor feature — matches or not fully, because evidence","strength":"1 short strength in Vietnamese","advice":"1 specific fix in Vietnamese"}. Never use a double-quote character inside string values.\n'
-    +'Question (Part '+part+'): "'+String(q||'').slice(0,200)+'"\nTranscript: "'+String(tr||'').slice(0,Math.min(L,900))+'"';
-}
-function botErrorsPrompt(q,part,tr,lim){
-  var L=lim||1100;
-  return 'List the 3 most important language errors in this IELTS Speaking answer. Anchor: prioritise errors that cap the band under the official descriptors — basic errors in SIMPLE sentences cap GRA at Band 5; word-choice and word-class errors cap LR at Band 5. Return ONLY valid JSON, no markdown: {"errors":[{"wrong":"exact phrase copied word-for-word from the transcript","fix":"corrected version","why":"short reason in Vietnamese"}]}. Never invent a phrase: every "wrong" must appear word-for-word in the transcript. Never use a double-quote character inside string values.\nQuestion (Part '+part+'): "'+String(q||'').slice(0,300)+'"\nTranscript: "'+String(tr||'').slice(0,L)+'"';
-}
-function botModelPrompt(q,part,tr){
-  var wc=wordCount(tr);
-  var target=(part===2)?Math.max(190,Math.min(260,wc)):Math.max(90,Math.ceil(wc*0.85));
-  return 'Write an upgraded rewrite of this learner IELTS Speaking Part '+part+' answer at about Band 6.5-7 level, about '+target+' words, keeping the learner ideas and order but fixing grammar and vocabulary and developing thin parts slightly. Anchor: Band 6.5 means ideas developed at length, successful paraphrase, a mix of sentence forms, and errors only as occasional slips. Output ONLY the answer text, no title, no quotes, no explanation.\nQuestion: "'+String(q||'').slice(0,300)+'"\nLearner answer: "'+String(tr||'').slice(0,1100)+'"';
-}
-/* Goi Pollinations KEYLESS kieu bot: POST https://text.pollinations.ai/openai (model openai),
-   loi thi thu lai 1 lan, cuoi cung du phong GET van ban thuan (chi khi loi khong phai timeout). */
-function botFetchTimeout(url,opts,ms){return new Promise(function(resolve,reject){var c=(typeof AbortController!=='undefined')?new AbortController():null;var t=setTimeout(function(){if(c)c.abort();reject(new Error('timeout'));},ms||25000);var o={};if(opts)for(var k in opts)o[k]=opts[k];if(c)o.signal=c.signal;fetch(url,o).then(function(r){clearTimeout(t);resolve(r);},function(e){clearTimeout(t);reject(e);});});}
-async function botPolliAskOnce(prompt,sys,timeoutMs){
-  var body={model:'openai',private:true,temperature:0.4,messages:[{role:'system',content:sys||BOT_SYS_GRADE},{role:'user',content:prompt}]};
-  var r=await botFetchTimeout('https://text.pollinations.ai/openai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},timeoutMs||25000);
-  if(!r.ok)throw new Error('HTTP '+r.status);
+/* THU TU DONG CO trong aiAsk (cap nhat 22/10 toi — cam dong co Gen):
+   - CO key Groq: Groq (2 model) -> Gemini (failover 3 model) -> Gen -> text Pollinations.
+   - CHUA co key Groq: Gemini -> Gen -> text Pollinations.
+   - 0-KEY: Gen (gen.pollinations.ai, ngan sach rieng) -> text Pollinations (tang cuoi).
+   Tang mien phi nem quota thi CHO 30s + THU LAI 1 LAN (aiFreeTierAsk) truoc khi roi
+   xuong tang tiep theo. Moi duong goi dung chung (cham bai, bo sung, vi mo, tro giang,
+   chien luoc, audit, thi thu) deu di qua aiAsk/aiAskGrade nen deu duoc huong thu tu nay.
+   Breaker RIENG tung dong co: Groq loi chi tang bo dem Groq, Gemini loi chi tang bo dem Gemini. */
+/* ================= DONG CO BOT DAMU KEYLESS — ENGINE CHAM DUY NHAT (RESTORE+BOT 24/10) =================
+   Nguyen dinh chinh: CHI thay phan MAY AI ben duoi, giu nguyen trang ket qua/prompt cu.
+   Moi loi goi AI (cham bai, thi thu, bo sung, audit, tro giang, chien luoc, cai thien
+   cau) di qua MOT engine duy nhat: Bot damu keyless — Pollinations POST
+   https://text.pollinations.ai/openai (model openai, khong key), loi thi thu lai 1
+   lan, sau do du phong trong cung Bot qua Gen/text Pollinations keyless. KHONG con
+   cascade Groq/Gemini cho cham, KHONG breaker cham, KHONG hang cho. Trang thai
+   nguoi dung thay: 'Bot damu đang chấm...'. Key Groq cu (neu co) CHI con dung cho
+   Whisper nghe lai ban ghi — khong phai dieu kien de cham. */
+function botFetchTimeout(url,opts,ms){return new Promise(function(resolve,reject){var c=(typeof AbortController!=='undefined')?new AbortController():null;var t=setTimeout(function(){if(c)c.abort();reject(new Error('slow:bot.pollinations'));},ms||60000);var o={};if(opts)for(var k in opts)o[k]=opts[k];if(c)o.signal=c.signal;fetch(url,o).then(function(r){clearTimeout(t);resolve(r);},function(e){clearTimeout(t);reject(e);});});}
+async function botPolliAskOnce(prompt,sysOverride,opts){
+  var tmo=(opts&&typeof opts.timeoutMs==='number'&&opts.timeoutMs>0)?opts.timeoutMs:60000;
+  var sys=sysOverride||'You are damu, a pink capybara and strict IELTS Speaking examiner (examiner-coach persona): roast candidates in English, blunt and sarcastic, grade seriously and strictly with no grade inflation. Follow the user instruction exactly and output ONLY the requested JSON.';
+  var body={model:'openai',private:true,messages:[{role:'system',content:sys},{role:'user',content:String(prompt||'')}]};
+  if(opts&&typeof opts.temperature==='number'&&isFinite(opts.temperature))body.temperature=opts.temperature;
+  if(opts&&typeof opts.seed==='number'&&isFinite(opts.seed))body.seed=Math.floor(opts.seed);
+  var r=await botFetchTimeout('https://text.pollinations.ai/openai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},tmo);
+  if(!r.ok){var btx='';try{btx=await r.text();}catch(x){}if(r.status===402||aiIsLimitText(btx))throw new Error('quota|Bot damu free limit reached (HTTP 402)');throw new Error('HTTP '+r.status);}
   var raw=await r.text();
-  if(!raw||!raw.trim())throw new Error('empty');
+  if(!raw||!String(raw).trim())throw new Error('empty');
   try{var j=JSON.parse(raw);if(j&&j.choices&&j.choices[0]&&j.choices[0].message){
     if(typeof j.choices[0].message.content==='string'&&j.choices[0].message.content.trim())return j.choices[0].message.content;
-    if(typeof j.choices[0].message.reasoning==='string'&&j.choices[0].message.reasoning.trim())return j.choices[0].message.reasoning; /* envelope reasoning-only: ban JSON cuoi thuong nam o cuoi reasoning — tra reasoning de parser cat ra */
+    if(typeof j.choices[0].message.reasoning==='string'&&j.choices[0].message.reasoning.trim())return j.choices[0].message.reasoning;
   }}catch(e){}
+  if(aiIsLimitText(raw))throw new Error('quota|Bot damu free limit reached (HTTP 402)');
   return raw;
 }
-async function botPolliAsk(prompt,sys,timeoutMs){
+async function botPolliAsk(prompt,sysOverride,opts){
+  aiSetStatus('Bot damu đang chấm...');
   var lastErr=null;
   for(var attempt=0;attempt<2;attempt++){
-    try{return await botPolliAskOnce(prompt,sys,timeoutMs||25000);}catch(e){lastErr=e;if(attempt===0)await aiDelayMs(900);}
+    try{return await botPolliAskOnce(prompt,sysOverride,opts);}catch(e){lastErr=e;aiLogErr('botPolliAsk.'+attempt,e);if(attempt===0)await aiDelayMs(1200);}
   }
-  if(!lastErr||!/timeout/i.test(String(lastErr.message||''))){
-    try{
-      var url='https://text.pollinations.ai/'+encodeURIComponent(prompt)+'?model=openai&system='+encodeURIComponent(sys||BOT_SYS_GRADE)+'&private=true';
-      var r2=await botFetchTimeout(url,{},timeoutMs||25000);
-      if(!r2.ok)throw new Error('HTTP '+r2.status);
-      var t2=await r2.text();if(t2&&t2.trim())return t2;
-    }catch(e){lastErr=e;}
-  }
-  throw lastErr||new Error('pollinations failed');
+  /* Du phong TRONG CUNG Bot (van keyless, van Pollinations): Gen roi text — chi khi
+     cong /openai loi ca 2 lan (quota/timeout/mang). */
+  try{return await pollinationsGenAskWithWait(prompt,sysOverride,opts);}catch(e2){aiLogErr('botPolliAsk.gen',e2);}
+  try{return await pollinationsAskWithWait(prompt,sysOverride,opts);}catch(e3){aiLogErr('botPolliAsk.text',e3);throw (lastErr||e3);}
 }
-function botParseGrade(text){try{var g=extractJSON(text);if(g&&typeof g==='object'&&!g._raw){if(g.score!=null||g.errors||g.scores)return g;return null; /* object khong phai ban cham (vd dang goi y bi parser nuot nham) -> coi nhu hong, vong phuc hoi/regex xu ly */}}catch(e){}return null;}
-function botValidScore(v){var n=(typeof v==='string')?parseFloat(v):v;return (typeof n==='number'&&isFinite(n)&&n>=0&&n<=9)?Math.round(n*2)/2:null;}
-function botMicroScore(v){var n=botValidScore(v);return (n!=null&&n>=3&&n<=9)?n:null; /* prompt micro chi cho phep 3.0-9.0: diem ngoai khoang (vd bi parser vot nham tu reasoning dump) coi nhu hong -> vong phuc hoi cham lai */}
-/* botGradeAnswer(q, part, tr, opts) -> {grade, partial}
-   opts: {onPhase, trLimit, qLabel (mo ta thay 'Question (Part N)'), modelText, modelPart}
-   grade = object dung hinh dang app (scores/criteriaFeedback kem descRef XAC DINH/
-   errors/upgrades/tips/praise/examinerNote/modelAnswer) khi du 4 tieu chi;
-   partial = {scores, feedback, missing, errors, model} khi thieu tieu chi — KHONG diem gia. */
-async function botGradeAnswer(q,part,tr,opts){
-  opts=opts||{};
-  var onPhase=(typeof opts.onPhase==='function')?opts.onPhase:function(){};
-  var trFull=String(tr||'').trim();
-  var trLim=opts.trLimit||1100;
-  var qLabel=opts.qLabel||('Question (Part '+part+')');
-  var modelText=(opts.modelText!=null)?String(opts.modelText):trFull;
-  var modelPart=(typeof opts.modelPart==='number')?opts.modelPart:part;
-  var scores={},feedback={},missing=[];
-  function cleanField(g,f){if(!g)return '';var v=String(g[f]||'');if(/short genuine|in Vietnamese|exact phrase|corrected version/i.test(v)&&v.length<70)return '';return v;}
-  async function runCrit(idx,recovery){
-    var key=BOT_CRIT[idx][0],name=BOT_CRIT[idx][1];
-    var prompt=recovery?botRecoveryPrompt(key,name,q,part,trFull,trLim):botMicroPrompt(key,name,q,part,trFull,trLim);
-    if(opts.qLabel)prompt=prompt.replace('Question (Part '+part+'):',qLabel+':');
-    var raw=await botPolliAsk(prompt,BOT_SYS_GRADE,25000);
-    var g=botParseGrade(raw);var sc=g?botMicroScore(g.score):null;
-    if(sc==null&&g&&g.scores)sc=botMicroScore(g.scores[key]); /* ban prose/dump duoc parser app vot: diem nam trong scores.{key} (van phai trong khoang micro 3-9) */
-    if(sc==null){var m=String(raw||'').match(/score\D{0,6}([3-9](?:\.[05])?)/i);if(m)sc=botMicroScore(parseFloat(m[1]));}
-    if(sc==null)throw new Error('no score '+key);
-    scores[key]=sc;
-    feedback[key]={strength:cleanField(g,'strength'),wrong:String((g&&g.wrong)||''),fix:String((g&&g.fix)||''),why:cleanField(g,'why'),advice:cleanField(g,'advice'),drill:cleanField(g,'drill'),bandLink:cleanField(g,'bandLink'),descRef:String((g&&g.descRef)||'')};
-    if(feedback[key].wrong&&trFull.toLowerCase().indexOf(feedback[key].wrong.toLowerCase())<0){feedback[key].wrong='';feedback[key].fix='';}
+async function aiAsk(prompt,sysOverride,litePrompt,opts){
+  aiSetStatus('Bot damu đang chấm...');
+  var full=String(prompt||'');var lite=(litePrompt&&String(litePrompt)!==full)?String(litePrompt):null;
+  try{var t=await botPolliAsk(full,sysOverride,opts);return{text:t,via:BOT_VIA,geminiErr:null,groqErr:null};}
+  catch(e){aiLogErr('aiAsk.bot.full',e);
+    if(lite){try{var t2=await botPolliAsk(lite,sysOverride,opts);return{text:t2,via:BOT_VIA,geminiErr:null,groqErr:null};}catch(e2){aiLogErr('aiAsk.bot.lite',e2);throw e2;}}
+    throw e;
   }
-  async function tryCrit(idx,recovery){try{await runCrit(idx,recovery);}catch(e){aiLogErr('botGrade.'+BOT_CRIT[idx][0],e);if(missing.indexOf(BOT_CRIT[idx][0])<0)missing.push(BOT_CRIT[idx][0]);}}
-  onPhase('Bot damu đang chấm Fluency & Coherence + Lexical Resource — mỗi tiêu chí 1 lượt micro kèm band descriptor chính thức (lượt 1-2/6)...');
-  await Promise.all([tryCrit(0,false),tryCrit(1,false)]);
-  onPhase('Bot damu đang chấm Grammatical Range & Accuracy + Pronunciation — kèm descriptor (lượt 3-4/6)...');
-  await Promise.all([tryCrit(2,false),tryCrit(3,false)]);
-  /* Vong PHUC HOI (toi da 2 vong, tuan tu tung tieu chi con thieu — kieu bot): */
-  for(var round=0;round<2;round++){
-    var missNow=BOT_CRIT.filter(function(c){return scores[c[0]]==null;});
-    if(!missNow.length)break;
-    onPhase('Bot damu đang chấm lại phần thiếu: '+missNow.map(function(c){return c[0];}).join(', ')+' (lượt phục hồi)...');
-    for(var ri=0;ri<missNow.length;ri++){
-      var midx=BOT_CRIT.indexOf(missNow[ri]);
-      missing=missing.filter(function(x){return x!==missNow[ri][0];});
-      await tryCrit(midx,true);
-    }
-  }
-  var errors=[],model='';
-  async function runErrors(){
-    try{
-      var rawE=await botPolliAsk(botErrorsPrompt(q,part,trFull,trLim),BOT_SYS_GRADE,25000);
-      var ge=botParseGrade(rawE);
-      var list=(ge&&Array.isArray(ge.errors))?ge.errors:[];
-      list.forEach(function(it){if(it&&it.wrong&&trFull.toLowerCase().indexOf(String(it.wrong).toLowerCase())>=0&&errors.length<3)errors.push({wrong:String(it.wrong),fix:String(it.fix||''),why:String(it.why||'')});});
-    }catch(e){aiLogErr('botGrade.errors',e);}
-  }
-  async function runModel(){
-    try{
-      var rawM=await botPolliAsk(botModelPrompt(q,modelPart,modelText),'You are damu, a pink capybara and strict IELTS Speaking examiner. Output ONLY the model answer text.',25000);
-      var mm=String(rawM||'');try{var uw=unwrapAIEnvelopeText(mm);if(uw)mm=uw;}catch(e){}
-      mm=mm.replace(/^\s*["“]|["”]\s*$/g,'').trim();
-      if(mm.length<25||/^\{/.test(mm))mm='';
-      model=mm;
-    }catch(e){aiLogErr('botGrade.model',e);}
-  }
-  onPhase('Bot damu đang soi lỗi trích nguyên văn + viết bản nâng cấp (lượt 5-6/6)...');
-  await Promise.all([runErrors(),runModel()]);
-  var gotKeys=Object.keys(scores);
-  if(gotKeys.length<4){
-    return {grade:null,partial:{scores:scores,feedback:feedback,missing:BOT_CRIT.filter(function(c){return scores[c[0]]==null;}).map(function(c){return c[0];}),errors:errors,model:model}};
-  }
-  var cf={};
-  BOT_CRIT.forEach(function(c){var k=c[0],f=feedback[k]||{};
-    cf[k]={strength:f.strength||'',errors:(f.wrong&&f.fix)?[{wrong:f.wrong,fix:f.fix,why:f.why||''}]:[],fix:f.advice||'',drill:f.drill||'',bandLink:f.bandLink||'',descRef:botDescLineFor(k,scores[k]),descAI:f.descRef||''};});
-  var allErrs=errors.slice();
-  if(!allErrs.length){BOT_CRIT.forEach(function(c){var e=cf[c[0]].errors[0];if(e&&allErrs.length<3)allErrs.push(e);});}
-  var upgrades=[];BOT_CRIT.forEach(function(c){var e=cf[c[0]].errors[0];if(e&&upgrades.length<2)upgrades.push({original:e.wrong,better:e.fix});});
-  var order=BOT_CRIT.map(function(c){return c[0];}).sort(function(a,b){return scores[a]-scores[b];});
-  var weakest=order[0],second=order[1],strongest=order[3];
-  var tips=[];[cf[weakest].bandLink,cf[weakest].drill,cf[second].drill||cf[second].fix].forEach(function(t){if(t&&tips.indexOf(t)<0)tips.push(t);});
-  var overall=roundBand((scores.FC+scores.LR+scores.GRA+scores.P)/4);
-  var enParts=[];
-  if(feedback[weakest]&&feedback[weakest].descRef)enParts.push(weakest+' is capped at Band '+scores[weakest].toFixed(1)+': '+feedback[weakest].descRef);
-  if(feedback[second]&&feedback[second].descRef)enParts.push(second+' sits at Band '+scores[second].toFixed(1)+': '+feedback[second].descRef);
-  enParts.push('The single biggest lever is fixing the quoted errors under '+weakest+' first, because that criterion is holding the overall band down');
-  var examinerNote=enParts.join('. ').replace(/\.\s*\./g,'.')+'.';
-  var g={opening:'Overall Band '+overall.toFixed(1)+' — graded criterion by criterion against the official IELTS band descriptors, no sympathy marks. Your weakest link is '+weakest+' at Band '+scores[weakest].toFixed(1)+', and the descriptor evidence below shows exactly why.',
-    scores:{FC:scores.FC,LR:scores.LR,GRA:scores.GRA,P:scores.P},
-    errors:allErrs,upgrades:upgrades,tips:tips,
-    praise:(feedback[strongest]&&feedback[strongest].strength)||'',
-    examinerNote:examinerNote,
-    modelAnswer:model,
-    rewriteNotes:model?'Bản nâng cấp giữ nguyên ý và thứ tự trình bày của bạn, sửa ngữ pháp và từ vựng theo đúng các lỗi đã trích ở phía trên.':'',
-    criteriaFeedback:cf,_transcript:trFull,_botGrade:true};
-  return {grade:g,partial:null};
 }
-/* Ban cham MOT PHAN trung thuc (thieu tieu chi): hien phan da co kem dong doi chieu
-   descriptor xac dinh, ghi ro phan thieu — khong overall, khong diem gia. */
-function botPartialHtml(p,q,part){
-  var names={FC:'Fluency & Coherence',LR:'Lexical Resource',GRA:'Grammatical Range & Accuracy',P:'Pronunciation'};
-  var h='<h3>📋 Bản chấm một phần của Bot damu — Part '+part+'</h3><p class="small">Cổng AI miễn phí trục trặc ở vài lượt micro nên lần này CHƯA đủ 4 tiêu chí. damu hiện phần đã chấm được và ghi rõ phần thiếu — tuyệt đối không bịa điểm cho phần thiếu.</p>';
-  BOT_CRIT.forEach(function(c){var k=c[0];
-    if(p.scores[k]==null){h+='<div class="cfb"><h4>'+k+' — '+names[k]+'</h4><p>⚠️ Lượt chấm tiêu chí này chưa hoàn thành lần này.</p></div>';return;}
-    var f=p.feedback[k]||{};var dl=botDescLineFor(k,p.scores[k]);
-    h+='<div class="cfb"><h4>'+k+' — '+names[k]+' — '+Number(p.scores[k]).toFixed(1)+'</h4>';
-    if(dl)h+='<p>📌 <b>Đối chiếu descriptor:</b> '+esc(dl)+'</p>';
-    if(f.descRef)h+='<p>🎓 <b>Giám khảo đối chiếu:</b> '+esc(f.descRef)+'</p>';
-    if(f.strength)h+='<p>✅ <b>Điểm mạnh:</b> '+esc(f.strength)+'</p>';
-    if(f.wrong)h+='<p><b>Lỗi:</b> “'+esc(f.wrong)+'” → “'+esc(f.fix)+'”'+(f.why?' — '+esc(f.why):'')+'</p>';
-    if(f.advice)h+='<p><b>Cách khắc phục:</b> '+esc(f.advice)+'</p>';
-    if(f.drill)h+='<p>🎯 <b>Bài tập luyện riêng:</b> '+esc(f.drill)+'</p>';
-    if(f.bandLink)h+='<p>📈 '+esc(f.bandLink)+'</p>';
-    h+='</div>';});
-  if(p.errors&&p.errors.length){h+='<h3>❌ Lỗi sai cần sửa</h3><table class="errs"><tr><th>Bạn nói</th><th>Sửa đúng</th><th>Vì sao</th></tr>';p.errors.forEach(function(e){h+='<tr><td class="wrong">'+esc(e.wrong)+'</td><td class="fix">'+esc(e.fix)+'</td><td>'+esc(e.why)+'</td></tr>';});h+='</table>';}
-  if(p.model)h+='<h3>⭐ Bản nâng cấp</h3><p style="white-space:pre-wrap">'+esc(p.model)+'</p>';
-  h+='<p class="small">Phần chưa chấm được: '+esc(p.missing.join(', '))+'. Bấm chấm lại để Bot damu chấm nốt nhé.</p>';
-  return h;
-}
+
+async function aiAskGrade(promptFull,promptLite,opts){var o={json:true};if(opts){for(var _ok in opts)o[_ok]=opts[_ok];}o.isGrade=true; /* moi luot qua aiAskGrade (cham bai + cham thi thu + prompt bien doi) deu la LUOT CHAM: huong ngan sach Groq 60s/30s + 429-retry 70B + Gemini 1 model */return aiAsk(promptFull,null,promptLite,o);}
+async function testKeyUI(){var key=aiGetKey();if(!key){$('keyNote').textContent='Chưa có key nào được lưu. Dán key vào ô trên, bấm Lưu key, rồi kiểm tra lại. (Không có key vẫn chấm được bằng AI dự phòng.)';return;}$('keyNote').textContent='Đang kiểm tra… (gọi generateContent thật bằng đúng cấu hình lúc chấm, tối đa 18 giây cho mỗi model)';renderAIStatus();
+  try{var m=await pickModel(key);var t0=Date.now();
+    var genCfg={temperature:0.35,maxOutputTokens:2500,responseMimeType:'application/json'};
+    var r=await fetchTimeout('https://generativelanguage.googleapis.com/v1beta/models/'+m+':generateContent?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:'Reply with only this JSON: {"ok":true}'}]}],generationConfig:genCfg})},AI_TIMEOUT_MS);
+    if(!r.ok){var tx='';try{tx=await r.text();}catch(x){}throw new Error('server|HTTP '+r.status+' khi gọi generateContent thật — '+tx.slice(0,200));}
+    var j=await r.json();var parts=(((j.candidates||[])[0]||{}).content||{}).parts||[];var out='';for(var p=0;p<parts.length;p++)if(parts[p].text)out+=parts[p].text;
+    if(!out)throw new Error('server|generateContent trả về rỗng.');
+    var secs=((Date.now()-t0)/1000).toFixed(1);var inf=aiGfailInfo();
+    $('keyNote').textContent='✅ Key dùng được THẬT (đã gọi generateContent thành công)! Model: '+m+' • Thời gian phản hồi: '+secs+' giây • Breaker: '+(inf.active?('đang ghim, còn ~'+inf.remainMin+' phút'):('không ghim (lỗi gần đây: '+inf.count+')'))+'.';
+  }catch(e){aiLogErr('testKeyUI',e);$('keyNote').textContent='⚠️ Kiểm tra thất bại: '+aiFriendlyErr(e);renderAIStatus();}}
 
 /* ================= CHẤM BÀI ================= */
 function roundBand(avg){var f=Math.floor(avg),frac=avg-f;if(frac<0.25)return f;if(frac<0.75)return f+0.5;return f+1;}
@@ -1786,7 +1814,7 @@ function buildAuditPrompt(g,tr,evTxt){if(evTxt&&typeof evTxt==='object')evTxt=ev
   var anchors='BAND ANCHORS (summary): 4.5=frequent breakdowns, basic errors in nearly every sentence, listener strains; 5.0=chains of short simple sentences, constant basic errors even in simple sentences, intelligible with effort; 5.5=extended 3-4 sentence answers, some complex forms and an idiom attempt, narrow tense range, slips still in simple sentences, Part 2 often under-developed; 6.5=natural and willing, wide-enough lexis with few collocation errors, mostly accurate with occasional basic slips; 7.5=fluent, hesitation for ideas only, precise topic lexis; 9=pauses only for ideas, full grammar range, near error-free, idiomatic.';
   return 'You are a SECOND senior IELTS Speaking examiner running a quick AUDIT of a grade. You do NOT re-grade from scratch and you do NOT rewrite any feedback. Check ONLY whether any of the four criterion scores deviates by MORE than 1.0 band from what the transcript and the objective evidence support.\n'+anchors+'\nScores already given: '+JSON.stringify(g.scores||{})+'\n'+(evTxt||'')+'\nTranscript: "'+String(tr||'').slice(0,1500)+'"\nReply with ONLY a JSON object, no markdown, no other text: {"confirm":true} if every criterion is within 1.0 band of the evidence. Otherwise reply {"adjust":{"FC":6.0,"LR":5.5,"GRA":6.0,"P":6.0},"reason":"one short line naming the criterion that was off and the evidence"} with ALL FOUR corrected scores in 0.5 steps. Never use a double-quote character inside the reason string.';
 }
-var AUDIT_TIMEOUT_MS=20000;
+var AUDIT_TIMEOUT_MS=90000; /* RESTORE+BOT v2.3: audit qua bot mat 30-90s/luot, timeout 20s cu khien audit luon timeout -> unavailable */
 /* applyAudit(g, a): pure applier for a parsed audit reply. Accepts {"confirm":true},
    {"adjust":{FC,LR,GRA,P},"reason":"..."}, {"verdict":"confirm"} and
    {"verdict":"adjust","scores":{...},"reason":"..."}. Records the outcome on
@@ -1877,23 +1905,74 @@ function auditEvidenceMismatch(g,ev){
     if(graErrN>=2||totErr>=3)return 'GRA '+gra.toFixed(1)+' nhưng lỗi trích nguyên văn toàn lỗi cơ bản ('+(graErrN>=2?('lỗi GRA x'+graErrN):('tổng lỗi x'+totErr))+')';}
   if(words>0&&words<35&&(fc>=7||lr>=7||gra>=7))return 'bài quá ngắn ('+words+' từ) nhưng có tiêu chí >= 7.0';
   return '';}
+/* ECHO-SHAPE GUARD (RESTORE+BOT v2.3, 24/10): cong mien phi doi khi chep y bo so
+   vi du trong shape JSON cua buildPrompt (FC 6.0/LR 5.5/GRA 6.0/P 6.0) thay vi cham
+   that — neo Part 1 chieu 24/10 ra 6.0 ca 5 luot, 4 luot trung dung bo so mau.
+   Guard HEP nay chi bat dung truong hop: Part 1 + dung bo so mau + bai ngan (<=80 tu)
+   + co loi co ban (>=2 loi trich nguyen van) hoac toan cau ngan (<7 tu/cau). Bai dai,
+   Part 2/3, bai it loi khong bao gio bi bat — tranh lam lech bai thuc su tot. */
+function guardEchoShapeFire(g,tr,part,ev){
+  if(part!==1)return false;
+  var sc=g&&g.scores;if(!sc)return false;
+  if(!( +sc.FC===6.0 && +sc.LR===5.5 && +sc.GRA===6.0 && +sc.P===6.0 ))return false;
+  var words=(ev&&typeof ev.words==='number')?ev.words:(String(tr||'').trim()?String(tr||'').trim().split(/\s+/).length:0);
+  if(!(words>0&&words<=80))return false;
+  var errs=Array.isArray(g.errors)?g.errors.length:0;
+  var avg=(ev&&typeof ev.avgSentLen==='number')?ev.avgSentLen:0;
+  if(!(errs>=2||(avg>0&&avg<7)))return false;
+  return true;
+}
+async function guardEchoShapeRegrade(g,tr,ev,ctx){
+  var q=(ctx&&ctx.q)?String(ctx.q):'';if(!q)return false;
+  var wpm=(ev&&typeof ev.wpm==='number')?ev.wpm:0;
+  var secs=(ev&&typeof ev.secs==='number')?ev.secs:0;
+  var words=(ev&&typeof ev.words==='number')?ev.words:(String(tr||'').trim()?String(tr||'').trim().split(/\s+/).length:0);
+  var savedStart=gradeSessionStart;gradeSessionStart=Date.now();
+  try{
+    var res2=await aiAskGrade(buildPromptLite(q,1,tr,wpm),buildPromptLite(q,1,tr,wpm),{timeoutMs:90000});
+    var rec2=await gradeParseWithRecovery(res2,function(){return makeGradeVariantPrompts(q,1,tr,wpm,secs);},function(){});
+    var g2=rec2.g;
+    if(!validateGrade(g2))return false;
+    g2=await completeGradeIfNeeded(g2,res2,q,1,tr,rec2.didFix?2:3);
+    if(!validateGrade(g2)||gradeMissingFields(g2,tr,1).length)return false;
+    var before={FC:+g.scores.FC,LR:+g.scores.LR,GRA:+g.scores.GRA,P:+g.scores.P};
+    ['FC','LR','GRA','P'].forEach(function(k){g.scores[k]=Math.min(+g.scores[k],+g2.scores[k]);});
+    var ov=roundBand((+g.scores.FC+ +g.scores.LR+ +g.scores.GRA+ +g.scores.P)/4);
+    if(ov>5.0){g.scores=before;return false;}
+    g._echoGuard=true;
+    try{g._audit={verdict:'adjust',reason:'Diem goc trung khop dung bo so vi du trong prompt cham (FC 6.0/LR 5.5/GRA 6.0/P 6.0) trong khi bai Part 1 ngan ('+words+' tu) va co loi co ban — giam khao thu hai cham lai bang prompt trung lap (shape 5.0) va giu muc nghiem khac hon cho moi tieu chi.',before:before,after:{FC:+g.scores.FC,LR:+g.scores.LR,GRA:+g.scores.GRA,P:+g.scores.P}};g.audit=g._audit;}catch(e){}
+    return true;
+  }catch(e){aiLogErr('echoGuard',e);return false;}
+  finally{gradeSessionStart=savedStart;}
+}
 async function auditGradeIfNeeded(g,tr,ev,ctx){
   if(!validateGrade(g))return g;
-  /* NGAN SACH 30s (Nguyen chot 19:33): luot chinh da ton >20s (hoac chi con <=5s ngan
-     sach) thi BO HAN audit — giu thoi gian cho ket qua da co, khong goi them luot nao. */
-  if(typeof gradeSessionStart!=='undefined'&&gradeSessionStart&&(Date.now()-gradeSessionStart>GRADE_AUDIT_MAX_MS||gradeBudgetLeft()<=5000)){
-    try{g._auditSkipped=true;g._audit={verdict:'skipped',reason:'Bỏ qua kiểm định vì lượt chính đã tốn trên 20 giây — giữ ngân sách chấm 30 giây (yêu cầu tốc độ 19:33), điểm gốc được giữ nguyên.',before:g.scores,after:g.scores};g.audit=g._audit;}catch(e){}
-    return g;
-  }
   var evObj=(ev&&typeof ev==='object')?ev:null;
-  /* NGAN SACH POLLINATIONS (0-key): toi da 2 luot Pollinations / 1 lan cham.
-     Neu luot cham chinh da qua Pollinations VA da ton them 1 luot bo sung
-     (completion hoac fixJSON) thi BO QUA audit — giu tong <= 2 luot. */
+  /* ECHO GUARD chay TRUOC moi lan bo qua: neu diem goc la echo-shape thi cham lai
+     ngay trong audit (khong doi audit thuong), thanh cong thi tra ve luon. */
+  try{
+    if(evObj&&ctx&&typeof ctx==='object'&&ctx.q&&guardEchoShapeFire(g,tr,ctx.part,evObj)){
+      var okG=await guardEchoShapeRegrade(g,tr,evObj,ctx);
+      if(okG)return g;
+    }
+  }catch(eG){aiLogErr('auditGradeIfNeeded.echoGuard',eG);}
   var ctxVia=(ctx&&typeof ctx==='object')?String(ctx.via||''):String(ctx||'');
   var ctxExtra=(ctx&&typeof ctx==='object')?!!ctx.extraUsed:false;
   var effVia=String((g&&g._completionVia)||ctxVia||'');
-  if(effVia.indexOf('Pollinations')>=0&&(ctxExtra||(g&&g._completionVia))){
-    try{g._auditSkipped=true;g._audit={verdict:'skipped',reason:'Bỏ qua kiểm định để giữ ngân sách lượt AI miễn phí cho 1 lần chấm — lượt chấm + lượt bổ sung đã đủ.',before:g.scores,after:g.scores};g.audit=g._audit;}catch(e){}
+  var isBot=(typeof BOT_VIA!=='undefined'&&(effVia===BOT_VIA||ctxVia===BOT_VIA));
+  /* NGAN SACH: 2 lan bo qua theo thoi gian/luot goi la rang buoc thoi Groq (cham
+     <30s, 2 luot). Engine bot cham 2-5 phut/lan nen KHONG ap 2 lan bo qua nay cho
+     bot — neu khong audit khong bao gio chay duoc (moi luot cham that deu >120s,
+     va extraUsed luon true khi da bo sung). */
+  if(!isBot&&typeof gradeSessionStart!=='undefined'&&gradeSessionStart&&(Date.now()-gradeSessionStart>GRADE_AUDIT_MAX_MS||gradeBudgetLeft()<=5000)){
+    try{g._auditSkipped=true;g._audit={verdict:'skipped',reason:'Bỏ qua kiểm định vì lượt chính đã tốn trên 20 giây — giữ ngân sách chấm 30 giây (yêu cầu tốc độ 19:33), điểm gốc được giữ nguyên.',before:g.scores,after:g.scores};g.audit=g._audit;}catch(e){}
+    return g;
+  }
+  /* NGAN SACH POLLINATIONS (0-key): toi da 2 luot Pollinations / 1 lan cham.
+     Neu luot cham chinh da qua Pollinations VA da ton them 1 luot bo sung
+     (completion hoac fixJSON) thi BO QUA audit — giu tong <= 2 luot. */
+  if(!isBot&&effVia.indexOf('Pollinations')>=0&&(ctxExtra||(g&&g._completionVia))){
+    try{g._auditSkipped=true;g._audit={verdict:'skipped',reason:'Bỏ qua kiểm định để giữ ngân sách lượt Bot damu cho 1 lần chấm — lượt chấm + lượt bổ sung đã đủ.',before:g.scores,after:g.scores};g.audit=g._audit;}catch(e){}
     return g;
   }
   var mismatch=auditEvidenceMismatch(g,evObj);
@@ -1936,10 +2015,24 @@ function auditNoteHtml(g){
   }
   return '<p class="small">🛡️ <b>Kiem dinh diem (audit):</b> '+esc(reason||'da chay luot kiem dinh audit cho bai nay.')+'</p>';
 }
-function buildPrompt(q,part,tr,wpm,secs){var trC=String(tr||'').slice(0,1800);var evP=null,evTxtP='';if(typeof computeEvidence==='function'){try{evP=computeEvidence(trC,secs);}catch(e){}}if(evP&&typeof evidenceText==='function'){try{evTxtP=evidenceText(evP);}catch(e){}}if(!evTxtP){var _bw=trC.trim()?trC.trim().split(/\s+/):[];var _bn=_bw.map(function(w){return w.toLowerCase().replace(/^[^a-z0-9']+|[^a-z0-9']+$/g,'');}).filter(function(w){return w;});var _bs={},_bu=0;for(var _bi=0;_bi<_bn.length;_bi++){if(!_bs[_bn[_bi]]){_bs[_bn[_bi]]=1;_bu++;}}var _bt=_bn.length?Math.round((_bu/_bn.length)*1000)/1000:0;var _bp=' '+_bn.join(' ')+' ';var _bf=(_bp.split(' um ').length-1)+(_bp.split(' uh ').length-1)+(_bp.split(' er ').length-1)+(_bp.split(' you know ').length-1)+(_bp.split(' i mean ').length-1);evTxtP='EVIDENCE (objective metrics computed locally from the transcript - trust these numbers over impressions): total words '+_bw.length+'; type-token ratio (typeTokenRatio) '+_bt+' ('+_bu+' unique words out of '+_bw.length+'); filler words / hesitation tokens (fillerCount) '+_bf+' total. CROSS-CHECK RULE (mandatory): confront these numbers before scoring FC and LR - very low speed plus many fillers caps FC, a low type-token ratio caps LR, very short answers cap FC and GRA; if a score contradicts the EVIDENCE, lower the score to fit the evidence.';}
+/* ================= BOT DAMU — BAND DESCRIPTORS CHINH THUC TRONG PROMPT (RESTORE+BOT 24/10) =================
+   NGUYEN DINH CHINH: giu NGUYEN trang ket qua + cau truc prompt cu; chi chen khoi
+   descriptors chinh thuc nay VAO PROMPT cham (khong dua len giao dien) va doi dong
+   co cham sang Bot damu keyless. Nguon rubric: damu-speaking/research/
+   band-descriptors-public.md (IELTS Speaking Band Descriptors, public version). */
+var BOT_VIA='Bot damu (AI miễn phí, không cần key)';
+var BOT_DESC={
+FC:'Band 4: cannot keep going without noticeable pauses; slow speech with frequent repetition and self-correction; links simple sentences only, with repetitious connectives; some breakdowns in coherence. Band 5: usually keeps going but relies on repetition and self-correction and/or slow speech; hesitations often mid-sentence while searching for fairly basic lexis and grammar; overuses certain discourse markers and connectives; complex speech usually causes disfluency but simpler language may be fluent. Band 6: keeps going and willing to produce long turns; coherence may be lost at times through hesitation, repetition and/or self-correction; uses a range of discourse markers, connectives and cohesive features though not always appropriately. Band 7: long turns produced without noticeable effort; some hesitation, repetition or self-correction, often mid-sentence, but coherence is not affected; flexible use of discourse markers, connectives and cohesive features. Band 8: fluent with only very occasional repetition or self-correction; hesitation mostly to find content, not language; topic development coherent, appropriate and relevant. Band 9 (summary): fluent; hesitation only to prepare content; fully coherent, appropriately extended topic development.',
+LR:'Band 4: resource sufficient for familiar topics but only basic meaning conveyed on unfamiliar topics; frequent inappropriacies and errors in word choice; rarely attempts paraphrase. Band 5: resource sufficient for familiar and unfamiliar topics but limited flexibility; attempts paraphrase but not always with success. Band 6: resource sufficient to discuss topics at length; vocabulary use may be inappropriate but meaning is clear; generally able to paraphrase successfully. Band 7: resource flexibly used for a variety of topics; some less common and idiomatic items, with awareness of style and collocation though inappropriacies occur; effective paraphrase as required. Band 8: wide resource readily and flexibly used for all topics and precise meaning; skilful use of less common and idiomatic items despite occasional word-choice and collocation inaccuracies; effective paraphrase. Band 9 (summary): total flexibility and precise use in all contexts; sustained accurate idiomatic language.',
+GRA:'Band 4: can produce basic sentence forms and some short utterances are error-free; subordinate clauses rare; turns short, structures repetitive, errors frequent. Band 5: basic sentence forms fairly well controlled for accuracy; complex structures attempted but limited in range, nearly always contain errors and may need reformulation. Band 6: mix of short and complex forms and a variety of structures with limited flexibility; errors frequently occur in complex structures but rarely impede communication. Band 7: a range of structures flexibly used; error-free sentences are frequent; simple and complex sentences used effectively despite some errors; a few basic errors persist. Band 8: wide range of structures flexibly used; the majority of sentences are error-free; only occasional inappropriacies and non-systematic errors; a few basic errors may persist. Band 9 (summary): structures precise and accurate at all times apart from native-like slips.',
+P:'Band 4: uses some acceptable phonological features but range limited; some acceptable chunking but frequent lapses in rhythm; intonation and stress attempted but control limited; individual words and phonemes frequently mispronounced causing lack of clarity; understanding requires effort and some patches cannot be understood. Band 5: displays all the positive features of Band 4 and some, but not all, of the positive features of Band 6. Band 6: uses a range of phonological features but control is variable; chunking generally appropriate but rhythm may be affected by lack of stress-timing and/or a rapid rate; some effective intonation and stress but not sustained; individual words or phonemes may be mispronounced but only occasional lack of clarity; generally understood throughout without much effort. Band 7: displays all the positive features of Band 6 and some, but not all, of the positive features of Band 8. Band 8: wide range of phonological features to convey precise and subtle meaning; can sustain appropriate rhythm; flexible stress and intonation across long utterances despite occasional lapses; easily understood throughout; accent has minimal effect on intelligibility. Band 9 (summary): full range of phonological features; effortlessly understood throughout; accent has no effect on intelligibility.'
+};
+var BOT_DESC_BLOCK='OFFICIAL IELTS SPEAKING BAND DESCRIPTORS (public version — grade by MATCHING the performance against these descriptors; a candidate must FULLY fit ALL positive features of a band to receive that band, otherwise award the band BELOW; scores in .0/.5 steps):\nFLUENCY AND COHERENCE (FC) — '+BOT_DESC.FC+'\nLEXICAL RESOURCE (LR) — '+BOT_DESC.LR+'\nGRAMMATICAL RANGE AND ACCURACY (GRA) — '+BOT_DESC.GRA+'\nPRONUNCIATION (P) — '+BOT_DESC.P+'\nNote: Band 7 P = all positive features of Band 6 plus SOME of Band 8; Band 5 P = all positive features of Band 4 plus SOME of Band 6 — judge P against both neighbouring bands. Scores reflect average performance across the whole answer.';
+var BOT_DESC_COMPACT='FC: 5=keeps going only via repetition/self-correction, slow, mid-sentence searches for basic language, overused markers; 6=willing long turns, coherence sometimes lost, range of markers not always appropriate; 7=long turns without effort, flexible markers, coherence unaffected; 8=fluent, hesitation for content only. LR: 5=sufficient but limited flexibility, paraphrase not always successful; 6=sufficient at length, meaning clear despite inappropriate choices, paraphrase generally successful; 7=flexible, some less common/idiomatic items and collocation awareness, effective paraphrase; 8=wide, precise, skilful idiomatic use. GRA: 5=basic forms fairly controlled, complex attempts limited and nearly always erroneous; 6=mix of short and complex, errors in complex forms rarely impede; 7=range used flexibly, error-free sentences frequent; 8=wide range, majority error-free. P (estimate from transcript): 5=all Band 4 features plus some Band 6; 6=range of features, variable control, generally understood; 7=all Band 6 plus some Band 8; 8=wide features, easily understood throughout. RULE: award a band ONLY if the performance FULLY fits all its positive features, else award the band below.';
+function buildPrompt(q,part,tr,wpm,secs){var trC=String(tr||'').slice(0,4000); /* RESTORE+BOT: transcript dai (Part 2) khong bi cat o 1800 ky tu nua */var evP=null,evTxtP='';if(typeof computeEvidence==='function'){try{evP=computeEvidence(trC,secs);}catch(e){}}if(evP&&typeof evidenceText==='function'){try{evTxtP=evidenceText(evP);}catch(e){}}if(!evTxtP){var _bw=trC.trim()?trC.trim().split(/\s+/):[];var _bn=_bw.map(function(w){return w.toLowerCase().replace(/^[^a-z0-9']+|[^a-z0-9']+$/g,'');}).filter(function(w){return w;});var _bs={},_bu=0;for(var _bi=0;_bi<_bn.length;_bi++){if(!_bs[_bn[_bi]]){_bs[_bn[_bi]]=1;_bu++;}}var _bt=_bn.length?Math.round((_bu/_bn.length)*1000)/1000:0;var _bp=' '+_bn.join(' ')+' ';var _bf=(_bp.split(' um ').length-1)+(_bp.split(' uh ').length-1)+(_bp.split(' er ').length-1)+(_bp.split(' you know ').length-1)+(_bp.split(' i mean ').length-1);evTxtP='EVIDENCE (objective metrics computed locally from the transcript - trust these numbers over impressions): total words '+_bw.length+'; type-token ratio (typeTokenRatio) '+_bt+' ('+_bu+' unique words out of '+_bw.length+'); filler words / hesitation tokens (fillerCount) '+_bf+' total. CROSS-CHECK RULE (mandatory): confront these numbers before scoring FC and LR - very low speed plus many fillers caps FC, a low type-token ratio caps LR, very short answers cap FC and GRA; if a score contradicts the EVIDENCE, lower the score to fit the evidence.';}
   var rubric='RUBRIC — score STRICTLY (0.5 steps; quote descriptor wording for any cap): FC 5=flow only in short stretches, repetition/self-correction, basic linkers only; 6=willing to speak at length, coherence sometimes lost; 7=at length without effort, flexible discourse markers; 8=fluent, hesitation only for ideas, topic fully developed. LR 5=limited range, frequent wrong word choice, little paraphrase; 6=wide enough, some collocation errors, paraphrase mixed; 7=flexible, some idiomatic/less-common items, paraphrase mostly effective; 8=wide, precise, idiomatic, natural. GRA 5=basic forms dominate, subordinate clauses rare, frequent errors causing strain; 6=mix of simple and complex, errors rarely impede; 7=range of complex forms, frequent error-free sentences; 8=wide range, most sentences error-free. P (ESTIMATE from transcript clarity + speed only, keep conservative) 5=generally understood but final sounds, stress and intonation inconsistent, listener effort; 6=mixed control, mispronunciation can impede; 7=easy to understand, L1 accent minimal effect; 8=easy throughout. Hunt typical Vietnamese errors: dropped final -s/-ed and final sounds, tense inconsistency, missing or wrong articles and prepositions (depend in, discuss about), translated collocations (strong rain to heavy rain, open the light to turn on the light), only simple sentences, fillers, too short or off-topic.';
   var calib='ANCHORS — place the candidate nearest one, never by gut feeling: BAND 4.5=long frequent pauses hunting words, answers break down or restart, memorised chunks carry answers, basic errors in nearly every sentence, listener strains, Part 3 often misunderstood or off-topic. BAND 5.0=keeps going on familiar topics but chains short simple sentences, ends sentences with filler Yeah, repeats the question stem; constant basic errors even in simple sentences: when I were a child (was), the story have traditional Vietnam value (has, Vietnamese values), I prefer be outdoor (to be outdoors), different used as a noun; LR basic and repetitive (physical healthy for health); final -s/-ed dropped, intelligible with effort. BAND 5.5=answers extended to 3-4 sentences, natural fillers (well, actually), some complex forms and an idiom attempt (busy as bees), BUT tense range narrow (past and present simple only), slips still in simple sentences (So I thinking about..., double subject), Part 2 under one minute and under-developed, Pron clear but flat intonation. BAND 6.5=natural and willing, covers topics but lists points instead of developing one idea, Part 2 may stall then recover; LR wide enough with few collocation errors; GRA mostly accurate yet basic errors in simple structures (He have all the plan, how it is differ). BAND 7.5=FC fluent, hesitation only for ideas, but Part 3 shallow (terms unexplained, no examples); LR precise topic lexis (heavy footfall, activations); GRA weakest: double comparatives (the most hard, the more easier). BAND 9=pauses only for ideas, never for language, exactly on-question, Part 3 fully developed; LR topic-specific and idiomatic; GRA full range with only 1-2 minor slips in a whole test; Pron 100% clear, intonation and sentence stress, clarity beats accent. RULES: same structure wrong every time = systematic error, GRA caps at 6; extension plus clear Pron lifts 5.0 to 5.5; narrow tense range, short Part 2 and basic errors in SIMPLE sentences block 5.5 from 6.5; at 6.5 errors are only occasional slips while ideas develop across all parts. Examiner-note voice (dry, Chris Pell): It is a speaking test, not a knowledge test; distinguish pausing for an idea from pausing for the language; ask can I understand this person and how clear are they.';
-  return 'You are damu, a certified IELTS Speaking examiner (10+ years) in examiner-coach mode: you roast the PERFORMANCE in English — blunt, sarcastic, funny, zero sugar-coating — never the person. Grade STRICTLY like the real exam: no grade inflation, no sympathy marks; award the 0.5 step whose descriptor fits best per criterion and state any cap explicitly. Notice repetitions, self-corrections, fillers (um, uh, like, you know), memorised chunks that dodge the question, and answers too short, off-topic or all simple sentences.\n\n'+rubric+'\n\n'+calib+'\n\nTASK: IELTS Speaking Part '+part+' question:\n"'+q+'"\nTranscript (from speech recognition, some words may be mis-heard):\n"'+trC+'"\nSpeaking speed about '+wpm+' wpm, duration about '+secs+' seconds, '+wordCount(trC)+' words.\n\n'+evTxtP+'\n\nRespond with ONLY a valid JSON object (no markdown fences, no text outside JSON) in EXACTLY this shape:\n{"opening":"1-2 short roast sentences in English about THIS performance","scores":{"FC":6.0,"LR":5.5,"GRA":6.0,"P":6.0},"errors":[{"wrong":"exact wrong phrase copied from the transcript","fix":"corrected version","why":"very short reason in Vietnamese"}],"upgrades":[{"original":"simple phrase from the transcript","better":"band 7+ version"}],"tips":["tip 1 in Vietnamese","tip 2 in Vietnamese","tip 3 in Vietnamese"],"praise":"1 sentence in Vietnamese","examinerNote":"2-3 sentences in English like a real examiner note, ending with the single biggest lever to reach the next band","modelAnswer":"Band 8 upgraded rewrite of the learner own answer: preserve the candidate own ideas and order where coherent, repair logic and coherence gaps, add at most 1-2 missing ideas only where the answer is thin, rewrite the language at Band 8, do NOT invent a different line of argument","rewriteNotes":"1-2 dong tieng Viet: giu lai y gi cua hoc sinh, sua logic o dau, them y gi (neu co)","criteriaFeedback":{"FC":{"strength":"1 diem manh ngan gon bang tieng Viet cua rieng tieu chi FC trong bai nay","errors":[{"wrong":"exact phrase from the transcript for FC only","fix":"the corrected version of that exact phrase","why":"short reason in Vietnamese"},{"wrong":"another exact phrase from the transcript for FC only","fix":"the corrected version of that other phrase"}],"fix":"cach khac phuc cu the bang tieng Viet cho rieng tieu chi FC","drill":"1 bai tap hoac meo luyen cu the bang tieng Viet cho rieng tieu chi FC","bandLink":"1 cau tieng Viet: sua duoc cac loi tren thi tieu chi FC len band may"},"LR":{"strength":"1 diem manh ngan gon bang tieng Viet cua rieng tieu chi LR trong bai nay","errors":[{"wrong":"exact phrase from the transcript for LR only","fix":"the corrected version of that exact phrase","why":"short reason in Vietnamese"},{"wrong":"another exact phrase from the transcript for LR only","fix":"the corrected version of that other phrase"}],"fix":"cach khac phuc cu the bang tieng Viet cho rieng tieu chi LR","drill":"1 bai tap hoac meo luyen cu the bang tieng Viet cho rieng tieu chi LR","bandLink":"1 cau tieng Viet: sua duoc cac loi tren thi tieu chi LR len band may"},"GRA":{"strength":"1 diem manh ngan gon bang tieng Viet cua rieng tieu chi GRA trong bai nay","errors":[{"wrong":"exact phrase from the transcript for GRA only","fix":"the corrected version of that exact phrase","why":"short reason in Vietnamese"},{"wrong":"another exact phrase from the transcript for GRA only","fix":"the corrected version of that other phrase"}],"fix":"cach khac phuc cu the bang tieng Viet cho rieng tieu chi GRA","drill":"1 bai tap hoac meo luyen cu the bang tieng Viet cho rieng tieu chi GRA","bandLink":"1 cau tieng Viet: sua duoc cac loi tren thi tieu chi GRA len band may"},"P":{"strength":"1 diem manh ngan gon bang tieng Viet cua rieng tieu chi P trong bai nay","errors":[{"wrong":"exact word likely mispronounced","fix":"cach phat am dung cua tu do, kem IPA neu can","why":"short reason in Vietnamese"},{"wrong":"another exact word likely mispronounced","fix":"cach phat am dung cua tu do"}],"fix":"cach khac phuc cu the bang tieng Viet cho rieng tieu chi P","drill":"1 bai tap hoac meo luyen cu the bang tieng Viet cho rieng tieu chi P","bandLink":"1 cau tieng Viet: sua duoc cac loi tren thi tieu chi P len band may"}}}\nRules: scores 0-9 in 0.5 steps. CRITICAL JSON: never use a double-quote character inside any string value — use single quotes instead; keep strings short except modelAnswer. errors: exactly 3 REAL errors present in the transcript (fewer only if fewer exist); QUOTE-VERBATIM RULE (mandatory, applies to errors, upgrades and criteriaFeedback): every quoted item MUST be copied character-for-character from the transcript - a verbatim substring the candidate actually said; never paraphrase, never reconstruct from memory, never invent an error that is not visibly in the transcript; if you cannot quote it exactly, drop that error (a shorter true list beats a longer fabricated one); EVERY error item MUST have wrong, fix AND why all filled (wrong and fix max 8 words, why max 12 words Vietnamese) — never leave a field empty. upgrades: exactly 2 items, max 12 words each, both fields filled. tips: exactly 3 in Vietnamese, max 20 words each, at least one MUST name the band cap (which descriptor capped the score and why). praise: 1 short Vietnamese sentence, only for something genuinely good; if weak, name the least-bad point honestly. examinerNote: REQUIRED, at least 2 English sentences (2-3 sentences, max 60 words), quoting descriptor language where it fits, and the LAST sentence MUST name the single biggest lever that would lift this candidate to the next band — never empty. modelAnswer: REQUIRED, never empty; this is an UPGRADED REWRITE of the candidate own answer, NOT a new model answer: preserve the candidate own ideas and order where coherent, repair logic and coherence gaps so the argument flows, add at most 1-2 missing ideas ONLY where the answer is thin, and rewrite the language (vocabulary, collocations, grammar) at Band 8; do NOT invent a different line of argument or unrelated examples; Part 1: 2-3 sentences, Part 2: 180-240 words, Part 3: 3-4 sentences. rewriteNotes: REQUIRED when modelAnswer is present, 1-2 short lines in Vietnamese stating what ideas were kept, where logic was repaired, and what idea was added (say khong them y moi if none). criteriaFeedback: REQUIRED object with exactly FC, LR, GRA, P; each criterion is {strength, errors, fix, drill} — DEPTH IS MANDATORY, generic praise or generic advice is a failed grade: strength = ONE short genuine strength of THIS answer for that criterion, in Vietnamese; errors = 2-3 items (fewer only if fewer real errors exist), EACH item is {wrong, fix, why} where wrong is quoted exactly from the transcript for THAT criterion only (for P: the exact words likely mispronounced, fix gives the correct pronunciation) and fix is the corrected version of that exact phrase; fix = a SPECIFIC remedy in Vietnamese for that criterion (what exactly to change in the next answer, not generic advice); drill = ONE concrete practice exercise or drill in Vietnamese dedicated to that criterion, tied directly to the errors just listed and doable in 5-10 minutes (name the exercise and how to do it, e.g. a shadowing, recording or rewriting routine); bandLink = ONE sentence in Vietnamese giving the band bridge for that criterion: exactly what fixing these errors lifts the criterion to (e.g. sua sach loi chia dong tu o cau don thi GRA nhich tu 5.0 len 5.5). Never repeat one error under two criteria; if a criterion has no real error, errors is an empty array and fix says in Vietnamese how to maintain or raise it.';}
+  return 'You are damu, a certified IELTS Speaking examiner (10+ years) in examiner-coach mode: you roast the PERFORMANCE in English — blunt, sarcastic, funny, zero sugar-coating — never the person. Grade STRICTLY like the real exam: no grade inflation, no sympathy marks; award the 0.5 step whose descriptor fits best per criterion and state any cap explicitly. Notice repetitions, self-corrections, fillers (um, uh, like, you know), memorised chunks that dodge the question, and answers too short, off-topic or all simple sentences.\n\n'+rubric+'\n\n'+BOT_DESC_BLOCK+'\n\n'+calib+'\n\nTASK: IELTS Speaking Part '+part+' question:\n"'+q+'"\nTranscript (from speech recognition, some words may be mis-heard):\n"'+trC+'"\nSpeaking speed about '+wpm+' wpm, duration about '+secs+' seconds, '+wordCount(trC)+' words.\n\n'+evTxtP+'\n\nRespond with ONLY a valid JSON object (no markdown fences, no text outside JSON) in EXACTLY this shape:\n{"opening":"1-2 short roast sentences in English about THIS performance","scores":{"FC":6.0,"LR":5.5,"GRA":6.0,"P":6.0},"errors":[{"wrong":"exact wrong phrase copied from the transcript","fix":"corrected version","why":"very short reason in Vietnamese"}],"upgrades":[{"original":"simple phrase from the transcript","better":"band 7+ version"}],"tips":["tip 1 in Vietnamese","tip 2 in Vietnamese","tip 3 in Vietnamese"],"praise":"1 sentence in Vietnamese","examinerNote":"2-3 sentences in English like a real examiner note, ending with the single biggest lever to reach the next band","modelAnswer":"Band 8 upgraded rewrite of the learner own answer: preserve the candidate own ideas and order where coherent, repair logic and coherence gaps, add at most 1-2 missing ideas only where the answer is thin, rewrite the language at Band 8, do NOT invent a different line of argument","rewriteNotes":"1-2 dong tieng Viet: giu lai y gi cua hoc sinh, sua logic o dau, them y gi (neu co)","criteriaFeedback":{"FC":{"strength":"1 diem manh ngan gon bang tieng Viet cua rieng tieu chi FC trong bai nay","errors":[{"wrong":"exact phrase from the transcript for FC only","fix":"the corrected version of that exact phrase","why":"short reason in Vietnamese"},{"wrong":"another exact phrase from the transcript for FC only","fix":"the corrected version of that other phrase"}],"fix":"cach khac phuc cu the bang tieng Viet cho rieng tieu chi FC","drill":"1 bai tap hoac meo luyen cu the bang tieng Viet cho rieng tieu chi FC","bandLink":"1 cau tieng Viet: sua duoc cac loi tren thi tieu chi FC len band may"},"LR":{"strength":"1 diem manh ngan gon bang tieng Viet cua rieng tieu chi LR trong bai nay","errors":[{"wrong":"exact phrase from the transcript for LR only","fix":"the corrected version of that exact phrase","why":"short reason in Vietnamese"},{"wrong":"another exact phrase from the transcript for LR only","fix":"the corrected version of that other phrase"}],"fix":"cach khac phuc cu the bang tieng Viet cho rieng tieu chi LR","drill":"1 bai tap hoac meo luyen cu the bang tieng Viet cho rieng tieu chi LR","bandLink":"1 cau tieng Viet: sua duoc cac loi tren thi tieu chi LR len band may"},"GRA":{"strength":"1 diem manh ngan gon bang tieng Viet cua rieng tieu chi GRA trong bai nay","errors":[{"wrong":"exact phrase from the transcript for GRA only","fix":"the corrected version of that exact phrase","why":"short reason in Vietnamese"},{"wrong":"another exact phrase from the transcript for GRA only","fix":"the corrected version of that other phrase"}],"fix":"cach khac phuc cu the bang tieng Viet cho rieng tieu chi GRA","drill":"1 bai tap hoac meo luyen cu the bang tieng Viet cho rieng tieu chi GRA","bandLink":"1 cau tieng Viet: sua duoc cac loi tren thi tieu chi GRA len band may"},"P":{"strength":"1 diem manh ngan gon bang tieng Viet cua rieng tieu chi P trong bai nay","errors":[{"wrong":"exact word likely mispronounced","fix":"cach phat am dung cua tu do, kem IPA neu can","why":"short reason in Vietnamese"},{"wrong":"another exact word likely mispronounced","fix":"cach phat am dung cua tu do"}],"fix":"cach khac phuc cu the bang tieng Viet cho rieng tieu chi P","drill":"1 bai tap hoac meo luyen cu the bang tieng Viet cho rieng tieu chi P","bandLink":"1 cau tieng Viet: sua duoc cac loi tren thi tieu chi P len band may"}}}\nRules: scores 0-9 in 0.5 steps. CRITICAL JSON: never use a double-quote character inside any string value — use single quotes instead; keep strings short except modelAnswer. errors: exactly 3 REAL errors present in the transcript (fewer only if fewer exist); QUOTE-VERBATIM RULE (mandatory, applies to errors, upgrades and criteriaFeedback): every quoted item MUST be copied character-for-character from the transcript - a verbatim substring the candidate actually said; never paraphrase, never reconstruct from memory, never invent an error that is not visibly in the transcript; if you cannot quote it exactly, drop that error (a shorter true list beats a longer fabricated one); EVERY error item MUST have wrong, fix AND why all filled (wrong and fix max 8 words, why max 12 words Vietnamese) — never leave a field empty. upgrades: exactly 2 items, max 12 words each, both fields filled. tips: exactly 3 in Vietnamese, max 20 words each, at least one MUST name the band cap (which descriptor capped the score and why). praise: 1 short Vietnamese sentence, only for something genuinely good; if weak, name the least-bad point honestly. examinerNote: REQUIRED, at least 2 English sentences (2-3 sentences, max 60 words), quoting descriptor language where it fits, and the LAST sentence MUST name the single biggest lever that would lift this candidate to the next band — never empty. modelAnswer: REQUIRED, never empty; this is an UPGRADED REWRITE of the candidate own answer, NOT a new model answer: preserve the candidate own ideas and order where coherent, repair logic and coherence gaps so the argument flows, add at most 1-2 missing ideas ONLY where the answer is thin, and rewrite the language (vocabulary, collocations, grammar) at Band 8; do NOT invent a different line of argument or unrelated examples; Part 1: 2-3 sentences, Part 2: 180-240 words, Part 3: 3-4 sentences. rewriteNotes: REQUIRED when modelAnswer is present, 1-2 short lines in Vietnamese stating what ideas were kept, where logic was repaired, and what idea was added (say khong them y moi if none). criteriaFeedback: REQUIRED object with exactly FC, LR, GRA, P; each criterion is {strength, errors, fix, drill} — DEPTH IS MANDATORY, generic praise or generic advice is a failed grade: strength = ONE short genuine strength of THIS answer for that criterion, in Vietnamese; errors = 2-3 items (fewer only if fewer real errors exist), EACH item is {wrong, fix, why} where wrong is quoted exactly from the transcript for THAT criterion only (for P: the exact words likely mispronounced, fix gives the correct pronunciation) and fix is the corrected version of that exact phrase; fix = a SPECIFIC remedy in Vietnamese for that criterion (what exactly to change in the next answer, not generic advice); drill = ONE concrete practice exercise or drill in Vietnamese dedicated to that criterion, tied directly to the errors just listed and doable in 5-10 minutes (name the exercise and how to do it, e.g. a shadowing, recording or rewriting routine); bandLink = ONE sentence in Vietnamese giving the band bridge for that criterion: exactly what fixing these errors lifts the criterion to (e.g. sua sach loi chia dong tu o cau don thi GRA nhich tu 5.0 len 5.5). Never repeat one error under two criteria; if a criterion has no real error, errors is an empty array and fix says in Vietnamese how to maintain or raise it.';}
 
 function damuMsg(html){return '<div class="msg"><img src="'+CAPY_IMG+'" alt="damu"><div class="bubble">'+html+'</div></div>';}
 function meMsg(html){return '<div class="msg me"><div class="bubble">'+html+'</div></div>';}
@@ -2294,8 +2387,8 @@ function validateGrade(g){
    Chinh xac ngu phap' — tat ca LOT vi cong cu chi kiem tra CO CHU. Nguyen tac moi:
    truong NONG/RAC bi coi nhu THIEU (co do -> bo sung viet lai trong ngan sach) va het
    ngan sach thi QUET RONG/AN (thà trống trung thực còn hơn hiện rác gắn nhãn Band 8). */
-var GRADE_BUDGET_MS=30000; /* ngan sach thoi gian cho CA phien cham (tu luc gradeNow bat dau) */
-var GRADE_AUDIT_MAX_MS=20000; /* luot chinh da ton >20s thi bo han audit */
+var GRADE_BUDGET_MS=300000; /* RESTORE+BOT (24/10): ngan sach phien cham cho engine keyless tang len 300s (cu 30s cat bo sung giua chung, Part 2 dai thieu GRA/P) */ /* ngan sach thoi gian cho CA phien cham (tu luc gradeNow bat dau) */
+var GRADE_AUDIT_MAX_MS=120000; /* luot chinh da ton >20s thi bo han audit */
 var gradeSessionStart=0; /* moc bat dau phien cham; 0 = ngoai phien (khong ap ngan sach) */
 function gradeBudgetLeft(){if(!gradeSessionStart)return GRADE_BUDGET_MS;return GRADE_BUDGET_MS-(Date.now()-gradeSessionStart);}
 function gradeWordCount(s){var t=String(s||'').trim();return t?t.split(/\s+/).length:0;}
@@ -2515,10 +2608,10 @@ function buildMicroPrompt(g,key,q,part,tr,lite){
   var sc=g.scores||{};
   var fullNames={FC:'Fluency and Coherence',LR:'Lexical Resource',GRA:'Grammatical Range and Accuracy',P:'Pronunciation'};
   if(lite){
-    return 'Scores are FINAL: FC '+sc.FC+', LR '+sc.LR+', GRA '+sc.GRA+', P '+sc.P+' — never change them, never re-grade. Do NOT output JSON. Do NOT write reasoning, analysis or explanations. Write PLAIN TEXT with ONLY this one section, every line SHORT (max 14 words):\n===FEEDBACK_'+key+'===\nSTRENGTH: <real strength of THIS answer for '+key+', short, in Vietnamese>\nERROR: <exact phrase copied word-for-word from the transcript> | CORRECTION: <corrected version> | WHY: <short reason in Vietnamese>\nADVICE: <specific fix in Vietnamese>\nDRILL: <one 5-10 minute drill tied to that error, in Vietnamese>\nBANDLINK: <1 sentence in Vietnamese: fixing this lifts '+key+' to which band>\nReplace every <...> with REAL content about THIS answer only — never write the instruction words themselves as content. Question: \''+String(q||'').slice(0,200)+'\' Transcript: \''+String(tr||'').slice(0,800)+'\'';
+    return 'Scores are FINAL: FC '+sc.FC+', LR '+sc.LR+', GRA '+sc.GRA+', P '+sc.P+' — never change them, never re-grade. Do NOT output JSON. Do NOT write reasoning, analysis or explanations. Write PLAIN TEXT with ONLY this one section, every line SHORT (max 14 words):\n===FEEDBACK_'+key+'===\nSTRENGTH: <real strength of THIS answer for '+key+', short, in Vietnamese>\nERROR: <exact phrase copied word-for-word from the transcript> | CORRECTION: <corrected version> | WHY: <short reason in Vietnamese>\nADVICE: <specific fix in Vietnamese>\nDRILL: <one 5-10 minute drill tied to that error, in Vietnamese>\nBANDLINK: <1 sentence in Vietnamese: fixing this lifts '+key+' to which band>\nReplace every <...> with REAL content about THIS answer only — never write the instruction words themselves as content. Question: \''+String(q||'').slice(0,200)+'\' Transcript: \''+String(tr||'').slice(0,4000)+'\'';
   }
   var errObj=(key==='P')?'"wrong":"exact word likely mispronounced","fix":"correct pronunciation, with IPA if useful","why":"short reason in Vietnamese"':'"wrong":"exact phrase from the transcript for '+key+' only","fix":"the corrected version of that exact phrase","why":"short reason in Vietnamese"';
-  return 'You are damu, an IELTS Speaking examiner. Scores are FINAL: '+JSON.stringify(g.scores||{})+' — do NOT change scores and do NOT re-grade. Only ONE criterion is still completely missing its feedback: '+key+' ('+(fullNames[key]||key)+'). Return ONLY a valid JSON object (no markdown, no text outside JSON) in EXACTLY this shape: {"criteriaFeedback":{"'+key+'":{"strength":"1 short genuine strength in Vietnamese for '+key+'","errors":[{'+errObj+'}],"fix":"specific fix in Vietnamese for '+key+'","drill":"1 concrete 5-10 minute drill in Vietnamese tied to those errors","bandLink":"1 sentence in Vietnamese: fixing these errors lifts '+key+' to which band"}}}. Rules: every wrong value MUST be copied character-for-character from the transcript — never paraphrase, reconstruct or invent; never use a double-quote character inside string values; write REAL content about THIS answer only, never copy instruction phrases as field values.\nQuestion (Part '+part+'): "'+String(q||'').slice(0,300)+'"\nTranscript: "'+String(tr||'').slice(0,1000)+'"';
+  return 'You are damu, an IELTS Speaking examiner. Scores are FINAL: '+JSON.stringify(g.scores||{})+' — do NOT change scores and do NOT re-grade. Only ONE criterion is still completely missing its feedback: '+key+' ('+(fullNames[key]||key)+'). Return ONLY a valid JSON object (no markdown, no text outside JSON) in EXACTLY this shape: {"criteriaFeedback":{"'+key+'":{"strength":"1 short genuine strength in Vietnamese for '+key+'","errors":[{'+errObj+'}],"fix":"specific fix in Vietnamese for '+key+'","drill":"1 concrete 5-10 minute drill in Vietnamese tied to those errors","bandLink":"1 sentence in Vietnamese: fixing these errors lifts '+key+' to which band"}}}. Rules: every wrong value MUST be copied character-for-character from the transcript — never paraphrase, reconstruct or invent; never use a double-quote character inside string values; write REAL content about THIS answer only, never copy instruction phrases as field values.\nQuestion (Part '+part+'): "'+String(q||'').slice(0,300)+'"\nTranscript: "'+String(tr||'').slice(0,4000)+'"';
 }
 function gradeMissingFields(g,tr,part){var miss=[];if(!g||typeof g!=='object')return miss;
   if(tr){try{g._transcript=String(tr);}catch(e){}} /* luu transcript len g de renderGrade/criteriaFeedbackHtml loc verbatim tung dong o tang hien thi */
@@ -2572,7 +2665,7 @@ function buildCompletionPromptLite(g,miss,q,part,tr,badKeys,retryNote){
   var wantCf=function(k){return !badKeys||!badKeys.length||badKeys.indexOf(k)>=0;}; /* CHIA LUOT: chi xin cac tieu chi chua dat nguong (completeGradeIfNeeded truyen nhom cua luot nay) — moi luot ngan thi Pollinations tra tron ven, khong cat giua chung */
   var secs=[];
   if(miss.indexOf('examinerNote')>=0)secs.push('===EXAMINER_NOTE===\n(2-3 cau tieng Anh that ve bai nay: diem manh, diem yeu, cau cuoi neu don bay len band lon nhat)');
-  if(miss.indexOf('modelAnswer')>=0){secs.push('===MODEL_ANSWER===\n('+(part===2?'Band 8 rewrite, 150-200 words':'Band 8 rewrite, 3-5 sentences, fully developed (at least 35 words, never one short sentence)')+', keep learner ideas and order, fix grammar/vocab)');secs.push('===REWRITE_NOTES===\n(1 short line in Vietnamese: what was kept, fixed or added)');}
+  if(miss.indexOf('modelAnswer')>=0){secs.push('===MODEL_ANSWER===\n('+(part===2?('Band 8 rewrite, at least '+Math.max(180,Math.ceil(gradeWordCount(tr)*0.6)+15)+' words, fully developed'):'Band 8 rewrite, 3-5 sentences, fully developed (at least 35 words, never one short sentence)')+', keep learner ideas and order, fix grammar/vocab)');secs.push('===REWRITE_NOTES===\n(1 short line in Vietnamese: what was kept, fixed or added)');}
   if(miss.indexOf('criteriaFeedback')>=0){
     if(wantCf('FC'))secs.push('===FEEDBACK_FC===\nSTRENGTH: <diem manh that cua bai nay, tieng Viet, ngan>\nERROR: <cum trich NGUYEN VAN transcript> | CORRECTION: <ban sua cua cum do> | WHY: <ly do ngan, tieng Viet>\nADVICE: <cach sua cu the, tieng Viet>\nDRILL: <bai tap 5-10 phut gan voi loi tren, tieng Viet>\nBANDLINK: <1 cau tieng Viet: sua xong cac loi tren thi tieu chi nay len band may>');
     if(wantCf('LR'))secs.push('===FEEDBACK_LR===\nSTRENGTH: <diem manh that cua bai nay, tieng Viet, ngan>\nERROR: <cum trich NGUYEN VAN transcript> | CORRECTION: <ban sua cua cum do> | WHY: <ly do ngan, tieng Viet>\nADVICE: <cach sua cu the, tieng Viet>\nDRILL: <bai tap 5-10 phut gan voi loi tren, tieng Viet>\nBANDLINK: <1 cau tieng Viet: sua xong cac loi tren thi tieu chi nay len band may>');
@@ -2580,7 +2673,7 @@ function buildCompletionPromptLite(g,miss,q,part,tr,badKeys,retryNote){
     if(wantCf('P'))secs.push('===FEEDBACK_P===\nSTRENGTH: <diem manh that cua bai nay, tieng Viet, ngan>\nERROR: <cum trich NGUYEN VAN transcript> | CORRECTION: <ban sua cua cum do> | WHY: <ly do ngan, tieng Viet>\nADVICE: <cach sua cu the, tieng Viet>\nDRILL: <bai tap 5-10 phut gan voi loi tren, tieng Viet>\nBANDLINK: <1 cau tieng Viet: sua xong cac loi tren thi tieu chi nay len band may>');
   }
   if(miss.indexOf('errors')>=0)secs.push('===ERRORS===\n(one line per error, 2-3 lines, format: WRONG: <wrong phrase copied word-for-word from the transcript> | FIX: <corrected version> | WHY: <short reason in Vietnamese>)');
-  return 'Scores are FINAL: FC '+sc.FC+', LR '+sc.LR+', GRA '+sc.GRA+', P '+sc.P+' — never change them, never re-grade. Do NOT output JSON. Write PLAIN TEXT using EXACTLY these section markers, each marker on its own line, in this order:\n'+secs.join('\n')+'\nReplace every <...> with REAL content written about THIS answer only — never write the instruction words themselves as content. Question: \''+String(q||'').slice(0,200)+'\' Transcript: \''+String(tr||'').slice(0,900)+'\''+(retryNote?('\n'+retryNote):'');
+  return 'Scores are FINAL: FC '+sc.FC+', LR '+sc.LR+', GRA '+sc.GRA+', P '+sc.P+' — never change them, never re-grade. Do NOT output JSON. Write PLAIN TEXT using EXACTLY these section markers, each marker on its own line, in this order:\n'+secs.join('\n')+'\nReplace every <...> with REAL content written about THIS answer only — never write the instruction words themselves as content. Question: \''+String(q||'').slice(0,200)+'\' Transcript: \''+String(tr||'').slice(0,4000) /* RESTORE+BOT v2: transcript day du cho luot bo sung (cu 900 cat bai Part 2/3 dai) */+'\''+(retryNote?('\n'+retryNote):'');
 }
 /* parseCompletionProse(text): cat phan hoi VAN XUOI theo dau ===MUC=== (chien luoc B)
    thanh object cung cau truc voi JSON bo sung: {examinerNote, modelAnswer,
@@ -2710,6 +2803,24 @@ async function completeGradeIfNeeded(g,res,q,part,tr,maxAttempts){
     }
     return extra;
   }
+  var COMP_SYS='You are damu, a pink capybara and strict IELTS Speaking examiner. Follow the user instruction exactly: if it asks for JSON return ONLY JSON; if it asks for plain-text sections with === markers, return ONLY those sections.';
+  /* buildCfOnePrompt(g,key,q,part,tr,lite,tryN): prompt bo sung RIENG dung 1 tieu chi
+     criteriaFeedback con thieu/mong — kem khoi BAND DESCRIPTOR chinh thuc cua rieng
+     tieu chi do (BOT_DESC[key]) de model nhan xet dung chuan band cua tieu chi do.
+     Ban full dang JSON gon; ban lite dang VAN XUOI 1 muc ===FEEDBACK_<key>===
+     (parseCompletionSections doc duoc). tryN=2: them dong SECOND TRY va noi goi doi
+     temperature/seed de tranh Pollinations phat lai phan hoi cache hong. */
+  function buildCfOnePrompt(g,key,q,part,tr,lite,tryN){
+    var sc=g.scores||{};
+    var fullNames={FC:'Fluency and Coherence',LR:'Lexical Resource',GRA:'Grammatical Range and Accuracy',P:'Pronunciation'};
+    var desc='';try{desc=String((typeof BOT_DESC!=='undefined'&&BOT_DESC&&BOT_DESC[key])||'');}catch(e){}
+    var retry=(tryN&&tryN>1)?' SECOND TRY: the previous attempt was unusable or too thin — it lacked at least one error quoted word-for-word from the transcript WITH its correction AND reason, or missed one of the five parts. This time include ALL five parts and quote exactly.':'';
+    if(lite){
+      return 'Scores are FINAL: FC '+sc.FC+', LR '+sc.LR+', GRA '+sc.GRA+', P '+sc.P+' — never change them, never re-grade. Criterion '+key+' ('+(fullNames[key]||key)+') still needs DEEP feedback. Official band descriptors for '+key+': '+desc+'\nDo NOT output JSON. Write PLAIN TEXT with ONLY this one section, every line SHORT (max 14 words):\n===FEEDBACK_'+key+'===\nSTRENGTH: <real strength of THIS answer for '+key+', short, in Vietnamese>\nERROR: <exact phrase copied word-for-word from the transcript> | CORRECTION: <corrected version> | WHY: <short reason in Vietnamese>\nERROR: <another exact phrase from the transcript> | CORRECTION: <corrected version> | WHY: <short reason in Vietnamese>\nADVICE: <specific fix in Vietnamese>\nDRILL: <one 5-10 minute drill tied to those errors, in Vietnamese>\nBANDLINK: <1 sentence in Vietnamese: fixing these errors lifts '+key+' to which band>\nReplace every <...> with REAL content about THIS answer only — never write the instruction words themselves as content. Every ERROR quote MUST be copied character-for-character from the transcript; if a phrase cannot be copied exactly, use ONE exact word from the transcript instead.'+retry+' Question: \''+String(q||'').slice(0,200)+'\' Transcript: \''+String(tr||'').slice(0,4000)+'\'';
+    }
+    var errObj=(key==='P')?'"wrong":"one exact word copied from the transcript that is likely mispronounced","fix":"correct pronunciation, with IPA if useful","why":"short reason in Vietnamese"':'"wrong":"exact phrase copied character-for-character from the transcript, for '+key+' only","fix":"the corrected version of that exact phrase","why":"short reason in Vietnamese"';
+    return 'You are damu, an IELTS Speaking examiner. Scores are FINAL: '+JSON.stringify(g.scores||{})+' — do NOT change scores and do NOT re-grade. Only the criterion '+key+' ('+(fullNames[key]||key)+') still lacks DEEP feedback. Official band descriptors for '+key+': '+desc+'\nReturn ONLY a valid JSON object (no markdown, no text outside JSON) in EXACTLY this shape: {"criteriaFeedback":{"'+key+'":{"strength":"1 short genuine strength in Vietnamese for '+key+'","errors":[{'+errObj+'},{'+errObj+'}],"fix":"specific fix in Vietnamese for '+key+'","drill":"1 concrete 5-10 minute drill in Vietnamese tied to those errors","bandLink":"1 sentence in Vietnamese: fixing these errors lifts '+key+' to which band"}}}. Rules: at least ONE error item is REQUIRED; every wrong value MUST be copied character-for-character from the transcript — never paraphrase, reconstruct or invent; if a phrase cannot be copied exactly, use one exact word from the transcript; never use a double-quote character inside string values; write REAL content about THIS answer only, never copy instruction phrases as field values.'+retry+'\nQuestion (Part '+part+'): "'+String(q||'').slice(0,300)+'"\nTranscript: "'+String(tr||'').slice(0,4000)+'"';
+  }
   /* BO SUNG TOI DA maxA LUOT (mac dinh 2; gradeNow/mtGradeMock truyen 1 neu fixJSON da
      dung 1 luot bo sung, de TONG so luot bo sung sau luot cham chinh khong qua 2): luot 1
      xin cac muc thieu, neu aiAsk nem loi / tra rac (khong doc duoc) / van thieu it nhat 1
@@ -2724,25 +2835,79 @@ async function completeGradeIfNeeded(g,res,q,part,tr,maxAttempts){
        ket qua da co (da quet sach); sap het (con <12s) thi chi dien muc QUAN TRONG
        (examinerNote/modelAnswer/errors), bo qua criteriaFeedback cho kip. */
     if(gradeSessionStart){
-      if(gradeBudgetLeft()<=4000){aiLogErr('completeGrade.budget',new Error('het ngan sach 30s - dung bo sung, render ket qua da co'));break;}
-      if(gradeBudgetLeft()<12000){var impMiss=miss.filter(function(m){return IMPORTANT_MISS.indexOf(m)>=0;});if(!impMiss.length)break;miss=impMiss;}
+      if(gradeBudgetLeft()<=8000){aiLogErr('completeGrade.budget',new Error('het ngan sach phien cham - dung bo sung, render ket qua da co'));break;}
+      if(gradeBudgetLeft()<25000){var impMiss=miss.filter(function(m){return IMPORTANT_MISS.indexOf(m)>=0;});if(!impMiss.length)break;miss=impMiss;}
     }
-    aiSetStatus('Điểm đã có — đang bổ sung phần còn thiếu ('+miss.join(', ')+')'+(attempt>1?' — thử lại lần 2':'')+'...');
+    var missB=miss.filter(function(m){return m!=='criteriaFeedback'&&m!=='modelAnswer';}); /* RESTORE+BOT v2.1: ca criteriaFeedback LAN modelAnswer deu khong xin trong luot gop nay — CF co luot rieng tung tieu chi kem descriptor, modelAnswer co luot rieng (bai Part 2 dai xin gop ca cau mau 200 tu + cac muc khac bi cat het, modelLen=0); luot gop chi con examinerNote + errors (nho, nhanh, it bi cat) */
+    if(!missB.length)break;
+    aiSetStatus('Điểm đã có — đang bổ sung phần còn thiếu ('+missB.join(', ')+')'+(attempt>1?' — thử lại lần 2':'')+'...');
     try{
-      var bkNow=gradeCfBadKeys(g,tr);var targetKeys=bkNow;
-      if(maxA>1&&attempt===1&&bkNow.length>2)targetKeys=bkNow.slice(0,Math.ceil(bkNow.length/2)); /* CHIA LUOT THEO TIEU CHI: luot 1 chi xin mot nua tieu chi chua dat, luot 2 xin not (tong van <=2 luot) — bang chung THAT: xin ca 4 muc sau 1 luot bi Pollinations cat giua chung, xin 2 muc/luot thi tron ven */
-      var prompt=buildCompletionPrompt(g,miss,q,part,tr);
-      var r2=await aiAsk(prompt,'You are damu, a pink capybara and strict IELTS Speaking examiner. Follow the user instruction exactly: if it asks for JSON return ONLY JSON; if it asks for plain-text sections with === markers, return ONLY those sections.',buildCompletionSectionsPrompt(g,miss,q,part,tr,targetKeys,(attempt>1?'SECOND TRY: the previous reply was unusable (reasoning text, no sections). Output ONLY the sections, every line SHORT (max 14 words), no analysis, no explanation before or after.':'')),{json:true});
+            var prompt=buildCompletionPrompt(g,missB,q,part,tr);
+      var r2=await aiAsk(prompt,'COMP_SYS',buildCompletionSectionsPrompt(g,missB,q,part,tr,null,(attempt>1?'SECOND TRY: the previous reply was unusable (reasoning text, no sections). Output ONLY the sections, every line SHORT (max 14 words), no analysis, no explanation before or after.':'')),{json:true});
       var via1=r2.via||'';try{g._completionVia=via1;g._completionAttempts=attempt;}catch(e){}
       var extra=resolveExtra(r2.text);
       if(!extra||extra._raw){
-        /* tra rac / khong doc duoc: khong merge, vong lap se thu lai neu con luot */
-        continue;
+        /* RESTORE+BOT v2.3: luot bo sung tra rac (reasoning dump, khong doc duoc) — aiAsk chi fallback khi throw, khong fallback khi tra rac. Thu ngay trong cung luot bang prompt sections lam chinh (sections truoc, JSON sau — cach da hieu qua o luot cau mau), toi da 1 lan fallback/luot; van rac thi vong lap moi thu lai neu con luot. */
+        try{
+          var r2b=await aiAsk(buildCompletionSectionsPrompt(g,missB,q,part,tr,null,'SECOND TRY: the previous reply was unusable (reasoning text, no sections, or copied instruction text). Output ONLY the sections, no analysis, no explanation before or after.'),COMP_SYS,buildCompletionPrompt(g,missB,q,part,tr),{json:true});
+          try{g._completionVia=r2b.via||g._completionVia;}catch(e){}
+          extra=resolveExtra(r2b.text);
+        }catch(eB){aiLogErr('completeGrade.sectionsFallback',eB);}
+        if(!extra||extra._raw){continue;}
       }
-      mergeExtra(extra,miss);
+      mergeExtra(extra,missB);
       gradeScrubFlaggedFields(g,tr,part); /* QUET SACH sau moi luot merge: truong vua dien ma van bi co do thi xoa ve rong — vong sau van nhan dien la thieu va dien tiep, rac khong bao gio song sot sang luu/hien */
     }catch(e){aiLogErr('completeGrade',e);/* nem loi: vong lap thu lai lan 2 neu con */}
   }
+  /* ===== LUOT BO SUNG RIENG TUNG MUC (RESTORE+BOT v2, 24/10) =====
+     criteriaFeedback la trai tim cua ban cham cu nhung qua cong mien phi lai hay
+     thieu/mong nhat: xin ca khoi 4 tieu chi trong 1 luot thi bi cat giua chung hoac
+     tra mong (chi 1/4 tieu chi du sau). Cach moi: bo sung TUNG TIEU CHI bang luot
+     nho rieng kem khoi descriptor cua tieu chi do (buildCfOnePrompt), moi
+     tieu chi toi da 2 lan, merge + quet sach sau moi luot. modelAnswer con thieu cung co
+     luot rieng toi da 2 lan (bai Part 2 dai tung bi modelLen=0 khi xin gop chung) va
+     chay TRUOC luot CF vi la khoi sinh dai nhat, CF thi loi theo tung tieu chi duoc. */
+  try{
+    for(var mTry=1;mTry<=2;mTry++){
+      if(gradeMissingFields(g,tr,part).indexOf('modelAnswer')<0)break;
+      if(gradeSessionStart&&gradeBudgetLeft()<=8000){aiLogErr('completeGrade.model.budget',new Error('sap het ngan sach phien cham - bo qua luot cau mau rieng'));break;}
+      aiSetStatus('Đang viết lại câu mẫu nâng Band 8 — lượt riêng '+mTry+'/2...');
+      try{
+        var mOpts={json:true};if(mTry>1){mOpts.temperature=0.7;mOpts.seed=2000+Math.floor(Math.random()*900000);}
+        var rmA2=await aiAsk(buildCompletionSectionsPrompt(g,['modelAnswer'],q,part,tr,null,(mTry>1?'SECOND TRY: the previous reply was unusable (reasoning text, no sections, or copied instruction text). Output ONLY the sections, no analysis, no explanation before or after, and write a REAL Band 8 rewrite of the learner answer in the MODEL_ANSWER section — never copy instruction phrases as the rewrite.':'')),COMP_SYS,buildCompletionPrompt(g,['modelAnswer'],q,part,tr),mOpts); /* RESTORE+BOT v2.2: xin sections TRUOC — JSON shape cua buildCompletionPrompt bi model mien phi chep nguyen van cum mo ta lam modelAnswer roi bi scrub xoa (diag Part 2: luot 1 echo, luot 2 reasoning envelope) */
+        try{g._completionVia=rmA2.via||g._completionVia;}catch(e){}
+        var exMA2=resolveExtra(rmA2.text);
+        if(exMA2&&!exMA2._raw){mergeExtra(exMA2,['modelAnswer']);gradeScrubFlaggedFields(g,tr,part);}
+      }catch(eM2){aiLogErr('completeGrade.model',eM2);}
+    }
+  }catch(eModelPass){aiLogErr('completeGrade.modelPass',eModelPass);}
+  try{
+    for(var cfRound=1;cfRound<=2;cfRound++){
+      var bkPass=gradeCfBadKeys(g,tr);if(!bkPass.length)break;
+      if(gradeSessionStart&&gradeBudgetLeft()<=10000){aiLogErr('completeGrade.cfOne.budget',new Error('sap het ngan sach phien cham - dung luot CF rieng, giu ket qua da co'));break;}
+      for(var ci2=0;ci2<bkPass.length;ci2++){
+        var ck2=bkPass[ci2];
+        if(gradeCfBadKeys(g,tr).indexOf(ck2)<0)continue;
+        if(gradeSessionStart&&gradeBudgetLeft()<=6000)break;
+        aiSetStatus('Đang bổ sung nhận xét sâu tiêu chí '+ck2+' — lượt riêng '+cfRound+'/2...');
+        try{
+          var cfOpts={json:true};if(cfRound>1){cfOpts.temperature=0.7;cfOpts.seed=1000+Math.floor(Math.random()*900000);}
+          var rc2=await aiAsk(buildCfOnePrompt(g,ck2,q,part,tr,false,cfRound),COMP_SYS,buildCfOnePrompt(g,ck2,q,part,tr,true,cfRound),cfOpts);
+          try{g._completionVia=rc2.via||g._completionVia;}catch(e){}
+          var exC2=resolveExtra(rc2.text);
+          if(!exC2||exC2._raw){
+            /* RESTORE+BOT v2.3: luot CF rieng tra rac — thu ngay trong cung luot bang ban lite (van xuoi sections) lam chinh, toi da 1 lan/luot (aiAsk khong fallback khi tra rac ma khong throw). */
+            try{
+              var rc2b=await aiAsk(buildCfOnePrompt(g,ck2,q,part,tr,true,cfRound),COMP_SYS,buildCfOnePrompt(g,ck2,q,part,tr,false,cfRound),cfOpts);
+              try{g._completionVia=rc2b.via||g._completionVia;}catch(e){}
+              exC2=resolveExtra(rc2b.text);
+            }catch(eCB){aiLogErr('completeGrade.cfOne.sectionsFallback.'+ck2,eCB);}
+          }
+          if(exC2&&!exC2._raw){mergeExtra(exC2,['criteriaFeedback']);gradeScrubFlaggedFields(g,tr,part);}
+        }catch(eC2){aiLogErr('completeGrade.cfOne.'+ck2,eC2);}
+      }
+    }
+  }catch(eCfPass){aiLogErr('completeGrade.cfPass',eCfPass);}
   /* LUOT VI MO (PIN AI vong 2, 22/10 + NGAN SACH RIENG PART 2/3 PIN v3, 22/10): sau khi
      het luot bo sung thuong, neu van con tieu chi MAT TRANG han (gradeCfCompletelyMissing
      — hay xay ra o GRA/P vi phan hoi bi cat o cuoi) thi cho phep THEM luot vi mo chi xin
@@ -2808,7 +2973,14 @@ async function completeGradeIfNeeded(g,res,q,part,tr,maxAttempts){
   gradeScrubFlaggedFields(g,tr,part); /* QUET SACH lan cuoi truoc khi tra: khong truong bi co do nao (examinerNote/modelAnswer/criteriaFeedback) va khong dong trich hong nao duoc song sot sang renderGrade/lich su */
   return g;}
 
-function geminiErrHtml(res){return ''; /* Bot damu keyless: khong con loi rieng cua Groq/Gemini de ghi chu nua */}
+function geminiErrHtml(res){if(!res)return '';var groqNote='';
+  if(res.groqErr&&res.via!=='Groq'){var gm=String((res.groqErr&&res.groqErr.message)||res.groqErr);var gcode='';var gmm=/HTTP (\d{3})/.exec(gm);if(gmm)gcode='HTTP '+gmm[1];else if(gm.indexOf('slow:')===0)gcode='quá chậm/timeout';else if(gm.indexOf('quota-groq|')===0)gcode='hết lượt 429';else if(gm.indexOf('breaker-groq:')===0)gcode='đang tạm nghỉ (breaker)';
+    groqNote='<p class="small">⚠️ Groq lỗi'+(gcode?' ('+gcode+')':'')+' — bài này do động cơ khác chấm.</p>';}
+  if(!res.geminiErr)return groqNote;var ge=res.geminiErr;var m=String((ge&&ge.message)||ge);
+  if(m.indexOf('breaker:')===0)return groqNote+'<p class="small">⚠️ Gemini đang tạm nghỉ (đã lỗi toàn bộ model 2 lần gần nhất) — bài này do AI dự phòng chấm. Muốn thử lại Gemini ngay: tab Cài đặt → nút reset breaker.</p>';
+  if(m.indexOf('prefer:')===0)return groqNote+'<p class="small">⚠️ Gemini vừa lỗi toàn bộ model ở lần chấm trước — lần này đi thẳng AI dự phòng cho nhanh. Muốn thử lại Gemini ngay: tab Cài đặt → nút reset breaker.</p>';
+  var code='';var mm=/HTTP (\d{3})/.exec(m);if(mm)code='HTTP '+mm[1];else if(m.indexOf('slow:')===0)code='quá chậm/timeout';else if(m.indexOf('quota|')===0)code='hết lượt 429';
+  return groqNote+'<p class="small">⚠️ Gemini lỗi'+(code?' ('+code+')':'')+' — đã thử hết các model, bài này do AI dự phòng chấm.</p>';}
 
 /* ================= TTS: TRO GIANG DOC MAU ================= */
 var lastModelAnswer='', lastHintSample='';
@@ -2875,16 +3047,14 @@ function criteriaFeedbackHtml(g){
     errs=errs.filter(function(x){return x!=null&&cfErrText(x).trim()!==''&&!(typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(cfErrText(x)))&&!(typeof gradeQuoteAcceptable==='function'&&!gradeQuoteAcceptable(gradeQuoteText(x),_trCf));}); /* chi hien dong trich dung duoc: nguyen van transcript (khi biet) + khong nhiem reasoning */
     fix=fix?String(fix).trim():'';
     if(fix&&typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(fix))fix=''; /* fix la chu mau cua prompt thi khong hien lam nhan xet that */
-    var strength='',drill='',bandLink='',descRef='',descAI='';
-    if(cf&&typeof cf==='object'&&!Array.isArray(cf)){strength=String(cf.strength||'').trim();drill=String(cf.drill||'').trim();bandLink=String(cf.bandLink||'').trim();descRef=String(cf.descRef||'').trim();descAI=String(cf.descAI||'').trim();
+    var strength='',drill='',bandLink='';
+    if(cf&&typeof cf==='object'&&!Array.isArray(cf)){strength=String(cf.strength||'').trim();drill=String(cf.drill||'').trim();bandLink=String(cf.bandLink||'').trim();
       if(strength&&typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(strength))strength='';
       if(drill&&typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(drill))drill='';
       if(bandLink&&typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(bandLink))bandLink='';}
-    if(!errs.length&&!fix&&!strength&&!drill&&!bandLink&&!descRef&&!descAI)return '';
+    if(!errs.length&&!fix&&!strength&&!drill&&!bandLink)return '';
     var sv=sc[key];var sTxt=(sv!=null&&sv!=='')?(' \u2014 '+Number(sv).toFixed(1)):'';
     var hh='<div class="cfb"><h4>'+key+' \u2014 '+labels[key]+sTxt+'</h4>';
-    if(descRef)hh+='<p>📌 <b>Đối chiếu descriptor:</b> '+esc(descRef)+'</p>';
-    if(descAI)hh+='<p>🎓 <b>Giám khảo đối chiếu:</b> '+esc(descAI)+'</p>';
     if(strength)hh+='<p>✅ <b>Điểm mạnh:</b> '+esc(strength)+'</p>';
     if(errs.length){hh+='<p><b>Lỗi của tiêu chí này (trích nguyên văn → bản sửa):</b></p><ul>';for(var j=0;j<errs.length;j++)hh+='<li>'+esc(cfErrText(errs[j]))+'</li>';hh+='</ul>';}
     else{hh+='<p><b>Lỗi của tiêu chí này:</b> không có lỗi nổi bật.</p>';}
@@ -2892,7 +3062,7 @@ function criteriaFeedbackHtml(g){
     if(drill)hh+='<p>🎯 <b>Bài tập luyện riêng:</b> '+esc(drill)+'</p>';
     if(bandLink)hh+='<p>📈 <b>Cầu nối band:</b> '+esc(bandLink)+'</p>';
     // generic extra fields so no sample text is lost
-    if(cf&&typeof cf==='object'&&!Array.isArray(cf)){for(var kk in cf){if(kk==='errors'||kk==='error'||kk==='mistakes'||kk==='issues'||kk==='fix'||kk==='howToFix'||kk==='advice'||kk==='improvement'||kk==='solution'||kk==='feedback'||kk==='strength'||kk==='drill'||kk==='bandLink'||kk==='descRef'||kk==='descAI')continue;if(!Object.prototype.hasOwnProperty.call(cf,kk))continue;var vv=cf[kk];if(vv==null||vv==='')continue;hh+='<p><b>'+esc(kk)+':</b> '+esc(cfErrText(vv))+'</p>';}}
+    if(cf&&typeof cf==='object'&&!Array.isArray(cf)){for(var kk in cf){if(kk==='errors'||kk==='error'||kk==='mistakes'||kk==='issues'||kk==='fix'||kk==='howToFix'||kk==='advice'||kk==='improvement'||kk==='solution'||kk==='feedback'||kk==='strength'||kk==='drill'||kk==='bandLink')continue;if(!Object.prototype.hasOwnProperty.call(cf,kk))continue;var vv=cf[kk];if(vv==null||vv==='')continue;hh+='<p><b>'+esc(kk)+':</b> '+esc(cfErrText(vv))+'</p>';}}
     hh+='</div>';
     return hh;
   }
@@ -2945,20 +3115,18 @@ async function gradeNow(){if(aiGrading)return;var tr=$('transcript').value.trim(
   function statusBubble(){chat.innerHTML=myMsg+damuMsg('<span class="spin"></span> <span id="gradeStatusTxt"></span> 🩷');paintStatus();}
   statusBubble();
   try{
-    var bg=await botGradeAnswer(curQuestion,curPart,tr,{onPhase:function(ph){st.phase=ph;paintStatus();}});
-    var g=bg.grade;var res={text:'',via:BOT_VIA,geminiErr:null,groqErr:null};var didFix=false,didVariant=false;
-    if(bg.partial){
-      chat.innerHTML=myMsg+damuMsg(botPartialHtml(bg.partial,curQuestion,curPart)+'<br><button class="btn" onclick="gradeNow()">🔁 Chấm lại</button>');
-      saveHistory(null,tr,wpm);
-    }else     if(!validateGrade(g)){
-      chat.innerHTML=myMsg+damuMsg('😵 damu chấm chưa thành công — AI trả về kết quả không đọc được điểm. Bài nói của bạn vẫn còn nguyên, bấm nút dưới để chấm lại nhé.<br><button class="btn" onclick="gradeNow()">🔁 Chấm lại</button>'+geminiErrHtml(res)+groqSuggestHtml());
+    var res=await aiAskGrade(buildPrompt(curQuestion,curPart,tr,wpm,secs),buildPromptLite(curQuestion,curPart,tr,wpm),{timeoutMs:AI_MAIN_FREE_TIMEOUT_MS}); /* GOI TOC DO (B1): luot chinh qua tang mien phi timeout 25s thay 45s */
+    var rec=await gradeParseWithRecovery(res,function(){return makeGradeVariantPrompts(curQuestion,curPart,tr,wpm,secs);},function(ph){if(ph==='fix'){st.phase='Bản chấm lỗi định dạng, đang gói lại JSON...';statusBubble();}else if(ph==='variant'){st.phase='AI trả bản lỗi — đang chấm lại bằng prompt biến đổi...';statusBubble();}});
+    var g=rec.g;res=rec.res;var didFix=rec.didFix;var didVariant=rec.didVariant; /* ngan sach vong 2: 1 luot chinh (+1 luot BIEN DOI chi khi luot chinh hong/dump, khong tinh vao bo sung) + fixJSON neu van hong (tinh 1 luot bo sung nhu cu: didFix -> bo sung con 1) + bo sung <=2 + vi mo <=1 (trong completeGradeIfNeeded) */
+    if(!validateGrade(g)){
+      chat.innerHTML=myMsg+damuMsg('😵 damu chấm chưa thành công — Bot damu trả về kết quả không đọc được điểm. Bài nói của bạn vẫn còn nguyên, bấm nút dưới để chấm lại nhé.<br><button class="btn" onclick="gradeNow()">🔁 Chấm lại</button>'+geminiErrHtml(res)+groqSuggestHtml());
       saveHistory(null,tr,wpm);
     }else{
       statusBubble();
       var missBefore=gradeMissingFields(g,tr,curPart);
-      g=await completeGradeIfNeeded(g,res,curQuestion,curPart,tr,didFix?1:2); /* luon bo sung neu con thieu muc, ke ca khi da dung fixJSON (fix du diem nhung van co the thieu examinerNote/modelAnswer/criteriaFeedback); fixJSON da tinh 1 luot bo sung nen ngan sach con lai 1, tong bo sung <= 2 */
+      g=await completeGradeIfNeeded(g,res,curQuestion,curPart,tr,didFix?2:3); /* RESTORE+BOT: toi da 3 vong bo sung cho engine keyless */ /* luon bo sung neu con thieu muc, ke ca khi da dung fixJSON (fix du diem nhung van co the thieu examinerNote/modelAnswer/criteriaFeedback); fixJSON da tinh 1 luot bo sung nen ngan sach con lai 1, tong bo sung <= 2 */
       var evNow=computeEvidence(tr,secs);
-      g=await auditGradeIfNeeded(g,tr,evNow,{via:(g._completionVia||res.via),extraUsed:didFix||didVariant||missBefore.length>0,didFix:didFix,didVariant:didVariant});
+      g=await auditGradeIfNeeded(g,tr,evNow,{via:(g._completionVia||res.via),extraUsed:didFix||didVariant||missBefore.length>0,didFix:didFix,didVariant:didVariant,part:curPart,q:curQuestion});
       var r=renderGrade(g,res.via,wpm,evNow);
       chat.innerHTML=myMsg+damuMsg(r.html+geminiErrHtml(res));
       saveHistory(r.overall,tr,wpm,(g&&!g._fallback)?g.scores:null,g);
@@ -2966,15 +3134,14 @@ async function gradeNow(){if(aiGrading)return;var tr=$('transcript').value.trim(
     }
   }catch(e){
     aiLogErr('gradeNow',e);
-    chat.innerHTML=myMsg+damuMsg('😵 Bot damu chấm không được: '+esc(aiFriendlyErr(e))+'<br><span class="small">Bot chấm ngay trong trang bằng AI miễn phí, không cần key — kiểm tra mạng rồi bấm chấm lại nhé.</span><br><button class="btn" onclick="gradeNow()">🔁 Chấm lại</button>');
+    chat.innerHTML=myMsg+damuMsg('😵 damu chấm không được: '+esc(aiFriendlyErr(e))+'<br><span class="small">Thử: kiểm tra mạng rồi bấm chấm lại nhé — Bot damu chấm bằng AI miễn phí, không cần key.</span><br><button class="btn" onclick="gradeNow()">🔁 Chấm lại</button>'+groqSuggestHtml());
     saveHistory(null,tr,wpm);
   }
   clearInterval(stTimer);aiStatusHandler=null;gradeSessionStart=0;
   aiGrading=false;btn.disabled=false;btn.textContent='🩷 DAMU CHẤM BÀI';}
 
-/* HANG CHO CHAM pendingGrades DA GO (lenh Nguyen 24/10): cham bang Bot damu keyless
-   ngay trong trang — loi luot nao thi ban cham mot phan trung thuc / bao loi kem nut
-   cham lai, khong xep hang, khong tu cham lai nen. */
+/* RESTORE+BOT (24/10): DA GO HANG CHO pendingGrades khoi luong cham — loi cham bao trung thuc ngay, khong enqueue, khong UI hang cho. */
+
 /* ================= TRỢ GIẢNG GỢI Ý ================= */
 var SELFBANDLS='damuSpeaking.selfBand';
 var HINT_MIN_GRADED=3, HINT_WINDOW=5;
@@ -3867,7 +4034,7 @@ function buildMockPrompt(session){
   for(var i=0;i<session.answers.length;i++){var a=session.answers[i];qa+='\n[Part '+a.part+'] Q: '+a.question+'\nA ('+(a.secs||0)+'s, '+(a.wpm||0)+' wpm): '+String(a.transcript||'(no answer / silent)').slice(0,550)+'\n';if(qa.length>5000){qa=qa.slice(0,5000);break;}}
   var totalWords=0,totalSecs=0;for(var k=0;k<session.answers.length;k++){totalWords+=wordCount(session.answers[k].transcript||'');totalSecs+=(session.answers[k].secs||0);}var evM=null,evTxtM='';var allTrM=session.answers.map(function(a){return a.transcript||'';}).join(' ');if(typeof computeEvidence==='function'){try{evM=computeEvidence(allTrM,totalSecs);}catch(e){}}if(evM&&typeof evidenceText==='function'){try{evTxtM=evidenceText(evM);}catch(e){}}if(!evTxtM){var _bw=allTrM.trim()?allTrM.trim().split(/\s+/):[];var _bn=_bw.map(function(w){return w.toLowerCase().replace(/^[^a-z0-9']+|[^a-z0-9']+$/g,'');}).filter(function(w){return w;});var _bs={},_bu=0;for(var _bi=0;_bi<_bn.length;_bi++){if(!_bs[_bn[_bi]]){_bs[_bn[_bi]]=1;_bu++;}}var _bt=_bn.length?Math.round((_bu/_bn.length)*1000)/1000:0;var _bp=' '+_bn.join(' ')+' ';var _bf=(_bp.split(' um ').length-1)+(_bp.split(' uh ').length-1)+(_bp.split(' er ').length-1)+(_bp.split(' you know ').length-1)+(_bp.split(' i mean ').length-1);evTxtM='EVIDENCE (objective metrics computed locally from the transcript - trust these numbers over impressions): total words '+_bw.length+'; type-token ratio (typeTokenRatio) '+_bt+' ('+_bu+' unique words out of '+_bw.length+'); filler words / hesitation tokens (fillerCount) '+_bf+' total. CROSS-CHECK RULE (mandatory): confront these numbers before scoring FC and LR - very low speed plus many fillers caps FC, a low type-token ratio caps LR, very short answers cap FC and GRA; if a score contradicts the EVIDENCE, lower the score to fit the evidence.';}
   var avgWpm=totalSecs>2?Math.round(totalWords/(totalSecs/60)):0;
-  return 'You are damu, a certified IELTS Speaking examiner (10+ years) — NOW, after the test has ended, you switch to examiner-coach mode and roast the candidate in English: blunt, sarcastic, funny, zero sugar-coating, targeting the PERFORMANCE only, never the person. This feedback is the first and only evaluation. Grade SERIOUSLY and strictly for the WHOLE test as one performance: no grade inflation, no sympathy marks; award the 0.5 step whose descriptor fits best per criterion and state any cap quoting descriptor language.\n\n'+rubric+'\n\n'+calib+'\n\nFULL MOCK TEST — Part 1 topic: '+session.p1Topic+' | Part 2 cue card: '+session.p2Card.prompt+' | Part 3 topic: '+session.p3Topic+'\n'+qa+'\nTotals: '+totalWords+' words, about '+totalSecs+' seconds speaking, average '+avgWpm+' wpm.\n\n'+evTxtM+'\n\nRespond with ONLY a valid JSON object (no markdown fences, no text outside JSON) in EXACTLY this shape:\n{"opening":"1-2 short roast sentences in English summarising THIS whole test","scores":{"FC":6.0,"LR":5.5,"GRA":6.0,"P":6.0},"errors":[{"wrong":"exact wrong phrase copied from any answer","fix":"corrected version","why":"very short reason in Vietnamese"}],"upgrades":[{"original":"simple phrase from the test","better":"band 7+ version"}],"tips":["tip 1 in Vietnamese","tip 2 in Vietnamese","tip 3 in Vietnamese"],"praise":"1 sentence in Vietnamese","examinerNote":"2-3 sentences in English like a real examiner note for the whole test, ending with the single biggest lever to reach the next band","modelAnswer":"Band 8 upgraded rewrite of the candidate own PART 2 answer only: preserve the candidate own ideas and order where coherent, repair logic and coherence gaps, add at most 1-2 missing ideas only where the answer is thin, rewrite the language at Band 8, do NOT invent a different line of argument","rewriteNotes":"1-2 dong tieng Viet: giu lai y gi cua hoc sinh, sua logic o dau, them y gi (neu co)","criteriaFeedback":{"FC":{"strength":"1 diem manh ngan gon bang tieng Viet cua rieng tieu chi FC","errors":[{"wrong":"exact phrase from the transcript for FC only","fix":"the corrected version of that exact phrase","why":"short reason in Vietnamese"},{"wrong":"another exact phrase from the transcript for FC only","fix":"the corrected version of that other phrase"}],"fix":"cach khac phuc cu the bang tieng Viet cho rieng tieu chi FC","drill":"1 bai tap hoac meo luyen cu the bang tieng Viet cho rieng tieu chi FC","bandLink":"1 cau tieng Viet: sua duoc cac loi tren thi tieu chi FC len band may"},"LR":{"strength":"1 diem manh ngan gon bang tieng Viet cua rieng tieu chi LR","errors":[{"wrong":"exact phrase from the transcript for LR only","fix":"the corrected version of that exact phrase","why":"short reason in Vietnamese"},{"wrong":"another exact phrase from the transcript for LR only","fix":"the corrected version of that other phrase"}],"fix":"cach khac phuc cu the bang tieng Viet cho rieng tieu chi LR","drill":"1 bai tap hoac meo luyen cu the bang tieng Viet cho rieng tieu chi LR","bandLink":"1 cau tieng Viet: sua duoc cac loi tren thi tieu chi LR len band may"},"GRA":{"strength":"1 diem manh ngan gon bang tieng Viet cua rieng tieu chi GRA","errors":[{"wrong":"exact phrase from the transcript for GRA only","fix":"the corrected version of that exact phrase","why":"short reason in Vietnamese"},{"wrong":"another exact phrase from the transcript for GRA only","fix":"the corrected version of that other phrase"}],"fix":"cach khac phuc cu the bang tieng Viet cho rieng tieu chi GRA","drill":"1 bai tap hoac meo luyen cu the bang tieng Viet cho rieng tieu chi GRA","bandLink":"1 cau tieng Viet: sua duoc cac loi tren thi tieu chi GRA len band may"},"P":{"strength":"1 diem manh ngan gon bang tieng Viet cua rieng tieu chi P","errors":[{"wrong":"exact word likely mispronounced","fix":"cach phat am dung cua tu do, kem IPA neu can","why":"short reason in Vietnamese"},{"wrong":"another exact word likely mispronounced","fix":"cach phat am dung cua tu do"}],"fix":"cach khac phuc cu the bang tieng Viet cho rieng tieu chi P","drill":"1 bai tap hoac meo luyen cu the bang tieng Viet cho rieng tieu chi P","bandLink":"1 cau tieng Viet: sua duoc cac loi tren thi tieu chi P len band may"}}}\nRules: scores 0-9 in 0.5 steps for the WHOLE test. Never use a double-quote character inside any string value — use single quotes. errors: 3-5 REAL recurring or most serious errors across the test; QUOTE-VERBATIM RULE (mandatory, applies to errors, upgrades and criteriaFeedback): every quoted item MUST be copied character-for-character from one of the answer transcripts - a verbatim substring the candidate actually said; never paraphrase, never invent an error that is not visibly in the transcripts; if you cannot quote it exactly, drop that error; EVERY item MUST have wrong, fix AND why all filled (wrong and fix max 8 words, why max 12 words Vietnamese) — never leave a field empty. upgrades: exactly 2 items, max 12 words each, both fields filled. tips: exactly 3 in Vietnamese, max 20 words each, at least one MUST name the band cap. examinerNote: REQUIRED, never empty, at least 2 sentences (2-3 sentences, max 60 words), quoting descriptor language, last sentence names the single biggest lever to reach the next band. modelAnswer: REQUIRED, never empty, Part 2 only, 180-240 words, no double quotes inside; it MUST be an upgraded rewrite of the candidate own Part 2 answer (preserve their ideas and order where coherent, repair logic and coherence gaps, add at most 1-2 missing ideas only where thin, Band 8 language, do NOT invent a different line of argument). rewriteNotes: REQUIRED when modelAnswer is present, 1-2 short lines in Vietnamese stating what was kept, where logic was repaired, and what was added (say khong them y moi if none). criteriaFeedback: REQUIRED object with exactly FC, LR, GRA, P; each criterion is {strength, errors, fix, drill}: strength = 1 short genuine strength in Vietnamese for that criterion; errors = 2-3 items {wrong, fix, why} quoted exactly for THAT criterion only (for P words likely mispronounced, fix gives the correct pronunciation), each item carrying its own corrected version and a one-line Vietnamese reason; fix = a specific remedy in Vietnamese; drill = 1 concrete practice exercise in Vietnamese for that criterion, tied to those errors and doable in 5-10 minutes; bandLink = 1 band bridge sentence in Vietnamese (fixing these errors lifts this criterion to band Y); never repeat one error under two criteria; if a criterion has no real error, errors is empty and fix says how to maintain or raise it.';}
+  return 'You are damu, a certified IELTS Speaking examiner (10+ years) — NOW, after the test has ended, you switch to examiner-coach mode and roast the candidate in English: blunt, sarcastic, funny, zero sugar-coating, targeting the PERFORMANCE only, never the person. This feedback is the first and only evaluation. Grade SERIOUSLY and strictly for the WHOLE test as one performance: no grade inflation, no sympathy marks; award the 0.5 step whose descriptor fits best per criterion and state any cap quoting descriptor language.\n\n'+rubric+'\n\n'+BOT_DESC_BLOCK+'\n\n'+calib+'\n\nFULL MOCK TEST — Part 1 topic: '+session.p1Topic+' | Part 2 cue card: '+session.p2Card.prompt+' | Part 3 topic: '+session.p3Topic+'\n'+qa+'\nTotals: '+totalWords+' words, about '+totalSecs+' seconds speaking, average '+avgWpm+' wpm.\n\n'+evTxtM+'\n\nRespond with ONLY a valid JSON object (no markdown fences, no text outside JSON) in EXACTLY this shape:\n{"opening":"1-2 short roast sentences in English summarising THIS whole test","scores":{"FC":6.0,"LR":5.5,"GRA":6.0,"P":6.0},"errors":[{"wrong":"exact wrong phrase copied from any answer","fix":"corrected version","why":"very short reason in Vietnamese"}],"upgrades":[{"original":"simple phrase from the test","better":"band 7+ version"}],"tips":["tip 1 in Vietnamese","tip 2 in Vietnamese","tip 3 in Vietnamese"],"praise":"1 sentence in Vietnamese","examinerNote":"2-3 sentences in English like a real examiner note for the whole test, ending with the single biggest lever to reach the next band","modelAnswer":"Band 8 upgraded rewrite of the candidate own PART 2 answer only: preserve the candidate own ideas and order where coherent, repair logic and coherence gaps, add at most 1-2 missing ideas only where the answer is thin, rewrite the language at Band 8, do NOT invent a different line of argument","rewriteNotes":"1-2 dong tieng Viet: giu lai y gi cua hoc sinh, sua logic o dau, them y gi (neu co)","criteriaFeedback":{"FC":{"strength":"1 diem manh ngan gon bang tieng Viet cua rieng tieu chi FC","errors":[{"wrong":"exact phrase from the transcript for FC only","fix":"the corrected version of that exact phrase","why":"short reason in Vietnamese"},{"wrong":"another exact phrase from the transcript for FC only","fix":"the corrected version of that other phrase"}],"fix":"cach khac phuc cu the bang tieng Viet cho rieng tieu chi FC","drill":"1 bai tap hoac meo luyen cu the bang tieng Viet cho rieng tieu chi FC","bandLink":"1 cau tieng Viet: sua duoc cac loi tren thi tieu chi FC len band may"},"LR":{"strength":"1 diem manh ngan gon bang tieng Viet cua rieng tieu chi LR","errors":[{"wrong":"exact phrase from the transcript for LR only","fix":"the corrected version of that exact phrase","why":"short reason in Vietnamese"},{"wrong":"another exact phrase from the transcript for LR only","fix":"the corrected version of that other phrase"}],"fix":"cach khac phuc cu the bang tieng Viet cho rieng tieu chi LR","drill":"1 bai tap hoac meo luyen cu the bang tieng Viet cho rieng tieu chi LR","bandLink":"1 cau tieng Viet: sua duoc cac loi tren thi tieu chi LR len band may"},"GRA":{"strength":"1 diem manh ngan gon bang tieng Viet cua rieng tieu chi GRA","errors":[{"wrong":"exact phrase from the transcript for GRA only","fix":"the corrected version of that exact phrase","why":"short reason in Vietnamese"},{"wrong":"another exact phrase from the transcript for GRA only","fix":"the corrected version of that other phrase"}],"fix":"cach khac phuc cu the bang tieng Viet cho rieng tieu chi GRA","drill":"1 bai tap hoac meo luyen cu the bang tieng Viet cho rieng tieu chi GRA","bandLink":"1 cau tieng Viet: sua duoc cac loi tren thi tieu chi GRA len band may"},"P":{"strength":"1 diem manh ngan gon bang tieng Viet cua rieng tieu chi P","errors":[{"wrong":"exact word likely mispronounced","fix":"cach phat am dung cua tu do, kem IPA neu can","why":"short reason in Vietnamese"},{"wrong":"another exact word likely mispronounced","fix":"cach phat am dung cua tu do"}],"fix":"cach khac phuc cu the bang tieng Viet cho rieng tieu chi P","drill":"1 bai tap hoac meo luyen cu the bang tieng Viet cho rieng tieu chi P","bandLink":"1 cau tieng Viet: sua duoc cac loi tren thi tieu chi P len band may"}}}\nRules: scores 0-9 in 0.5 steps for the WHOLE test. Never use a double-quote character inside any string value — use single quotes. errors: 3-5 REAL recurring or most serious errors across the test; QUOTE-VERBATIM RULE (mandatory, applies to errors, upgrades and criteriaFeedback): every quoted item MUST be copied character-for-character from one of the answer transcripts - a verbatim substring the candidate actually said; never paraphrase, never invent an error that is not visibly in the transcripts; if you cannot quote it exactly, drop that error; EVERY item MUST have wrong, fix AND why all filled (wrong and fix max 8 words, why max 12 words Vietnamese) — never leave a field empty. upgrades: exactly 2 items, max 12 words each, both fields filled. tips: exactly 3 in Vietnamese, max 20 words each, at least one MUST name the band cap. examinerNote: REQUIRED, never empty, at least 2 sentences (2-3 sentences, max 60 words), quoting descriptor language, last sentence names the single biggest lever to reach the next band. modelAnswer: REQUIRED, never empty, Part 2 only, 180-240 words, no double quotes inside; it MUST be an upgraded rewrite of the candidate own Part 2 answer (preserve their ideas and order where coherent, repair logic and coherence gaps, add at most 1-2 missing ideas only where thin, Band 8 language, do NOT invent a different line of argument). rewriteNotes: REQUIRED when modelAnswer is present, 1-2 short lines in Vietnamese stating what was kept, where logic was repaired, and what was added (say khong them y moi if none). criteriaFeedback: REQUIRED object with exactly FC, LR, GRA, P; each criterion is {strength, errors, fix, drill}: strength = 1 short genuine strength in Vietnamese for that criterion; errors = 2-3 items {wrong, fix, why} quoted exactly for THAT criterion only (for P words likely mispronounced, fix gives the correct pronunciation), each item carrying its own corrected version and a one-line Vietnamese reason; fix = a specific remedy in Vietnamese; drill = 1 concrete practice exercise in Vietnamese for that criterion, tied to those errors and doable in 5-10 minutes; bandLink = 1 band bridge sentence in Vietnamese (fixing these errors lifts this criterion to band Y); never repeat one error under two criteria; if a criterion has no real error, errors is empty and fix says how to maintain or raise it.';}
 
 function saveMockHistory(band,session,avgWpm,totalWords,scores,fb){
   var h=loadHist();
@@ -3894,16 +4061,11 @@ async function mtGradeMock(){
   function stopStatus(){clearInterval(stTimer);aiStatusHandler=null;}
   statusBubble();
   try{
+    var prompt=buildMockPrompt(mt);
     var allTr=mt.answers.map(function(a){return a.transcript||'';}).join(' ').slice(0,2500);
-    var p2Ans=null;for(var _pai=0;_pai<mt.answers.length;_pai++){if(mt.answers[_pai].part===2)p2Ans=mt.answers[_pai];}
-    var bg=await botGradeAnswer('Full IELTS mock test (Parts 1, 2 and 3) — grade the WHOLE test as one performance',2,allTr,{trLimit:2400,qLabel:'Full mock test transcript (Parts 1, 2 and 3 combined, in order)',modelText:(p2Ans?(p2Ans.transcript||''):allTr),modelPart:2,onPhase:function(ph){st.phase=ph;paintStatus();}});
-    var g=bg.grade;var res={text:'',via:BOT_VIA,geminiErr:null,groqErr:null};var didFix=false;var didVariantMt=false;
-    if(bg.partial){
-      stopStatus();
-      if(chat)chat.innerHTML=damuMsg(botPartialHtml(bg.partial,'Full mock test',2)+'<br><button class="btn" onclick="mtGradeMock()">🔁 Chấm lại</button>');
-      if(btn){btn.disabled=false;btn.textContent='🩷 XEM KẾT QUẢ CHẤM TỔNG';}
-      mtGrading=false;gradeSessionStart=0;return;
-    }
+    var res=await aiAskGrade(prompt,buildPromptLite('Full IELTS mock test (Parts 1, 2 and 3)',0,allTr,avgWpm),{timeoutMs:AI_MAIN_FREE_TIMEOUT_MS}); /* GOI TOC DO (B1): luot chinh thi thu cung 25s o tang mien phi */
+    var recMt=await gradeParseWithRecovery(res,function(){var sd=1+Math.floor(Math.random()*999999);var seed='V'+sd;return{full:'Grading attempt code '+seed+'. Output the JSON object IMMEDIATELY as your entire reply: first character {, last character }. No reasoning text, no plan, no markdown — think silently, then write only the finished JSON.\n'+prompt,lite:buildPromptLiteVariant('Full IELTS mock test (Parts 1, 2 and 3)',0,allTr,avgWpm,seed),seed:seed,seedNum:sd};},function(ph){if(ph==='fix'){st.phase='Bản chấm lỗi định dạng, đang gói lại JSON...';statusBubble();}});
+    var g=recMt.g;res=recMt.res;var didFix=recMt.didFix;var didVariantMt=recMt.didVariant;
     if(!validateGrade(g)){
       stopStatus();
       if(chat)chat.innerHTML=damuMsg('😵 damu chấm chưa thành công — AI trả về kết quả không đọc được điểm. Buổi thi của bạn vẫn còn nguyên, bấm nút dưới để chấm lại nhé.<br><button class="btn" onclick="mtGradeMock()">🔁 Chấm lại</button>'+geminiErrHtml(res)+groqSuggestHtml());
@@ -3912,7 +4074,7 @@ async function mtGradeMock(){
     }
     statusBubble();
     var missBeforeMt=gradeMissingFields(g,allTr,2);
-    g=await completeGradeIfNeeded(g,res,'Full mock test — Part 2 cue card: '+mt.p2Card.prompt,2,allTr,didFix?1:2); /* luon bo sung neu con thieu muc, ke ca khi da dung fixJSON; fixJSON da tinh 1 luot bo sung nen ngan sach con lai 1, tong bo sung <= 2 */
+    g=await completeGradeIfNeeded(g,res,'Full mock test — Part 2 cue card: '+mt.p2Card.prompt,2,allTr,didFix?2:3); /* RESTORE+BOT: toi da 3 vong bo sung */ /* luon bo sung neu con thieu muc, ke ca khi da dung fixJSON; fixJSON da tinh 1 luot bo sung nen ngan sach con lai 1, tong bo sung <= 2 */
     var evMock=computeEvidence(mt.answers.map(function(a){return a.transcript||'';}).join(' '),totalSecs);
     g=await auditGradeIfNeeded(g,allTr,evMock,{via:(g._completionVia||res.via),extraUsed:didFix||didVariantMt||missBeforeMt.length>0,didFix:didFix,didVariant:didVariantMt});
     stopStatus();
@@ -3924,7 +4086,7 @@ async function mtGradeMock(){
   }catch(e){
     stopStatus();
     aiLogErr('mtGradeMock',e);
-    if(chat)chat.innerHTML=damuMsg('😵 Bot damu chấm tổng không được: '+esc(aiFriendlyErr(e))+'<br><span class="small">Bot chấm ngay trong trang bằng AI miễn phí, không cần key — kiểm tra mạng rồi bấm lại nút chấm ở trên nhé. Buổi thi vẫn còn nguyên.</span>'+groqSuggestHtml());
+    if(chat)chat.innerHTML=damuMsg('😵 damu chấm tổng không được: '+esc(aiFriendlyErr(e))+'<br><span class="small">Thử: kiểm tra mạng rồi bấm lại nút chấm ở trên nhé — Bot damu chấm bằng AI miễn phí, không cần key. Buổi thi vẫn còn nguyên.</span>'+groqSuggestHtml());
     if(btn){btn.disabled=false;btn.textContent='🩷 XEM KẾT QUẢ CHẤM TỔNG';}
     saveMockHistory(null,mt,avgWpm,totalWords,null);
   }
@@ -4262,9 +4424,10 @@ document.querySelectorAll('nav button').forEach(function(b){b.addEventListener('
   $('capyHead').src=CAPY_IMG;
   document.querySelectorAll('.msg img').forEach(function(im){im.src=CAPY_IMG;});
   fillTopics();renderForecast();renderVideos();renderStreak();updateStats();initSelfBandUI();syncHintLock();syncHintBandChip();renderAIStatus();
-  var ake0=$('akey');if(ake0){var k=aiGetKey();if(k)ake0.value=k;}
+  var k=aiGetKey();if(k)$('akey').value=k;
   var gk0=aiGetGroqKey();if(gk0&&$('groqKey'))$('groqKey').value=gk0;
-    try{var sl=localStorage.getItem('damuSpeaking.lang');var selL=document.getElementById('speechLangSel');if(selL&&sl)selL.value=sl;}catch(e){}
+  /* RESTORE+BOT: khong con hang cho cham */ /* HANG CHO CHAM: mo app la doc lai hang cho tu localStorage + hien trang thai + hen gio tu cham tiep */
+  try{var sl=localStorage.getItem('damuSpeaking.lang');var selL=document.getElementById('speechLangSel');if(selL&&sl)selL.value=sl;}catch(e){}
   if(!SR){$('srWarn').innerHTML='<div class="err">⚠️ Trình duyệt này <b>không hỗ trợ nhận diện giọng nói</b>. Hãy mở trang bằng <b>Google Chrome</b> hoặc <b>Microsoft Edge</b> để ghi âm. Bạn vẫn có thể tự gõ bài nói vào ô Bản ghi rồi bấm "DAMU CHẤM BÀI".</div>';}
 })();
 </script>
