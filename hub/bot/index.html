@@ -32,6 +32,18 @@ header p{color:#8a4a5e;font-size:14px;margin-top:4px;line-height:1.5}
 .btn:disabled{opacity:.5}
 footer{text-align:center;color:#b06a80;font-size:12px;margin-top:12px}
 </style>
+<style>
+.msg .hw{font-size:22px;color:#d6336c}
+.msg .ipa{color:#8a4a5e;font-size:14px;margin:2px 0}
+.msg .pos{font-weight:800;color:#c2255c;margin-top:8px;text-transform:capitalize}
+.msg .def{margin:3px 0}
+.msg .ex{color:#8a4a5e;font-style:italic;font-size:14px;margin:2px 0 2px 10px}
+.msg .sa{margin-top:8px;font-size:14px}
+.addbtn{margin-top:10px;border:2px solid #ffc2d1;background:#fff0f3;color:#c2255c;font-weight:800;border-radius:999px;padding:8px 13px;cursor:pointer;font-size:14px}
+.spkbtn{border:2px solid #ffc2d1;background:#fff;border-radius:999px;padding:4px 10px;cursor:pointer}
+.gradebox b{color:#c2255c}
+.statusline{text-align:center;color:#b06a80;font-size:12px;margin-top:8px;line-height:1.5}
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -44,91 +56,948 @@ footer{text-align:center;color:#b06a80;font-size:12px;margin-top:12px}
   <div id="msgs"></div>
 
   <div class="chips">
-    <button class="chip" data-send="Câu Part 1">🎤 Câu Part 1</button>
-    <button class="chip" data-send="Câu Part 2">🎤 Câu Part 2</button>
-    <button class="chip" data-send="Câu Part 3">🎤 Câu Part 3</button>
+    <button class="chip" data-act="part1">🎤 Câu Part 1</button>
+    <button class="chip" data-act="part2">🎤 Câu Part 2</button>
+    <button class="chip" data-act="part3">🎤 Câu Part 3</button>
     <button class="chip" data-fill="đố ">🎲 Đố từ</button>
     <button class="chip" data-fill="tra ">🔎 Tra từ</button>
   </div>
 
   <div class="bar">
     <input id="inp" type="text" placeholder="Nhắn cho Bot damu…" autocomplete="off" enterkeyhint="send">
-    <button class="btn mic" id="micBtn" title="Nói để Bot chấm">🎙️</button>
+    <button class="btn mic" id="micBtn" title="Nói để trả lời / để Bot chấm">🎙️</button>
     <button class="btn" id="sendBtn">Gửi</button>
   </div>
-  <footer>Bot damu chạy trên máy chủ của damu — không cần dán key gì cả 💗</footer>
+  <div class="statusline" id="modeLine">Bot chạy chế độ miễn phí không cần key — bài chấm dài đôi khi phải thử lại</div>
+  <footer id="footNote">Bot damu chạy ngay trong trình duyệt của bạn — không cần dán key gì cả 💗</footer>
 </div>
+<script type="application/json" id="forecastData">{
+  "quarter": "Q4 2026 (Sep-Dec)",
+  "part1": [
+    {
+      "topic": "Work or Study",
+      "questions": [
+        "Do you work or are you a student?",
+        "What do you like most about your job or studies?",
+        "Why did you choose that job or subject?",
+        "Would you like to change your job or subject in the future?",
+        "What do you usually do in a typical working day or study day?"
+      ]
+    },
+    {
+      "topic": "Hometown",
+      "questions": [
+        "Where is your hometown?",
+        "What do you like most about your hometown?",
+        "Has your hometown changed much in recent years?",
+        "Is your hometown a good place for young people to live?",
+        "Would you like to live in your hometown in the future?"
+      ]
+    },
+    {
+      "topic": "Home and Accommodation",
+      "questions": [
+        "Do you live in a house or a flat?",
+        "Which is your favourite room in your home?",
+        "What can you see from your windows?",
+        "If you could improve one thing in your home, what would it be?",
+        "How long have you lived there?"
+      ]
+    },
+    {
+      "topic": "The Area You Live In",
+      "questions": [
+        "What is the area where you live like?",
+        "Is there anything you would like to change about your area?",
+        "What do people do for entertainment in your area?",
+        "Do you know your neighbours well?",
+        "Would you recommend your area to other people?"
+      ]
+    },
+    {
+      "topic": "Social Media",
+      "questions": [
+        "When did you start using social media?",
+        "Do you think you spend too much time on social media?",
+        "What do people in your country usually do on social media?",
+        "Do you prefer meeting friends online or in person?",
+        "Has social media changed the way you communicate with friends?"
+      ]
+    },
+    {
+      "topic": "Music",
+      "questions": [
+        "What kind of music do you like to listen to?",
+        "Has your taste in music changed since you were a child?",
+        "Do you like listening to live music?",
+        "When do you usually listen to music?",
+        "Would you like to learn to play a musical instrument?"
+      ]
+    },
+    {
+      "topic": "Photography",
+      "questions": [
+        "Do you take a lot of photos?",
+        "What kind of photos do you like to take?",
+        "Do you prefer taking photos with a phone or a camera?",
+        "Have you ever shared your photos on social media?",
+        "Why do you think people enjoy taking photos?"
+      ]
+    },
+    {
+      "topic": "Animals and Nature",
+      "questions": [
+        "Are there many birds or wild animals in your area?",
+        "Do you have a pet or would you like to have one?",
+        "What is your favourite animal?",
+        "Do you enjoy spending time in nature?",
+        "Did you learn about animals at school?"
+      ]
+    },
+    {
+      "topic": "Future Plans",
+      "questions": [
+        "Do you usually make long-term plans, or take life as it comes?",
+        "What would you like to achieve in the next five years?",
+        "Do you think it is important to have goals?",
+        "Have your future plans changed recently?",
+        "Would you like to live or work in another country one day?"
+      ]
+    },
+    {
+      "topic": "Learning and Skills",
+      "questions": [
+        "Are you learning anything new at the moment?",
+        "What skill would you most like to learn in the future?",
+        "Do you prefer learning alone or with a teacher?",
+        "How did you learn to use a computer or smartphone?",
+        "Do you think adults should keep learning new things?"
+      ]
+    },
+    {
+      "topic": "Celebrations and Festivals",
+      "questions": [
+        "What is the most important festival in your country?",
+        "How do you usually celebrate that festival?",
+        "Do you enjoy family celebrations?",
+        "Has the way people celebrate festivals changed?",
+        "What is your favourite celebration of the year?"
+      ]
+    },
+    {
+      "topic": "Shopping",
+      "questions": [
+        "Do you enjoy shopping?",
+        "Do you prefer shopping online or in stores?",
+        "What was the last thing you bought?",
+        "How often do you go shopping for clothes?",
+        "Do you think people spend too much money on shopping?"
+      ]
+    },
+    {
+      "topic": "Films and Cinema",
+      "questions": [
+        "Do you like watching films?",
+        "What kind of films do you enjoy most?",
+        "Do you prefer watching films at home or at the cinema?",
+        "How often do you watch films?",
+        "Who is your favourite actor or actress?"
+      ]
+    },
+    {
+      "topic": "Science",
+      "questions": [
+        "Are you interested in science?",
+        "What science subject did you study at school?",
+        "Do you watch science programmes on TV or online?",
+        "How does science affect your daily life?",
+        "Would you like to learn more about outer space and stars?"
+      ]
+    },
+    {
+      "topic": "Morning Routines and Daily Routine",
+      "questions": [
+        "What is your usual morning routine?",
+        "Are you a morning person or a night person?",
+        "Has your daily routine changed in recent years?",
+        "What is your favourite time of day?",
+        "Do you usually plan your day in advance?"
+      ]
+    },
+    {
+      "topic": "Food and Cooking",
+      "questions": [
+        "What is your favourite food?",
+        "Has your favourite food changed since you were a child?",
+        "Can you cook, and do you enjoy cooking?",
+        "Do you eat different foods at different times of the year?",
+        "Do you prefer eating at home or in restaurants?"
+      ]
+    },
+    {
+      "topic": "Sports and Exercise",
+      "questions": [
+        "Do you do any sports or exercise?",
+        "What sports programmes do you watch on TV?",
+        "Did you play sports when you were a child?",
+        "Do you prefer team sports or individual sports?",
+        "Would you like to try a new sport in the future?"
+      ]
+    },
+    {
+      "topic": "Headphones and Technology in Daily Life",
+      "questions": [
+        "How often do you use headphones?",
+        "When do you usually use headphones?",
+        "What apps do you use most on your phone?",
+        "Could you live without your smartphone for a week?",
+        "Do you use AI tools in your daily life or studies?"
+      ]
+    },
+    {
+      "topic": "Tidiness and Organisation",
+      "questions": [
+        "Are you a tidy person?",
+        "Do you keep your room or desk tidy?",
+        "Did your parents teach you to be tidy when you were a child?",
+        "Why do some people find it hard to stay tidy?",
+        "Do you sort your garbage or recycle at home?"
+      ]
+    },
+    {
+      "topic": "Reading and Books",
+      "questions": [
+        "Do you like reading books?",
+        "What kind of books do you enjoy reading?",
+        "Do you prefer e-books or paper books?",
+        "When do you usually read?",
+        "Did you read a lot when you were a child?"
+      ]
+    }
+  ],
+  "part2": [
+    {
+      "topic": "A public figure you admire",
+      "prompt": "Describe a public figure you admire",
+      "points": [
+        "who this person is",
+        "what this person is famous for",
+        "why you admire this person",
+        "and explain how this person has influenced you or other people"
+      ]
+    },
+    {
+      "topic": "A person who taught themselves a skill",
+      "prompt": "Describe a person who taught themselves a skill",
+      "points": [
+        "who this person is",
+        "what skill they taught themselves",
+        "how they learned it",
+        "and explain why you think this was impressive"
+      ]
+    },
+    {
+      "topic": "A natural place you visited",
+      "prompt": "Describe a natural place (e.g. a park, mountain or garden) that you visited and liked",
+      "points": [
+        "where this place is",
+        "when and why you went there",
+        "what you did there",
+        "and explain why you liked this place"
+      ]
+    },
+    {
+      "topic": "A home you like to visit but not live in",
+      "prompt": "Describe a home that you like to visit but do not want to live in",
+      "points": [
+        "whose home it is",
+        "where it is",
+        "what it looks like inside",
+        "and explain why you like visiting it but would not want to live there"
+      ]
+    },
+    {
+      "topic": "A piece of technology you use every day",
+      "prompt": "Describe a piece of technology you use every day",
+      "points": [
+        "what it is",
+        "how you use it",
+        "how often you use it",
+        "and explain why it is important or useful to you"
+      ]
+    },
+    {
+      "topic": "Something you own that is important to you",
+      "prompt": "Describe something you own that is important to you",
+      "points": [
+        "what it is",
+        "how you got it",
+        "how long you have had it",
+        "and explain why it is important to you"
+      ]
+    },
+    {
+      "topic": "An important change in your life",
+      "prompt": "Describe an important change in your life",
+      "points": [
+        "what the change was",
+        "when it happened",
+        "how you felt about it at first",
+        "and explain how this change has affected your life"
+      ]
+    },
+    {
+      "topic": "A festival or celebration in your culture",
+      "prompt": "Describe a festival or celebration in your culture",
+      "points": [
+        "what the festival or celebration is",
+        "when it takes place",
+        "what people usually do during it",
+        "and explain why it is important in your culture"
+      ]
+    },
+    {
+      "topic": "A time you got up extremely early",
+      "prompt": "Describe a time you got up extremely early",
+      "points": [
+        "when you got up",
+        "why you had to get up so early",
+        "what you did that morning",
+        "and explain how you felt about getting up early"
+      ]
+    },
+    {
+      "topic": "A live sports event you watched",
+      "prompt": "Describe a live sports event you watched",
+      "points": [
+        "what the event was",
+        "where and when you watched it",
+        "who you watched it with",
+        "and explain why you enjoyed or remembered this event"
+      ]
+    },
+    {
+      "topic": "A person who encouraged you to achieve your goal",
+      "prompt": "Describe a person who encouraged you to achieve your goal",
+      "points": [
+        "who this person is",
+        "what your goal was",
+        "how this person encouraged you",
+        "and explain how you felt after achieving or working towards your goal"
+      ]
+    },
+    {
+      "topic": "A special meal that someone made for you",
+      "prompt": "Describe a special meal that someone made for you",
+      "points": [
+        "who made the meal for you",
+        "when and why they made it",
+        "what the meal was",
+        "and explain why this meal was special to you"
+      ]
+    },
+    {
+      "topic": "A person who succeeded after many difficulties",
+      "prompt": "Describe a person you know who did something difficult and was successful",
+      "points": [
+        "who this person is",
+        "what difficulty they faced",
+        "what they did to succeed",
+        "and explain what you learned from them"
+      ]
+    },
+    {
+      "topic": "A traditional object from your country",
+      "prompt": "Describe a traditional object from your country",
+      "points": [
+        "what the object is",
+        "what it is made of or looks like",
+        "when people use it",
+        "and explain why it is important in your culture"
+      ]
+    },
+    {
+      "topic": "A time you changed an important plan",
+      "prompt": "Describe a time you changed an important plan",
+      "points": [
+        "what your original plan was",
+        "why you changed it",
+        "what you did instead",
+        "and explain how you felt about the change"
+      ]
+    },
+    {
+      "topic": "A photograph of you that you like",
+      "prompt": "Describe a picture or photograph of you that you like",
+      "points": [
+        "when and where the photo was taken",
+        "who took the photo",
+        "what you were doing in the photo",
+        "and explain why you like this photograph"
+      ]
+    },
+    {
+      "topic": "A subject you would like to learn in the future",
+      "prompt": "Describe a subject that you would like to learn in the future",
+      "points": [
+        "what subject it is",
+        "why you want to learn it",
+        "how you would learn it",
+        "and explain how this subject would be useful to you"
+      ]
+    },
+    {
+      "topic": "A place where it is easy for you to study",
+      "prompt": "Describe an indoor or outdoor place where it is easy for you to study",
+      "points": [
+        "where this place is",
+        "when you usually go there",
+        "what it is like",
+        "and explain why it is easy for you to study there"
+      ]
+    }
+  ],
+  "part3": [
+    {
+      "topic": "Change and Adaptation",
+      "questions": [
+        "Why do some people resist change while others welcome it?",
+        "Is change more difficult for older people than for younger people?",
+        "How has the way people adapt to new situations changed in recent years?",
+        "Do you think schools should teach children how to deal with change?",
+        "Will the pace of change be faster in the future?"
+      ]
+    },
+    {
+      "topic": "Technology and AI",
+      "questions": [
+        "How has technology changed the way people work and study?",
+        "What are the risks of relying too much on artificial intelligence?",
+        "Do children spend too much time on screens nowadays?",
+        "Should there be rules to distinguish human-made art from AI-generated art?",
+        "How might communication change in the next twenty years?"
+      ]
+    },
+    {
+      "topic": "Festivals, Traditions and Culture",
+      "questions": [
+        "Are older traditions disappearing in your country?",
+        "Why is it important to preserve traditional festivals?",
+        "How does globalisation affect local cultures?",
+        "Do young people value traditional culture less than older generations?",
+        "Should governments spend money on cultural celebrations?"
+      ]
+    },
+    {
+      "topic": "Nature and the Environment",
+      "questions": [
+        "Who should be responsible for protecting wild places — individuals or governments?",
+        "Why do some people ignore environmental problems?",
+        "How can schools teach children about protecting the environment?",
+        "Are international agreements on climate change effective?",
+        "How can tourism become more environmentally friendly?"
+      ]
+    },
+    {
+      "topic": "Media and Online Information",
+      "questions": [
+        "Can you trust what you read online?",
+        "How does misinformation spread, and how can people protect themselves from it?",
+        "Do you think social media does more harm than good?",
+        "How has online media changed television and newspapers?",
+        "Should social media companies be responsible for content on their platforms?"
+      ]
+    },
+    {
+      "topic": "Education and Learning",
+      "questions": [
+        "How has education changed in your country in recent years?",
+        "Should universities teach practical skills or academic knowledge?",
+        "Can online learning replace classroom learning?",
+        "How is AI changing the way students learn?",
+        "Is lifelong learning important in modern society?"
+      ]
+    },
+    {
+      "topic": "Work and Careers",
+      "questions": [
+        "How has the way people work changed in recent years?",
+        "Will robots and AI take over many jobs in the future?",
+        "Why do some people change careers completely?",
+        "Is work-life balance achievable in modern careers?",
+        "Do you think remote work will remain common in the next decade?"
+      ]
+    },
+    {
+      "topic": "Family and Relationships",
+      "questions": [
+        "How have family roles changed in your country over the last few decades?",
+        "Do you think technology brings families closer or pushes them apart?",
+        "What responsibilities should children have towards their parents?",
+        "Is the concept of family changing in modern society?",
+        "Why do more people live alone nowadays?"
+      ]
+    },
+    {
+      "topic": "Health and Wellbeing",
+      "questions": [
+        "Do people today live healthier lives than in the past?",
+        "Whose responsibility is public health — individuals or the government?",
+        "How does technology affect our mental health?",
+        "Why is mental health discussed more openly now than before?",
+        "How can governments encourage people to exercise more?"
+      ]
+    },
+    {
+      "topic": "Travel and Tourism",
+      "questions": [
+        "Why do people enjoy travelling?",
+        "What are the negative effects of tourism on local communities?",
+        "Do you think international travel will become more popular in the future?",
+        "Do you think virtual travel could ever replace real travel?",
+        "What makes a city good for people to live in as well as visit?"
+      ]
+    },
+    {
+      "topic": "Arts and Culture",
+      "questions": [
+        "Why is art important for society?",
+        "Should governments fund the arts?",
+        "How do films and music influence young people?",
+        "Do people need to visit museums to appreciate art today?",
+        "How has streaming changed the music and film industries?"
+      ]
+    },
+    {
+      "topic": "Social Issues and City Life",
+      "questions": [
+        "What are the biggest social challenges facing your country?",
+        "How does urbanisation change the way people live?",
+        "Should wealthy countries help poorer ones?",
+        "Is life in cities better than life in the countryside?",
+        "What can governments do to solve problems in large cities?"
+      ]
+    }
+  ]
+}</script>
 <script>
-const msgs=document.getElementById('msgs'),inp=document.getElementById('inp'),sendBtn=document.getElementById('sendBtn'),micBtn=document.getElementById('micBtn');
-const ERR='Bot đang ngủ, thử lại sau ít phút 😴';
-let session=localStorage.getItem('damuBot.session');
-if(!session){session=(crypto.randomUUID?crypto.randomUUID():'s'+Date.now()+'-'+Math.random().toString(36).slice(2));localStorage.setItem('damuBot.session',session);}
-let base=null,pending=null,lastPart='',busy=false;
-function add(text,cls){const d=document.createElement('div');d.className='msg '+(cls||'bot');d.textContent=text;msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;return d;}
-function replyText(d){if(!d)return '';if(typeof d==='string')return d;return d.reply||d.text||d.message||d.answer||d.result||'';}
-function notePending(text,reply){
-  const m=text.match(/part\s*([123])/i); if(m)lastPart='Part '+m[1];
-  // Bot vừa ra câu hỏi (chưa phải bản chấm) -> ghi nhớ để gửi kèm khi thu âm / trả lời.
-  if(reply && !/band|fluency|lexical|grammatical|pronunciation/i.test(reply)){pending={part:lastPart,question:reply.split('\n')[0].slice(0,300)};}
-  if(/band|fluency|lexical|grammatical|pronunciation/i.test(reply||''))pending=null;
+'use strict';
+/* =====================================================================
+   Bot damu — NÃO TRÌNH DUYỆT (bản 2026-10-24)
+   Chạy HOÀN TOÀN trong trình duyệt, KHÔNG key, KHÔNG phụ thuộc máy chủ.
+   - Forecast: nhúng sẵn trong trang (thẻ forecastData).
+   - Chấm bài: NHIỀU LƯỢT MICRO tới Pollinations keyless
+     (POST https://text.pollinations.ai/openai) — mỗi tiêu chí 1 lượt nhỏ,
+     + 1 lượt lỗi trích nguyên văn + 1 lượt câu mẫu nâng band. Kỹ thuật
+     prompt nhỏ + parse/phục hồi JSON rút gọn từ app luyện nói damu
+     (buildMicroPrompt / gradeParseWithRecovery / validateGrade).
+   - Tra từ: Wiktionary + Datamuse song song (như app từ vựng).
+   - Đố từ: Datamuse, hỏi TỪNG từ một, gợi ý tiếng Anh trước đáp án.
+   - Giọng nói: Web Speech API (webkitSpeechRecognition, en-US).
+   - Nhánh tùy chọn máy chủ: CHỈ dùng khi bot-endpoint.txt là URL tunnel
+     thật (không phải api./www.) VÀ /health trả 200 trong 3.5s; ngoài ra
+     chạy não trình duyệt ngay, không treo chờ.
+   ===================================================================== */
+var msgs=document.getElementById('msgs'),inp=document.getElementById('inp'),sendBtn=document.getElementById('sendBtn'),micBtn=document.getElementById('micBtn');
+var FORECAST={part1:[],part2:[],part3:[]};
+try{FORECAST=JSON.parse(document.getElementById('forecastData').textContent);}catch(e){}
+var pending=null;        /* {part:Number, question:String, topic:String, askedAt:ms} */
+var quiz=null;           /* phiên đố từ đang chạy */
+var busy=false;
+var serverBase=null;     /* chỉ set khi máy chủ thật sự khỏe */
+var lastSpeech=null;     /* {durationSec:Number, at:ms} */
+var dictCache={};        /* wordLower -> entry (cho nút Thêm vào bộ nhớ) */
+var CRIT=[['FC','Fluency and Coherence'],['LR','Lexical Resource'],['GRA','Grammatical Range and Accuracy'],['P','Pronunciation']];
+
+function $(id){return document.getElementById(id);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function stripHtml(s){return String(s||'').replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&#39;|&apos;/g,"'").replace(/&quot;/g,'"').trim();}
+function uniq(a){var seen={},out=[];(a||[]).forEach(function(x){var k=String(x).toLowerCase();if(!seen[k]){seen[k]=1;out.push(x);}});return out;}
+function add(text,cls){var d=document.createElement('div');d.className='msg '+(cls||'bot');d.textContent=text;msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;return d;}
+function addHTML(html,cls){var d=document.createElement('div');d.className='msg '+(cls||'bot');d.innerHTML=html;msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;return d;}
+function wordCount(t){var m=String(t||'').trim().match(/\S+/g);return m?m.length:0;}
+function fetchTimeout(url,opts,ms){return new Promise(function(resolve,reject){var c=(typeof AbortController!=='undefined')?new AbortController():null;var t=setTimeout(function(){if(c)c.abort();reject(new Error('timeout'));},ms||15000);var o={};if(opts)for(var k in opts)o[k]=opts[k];if(c)o.signal=c.signal;fetch(url,o).then(function(r){clearTimeout(t);resolve(r);},function(e){clearTimeout(t);reject(e);});});}
+function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
+
+/* ================= POLLINATIONS KEYLESS ================= */
+var POLLI_SYS_GRADE='You are damu, a pink capybara and strict IELTS Speaking examiner (examiner-coach persona): grade seriously and strictly with no grade inflation. Follow the user instruction exactly and output ONLY the requested JSON.';
+async function polliAskOnce(prompt,sys,timeoutMs){
+  /* Khong seed ngau nhien: Pollinations cache theo prompt — thu lai DUNG prompt cu
+     thuong duoc tra ngay tu cache neu luot truoc da chay xong phia may chu. */
+  var body={model:'openai',private:true,temperature:0.4,messages:[{role:'system',content:sys||POLLI_SYS_GRADE},{role:'user',content:prompt}]};
+  var r=await fetchTimeout('https://text.pollinations.ai/openai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},timeoutMs||25000);
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  var raw=await r.text();
+  if(!raw||!raw.trim())throw new Error('empty');
+  try{var j=JSON.parse(raw);if(j&&j.choices&&j.choices[0]&&j.choices[0].message&&typeof j.choices[0].message.content==='string')return j.choices[0].message.content;}catch(e){}
+  return raw;
 }
-async function getBase(){
-  if(base)return base;
-  const r=await fetch('../../bot-endpoint.txt',{cache:'no-store'});
-  if(!r.ok)throw new Error('endpoint');
-  const t=(await r.text()).trim().replace(/\/+$/,'');
-  if(!/^https:\/\//.test(t))throw new Error('endpoint');
-  base=t;return base;
+async function polliAsk(prompt,sys,timeoutMs){
+  var lastErr=null;
+  for(var attempt=0;attempt<2;attempt++){
+    try{return await polliAskOnce(prompt,sys,timeoutMs||25000);}catch(e){lastErr=e;if(attempt===0)await sleep(900);}
+  }
+  /* dự phòng cuối: đường GET văn bản thuần như app luyện nói vẫn dùng —
+     CHỈ khi lỗi không phải timeout (timeout mà GET lại chỉ tổ chậm thêm). */
+  if(!lastErr||!/timeout/i.test(String(lastErr.message||''))){
+    try{
+      var url='https://text.pollinations.ai/'+encodeURIComponent(prompt)+'?model=openai&system='+encodeURIComponent(sys||POLLI_SYS_GRADE)+'&private=true';
+      var r2=await fetchTimeout(url,{},timeoutMs||25000);
+      if(!r2.ok)throw new Error('HTTP '+r2.status);
+      var t2=await r2.text();if(t2&&t2.trim())return t2;
+    }catch(e){lastErr=e;}
+  }
+  throw lastErr||new Error('pollinations failed');
 }
-async function send(text){
-  text=(text||'').trim(); if(!text||busy)return;
-  add(text,'me'); inp.value=''; busy=true; sendBtn.disabled=true;
-  const think=add('Bot đang suy nghĩ…','bot think');
+
+/* ===== Parse / phục hồi JSON — rút gọn từ gradeParseWithRecovery + validateGrade của app luyện nói ===== */
+function unwrapEnvelope(t){
+  var s=String(t||'').trim();if(!s)return '';
+  var a=s.indexOf('{'),b=s.lastIndexOf('}');
+  if(a>=0&&b>a){try{var o=JSON.parse(s.slice(a,b+1));if(o&&typeof o==='object'){
+    if(o.choices&&o.choices[0]){var mm=(o.choices[0].message&&o.choices[0].message.content)||o.choices[0].text;if(typeof mm==='string'&&mm.trim())return mm;}
+    if(typeof o.content==='string'&&o.content.trim()&&!('score' in o))return o.content;
+  }}catch(e){}}
+  return s;
+}
+function extractJSON(text){
+  var s=unwrapEnvelope(text);
+  s=s.replace(/```(?:json)?/gi,'');
+  var a=s.indexOf('{'),b=s.lastIndexOf('}');
+  if(a<0||b<=a)return null;
+  var cand=s.slice(a,b+1);
+  try{return JSON.parse(cand);}catch(e){}
+  /* phục hồi: đóng ngoặc còn thiếu khi bị cắt giữa chừng */
   try{
-    const b=await getBase();
-    const r=await fetch(b+'/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session:session,text:text})});
-    if(!r.ok)throw new Error('chat '+r.status);
-    const d=await r.json().catch(()=>null);
-    const rep=replyText(d);
-    if(!rep)throw new Error('empty');
-    think.remove(); add(rep,'bot'); notePending(text,rep);
-  }catch(e){ think.remove(); add(ERR,'err'); }
-  busy=false; sendBtn.disabled=false; inp.focus();
+    var fixed=cand.replace(/,\s*$/,'');
+    var stack=[],inStr=false,esc2=false;
+    for(var i=0;i<fixed.length;i++){var ch=fixed[i];if(esc2){esc2=false;continue;}if(ch==='\\'){esc2=true;continue;}if(ch==='"'){inStr=!inStr;continue;}if(inStr)continue;if(ch==='{'||ch==='[')stack.push(ch);else if(ch==='}'||ch===']')stack.pop();}
+    if(inStr)fixed+='"';
+    while(stack.length){var o=stack.pop();fixed+=(o==='{'?'}':']');}
+    return JSON.parse(fixed);
+  }catch(e){}
+  return null;
 }
-sendBtn.addEventListener('click',()=>send(inp.value));
-inp.addEventListener('keydown',e=>{if(e.key==='Enter')send(inp.value);});
-document.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>{
-  if(c.dataset.send)send(c.dataset.send);
-  else{inp.value=c.dataset.fill;inp.focus();}
-}));
-// Micro: ghi âm rồi POST /voice kèm X-Session / X-Part / X-Question
-let recorder=null,chunks=[];
-micBtn.addEventListener('click',async()=>{
-  if(recorder&&recorder.state==='recording'){recorder.stop();return;}
-  if(busy)return;
-  try{
-    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
-    chunks=[]; recorder=new MediaRecorder(stream);
-    recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
-    recorder.onstop=async()=>{
-      stream.getTracks().forEach(t=>t.stop()); micBtn.classList.remove('rec'); micBtn.textContent='🎙️';
-      const blob=new Blob(chunks,{type:recorder.mimeType||'audio/webm'});
-      busy=true; sendBtn.disabled=true; const think=add('Bot đang suy nghĩ…','bot think');
+function validScore(v){var n=(typeof v==='string')?parseFloat(v):v;return (typeof n==='number'&&isFinite(n)&&n>=0&&n<=9)?Math.round(n*2)/2:null;}
+function validateGrade(g){ /* rút gọn: đủ 4 điểm hợp lệ mới coi là bản chấm điểm đầy đủ */
+  if(!g||typeof g!=='object')return false;var sc=g.scores||g;
+  for(var i=0;i<CRIT.length;i++){if(validScore(sc[CRIT[i][0]])==null)return false;}
+  return true;
+}
+
+/* ===== buildMicroPrompt — rút gọn từ app luyện nói: mỗi lượt CHỈ 1 tiêu chí, prompt ngắn ===== */
+var ANCHOR='Anchors: Band 5.0 = chains of short simple sentences, ends sentences with "Yeah", repeats the question stem, basic errors even in simple sentences (e.g. "when I were a child", "the story have traditional Vietnam value"), basic repetitive vocabulary, word-class slips ("physical healthy"). Band 5.5 = answers extended to 3-4 sentences, natural fillers, some relative clauses and one idiom attempt, but tense range narrow (past/present simple only) and slips still land in simple sentences. Band 6.5 = ideas developed across topics, errors only occasional slips.';
+function buildMicroPrompt(key,name,q,part,tr){
+  return 'Grade ONLY '+key+' ('+name+') for this IELTS Speaking answer. Be strict, never inflate. '+ANCHOR+'\n'
+    +'Return ONLY valid JSON, no markdown: {"score":5.0,"strength":"1 short genuine strength in Vietnamese","wrong":"exact phrase copied word-for-word from the transcript","fix":"corrected version of that exact phrase","why":"short reason in Vietnamese","advice":"specific fix in Vietnamese","drill":"one concrete 5-10 minute drill in Vietnamese tied to that error","bandLink":"1 sentence in Vietnamese: fixing this lifts '+key+' to which band"}\n'
+    +'Rules: score is a multiple of 0.5 between 3.0 and 9.0. "wrong" MUST be copied character-for-character from the transcript; never invent one — if the answer has no error for '+key+', set "wrong" and "fix" to empty strings. For P (Pronunciation), judge only what a transcript can show (word stress clues, final sounds likely dropped, pausing) and note that limit in "why" if needed. Never use a double-quote character inside string values.\n'
+    +'Question (Part '+part+'): "'+String(q||'').slice(0,300)+'"\nTranscript: "'+String(tr||'').slice(0,1100)+'"';
+}
+function buildErrorsPrompt(q,part,tr){
+  return 'List the 3 most important language errors in this IELTS Speaking answer. Return ONLY valid JSON, no markdown: {"errors":[{"wrong":"exact phrase copied word-for-word from the transcript","fix":"corrected version","why":"short reason in Vietnamese"}]}. Never invent a phrase: every "wrong" must appear word-for-word in the transcript. Never use a double-quote character inside string values.\nQuestion (Part '+part+'): "'+String(q||'').slice(0,300)+'"\nTranscript: "'+String(tr||'').slice(0,1100)+'"';
+}
+function buildModelPrompt(q,part,tr){
+  var len=(part===2)?'180-220 words':'60-90 words';
+  return 'Write a Band 6.5 model answer to this IELTS Speaking Part '+part+' question, '+len+', keeping the learner ideas and order but fixing grammar and vocabulary. Output ONLY the model answer text, no title, no quotes, no explanation.\nQuestion: "'+String(q||'').slice(0,300)+'"\nLearner answer: "'+String(tr||'').slice(0,1100)+'"';
+}
+
+/* ================= FORECAST ================= */
+function pickQuestion(part){
+  if(part===1){var t=FORECAST.part1[Math.floor(Math.random()*FORECAST.part1.length)];var q=t.questions[Math.floor(Math.random()*t.questions.length)];return{part:1,topic:t.topic,question:q,text:'🎤 Part 1 — '+t.topic+'\n\n'+q+'\n\nTrả lời bằng chữ hoặc bấm 🎙️ nói nhé — mình chấm ngay như giám khảo IELTS thật.'};}
+  if(part===2){var c=FORECAST.part2[Math.floor(Math.random()*FORECAST.part2.length)];var txt='🎤 Part 2 — '+c.topic+'\n\n'+c.prompt+'\nYou should say:\n'+(c.points||[]).map(function(p){return '• '+p;}).join('\n')+'\n\nNói 1–2 phút nhé. Trả lời bằng chữ hoặc bấm 🎙️ — mình chấm ngay.';return{part:2,topic:c.topic,question:c.prompt,text:txt};}
+  var t3=FORECAST.part3[Math.floor(Math.random()*FORECAST.part3.length)];var q3=t3.questions[Math.floor(Math.random()*t3.questions.length)];return{part:3,topic:t3.topic,question:q3,text:'🎤 Part 3 — '+t3.topic+'\n\n'+q3+'\n\nTrả lời bằng chữ hoặc bấm 🎙️ nói nhé — mình chấm ngay như giám khảo IELTS thật.'};
+}
+function askQuestion(part){
+  var p=pickQuestion(part);pending={part:p.part,question:p.question,topic:p.topic,askedAt:Date.now()};quiz=null;add(p.text,'bot');return p;
+}
+
+/* ================= CHẤM BÀI (nhiều lượt micro) ================= */
+async function gradeAnswer(answerText,speechSec){
+  var cur=pending;pending=null;
+  var tr=String(answerText||'').trim();
+  var wc=wordCount(tr);
+  var status=add('🦫 Đang chấm bài của bạn theo 4 tiêu chí IELTS — chia nhiều lượt nhỏ nên hơi lâu một chút, đừng tắt trang nhé…','bot think');
+  var scores={},feedback={},missing=[];
+  /* Chay 2 luot SONG SONG mot cum (app luyen noi cung chay micro song song):
+     giam thoi gian cho ma khong spam Pollinations qua muc. */
+  async function runCrit(idx){
+    var key=CRIT[idx][0],name=CRIT[idx][1];
+    try{
+      var raw=await polliAsk(buildMicroPrompt(key,name,cur.question,cur.part,tr),POLLI_SYS_GRADE,25000);
+      var g=extractJSON(raw);
+      var sc=g?validScore(g.score):null;
+      if(sc==null){ /* phục hồi kiểu gradeParseWithRecovery: moi điểm bằng regex khi JSON hỏng */
+        var m=String(raw||'').match(/score\D{0,6}([3-9](?:\.[05])?)/i);if(m)sc=validScore(parseFloat(m[1]));
+      }
+      if(sc==null)throw new Error('no score');
+      scores[key]=sc;
+      if(g){['strength','advice','drill','bandLink','why'].forEach(function(f){if(g[f]&&/short genuine|in Vietnamese|exact phrase|corrected version/i.test(String(g[f]))&&String(g[f]).length<70)g[f]='';});}
+      feedback[key]={strength:String((g&&g.strength)||''),wrong:String((g&&g.wrong)||''),fix:String((g&&g.fix)||''),why:String((g&&g.why)||''),advice:String((g&&g.advice)||''),drill:String((g&&g.drill)||''),bandLink:String((g&&g.bandLink)||'')};
+      /* chỉ giữ lỗi trích nguyên văn thật */
+      if(feedback[key].wrong && tr.toLowerCase().indexOf(feedback[key].wrong.toLowerCase())<0)feedback[key].wrong='';
+    }catch(e){missing.push(key);}
+  }
+  status.textContent='🦫 Đang chấm FC + LR — lượt 1-2/6…';
+  await Promise.all([runCrit(0),runCrit(1)]);
+  status.textContent='🦫 Đang chấm GRA + P — lượt 3-4/6…';
+  await Promise.all([runCrit(2),runCrit(3)]);
+  var errors=[],model='';
+  async function runErrors(){
+    try{
+      var rawE=await polliAsk(buildErrorsPrompt(cur.question,cur.part,tr),POLLI_SYS_GRADE,25000);
+      var ge=extractJSON(rawE);
+      var list=(ge&&Array.isArray(ge.errors))?ge.errors:[];
+      list.forEach(function(it){if(it&&it.wrong&&tr.toLowerCase().indexOf(String(it.wrong).toLowerCase())>=0&&errors.length<3)errors.push({wrong:String(it.wrong),fix:String(it.fix||''),why:String(it.why||'')});});
+    }catch(e){missing.push('ERRORS');}
+  }
+  async function runModel(){
+    try{
+      var rawM=await polliAsk(buildModelPrompt(cur.question,cur.part,tr),'You are damu, a pink capybara and strict IELTS Speaking examiner. Output ONLY the model answer text.',25000);
+      model=unwrapEnvelope(rawM).replace(/^["“]|["”]$/g,'').trim();
+      if(model.length<25||/^\{/.test(model))model='';
+    }catch(e){missing.push('MODEL');}
+  }
+  /* Lượt PHỤC HỒI (kiểu gradeParseWithRecovery của app luyện nói): tiêu chí nào
+     chết thì xin lại bằng prompt SIÊU NHỎ chỉ lấy điểm + 1 nhận xét ngắn. */
+  var critMissing=CRIT.filter(function(c){return missing.indexOf(c[0])>=0;});
+  if(critMissing.length){
+    status.textContent='🦫 Đang chấm lại phần thiếu: '+critMissing.map(function(c){return c[0];}).join(', ')+'…';
+    for(var ri=0;ri<critMissing.length;ri++){
+      var rk=critMissing[ri][0],rn=critMissing[ri][1];
       try{
-        const b=await getBase();
-        const r=await fetch(b+'/voice',{method:'POST',headers:{'X-Session':session,'X-Part':(pending&&pending.part)||lastPart||'','X-Question':(pending&&pending.question)||''},body:blob});
-        if(!r.ok)throw new Error('voice '+r.status);
-        const d=await r.json().catch(()=>null); const rep=replyText(d);
-        if(!rep)throw new Error('empty');
-        think.remove(); add(rep,'bot'); if(/band/i.test(rep))pending=null;
-      }catch(e){ think.remove(); add(ERR,'err'); }
-      busy=false; sendBtn.disabled=false;
-    };
-    recorder.start(); micBtn.classList.add('rec'); micBtn.textContent='⏹️';
-  }catch(e){ add(ERR,'err'); }
-});
-add('Chào bạn! Mình là Bot damu 🤖 Bấm “Câu Part 1” để mình ra câu hỏi, rồi trả lời bằng chữ hoặc bấm 🎙️ nói trực tiếp — mình chấm như giám khảo IELTS thật. Hoặc gõ “tra <từ>” / “đố <từ>”.','bot');
-getBase().catch(()=>add(ERR,'err'));
+        var rawR=await polliAsk('Grade ONLY '+rk+' ('+rn+') for this IELTS answer, strict, no inflation. '+ANCHOR+' Return ONLY JSON: {"score":5.0,"strength":"1 short strength in Vietnamese","advice":"1 specific fix in Vietnamese"}. Question (Part '+cur.part+'): "'+String(cur.question).slice(0,200)+'" Transcript: "'+tr.slice(0,900)+'"',POLLI_SYS_GRADE,25000);
+        var gr=extractJSON(rawR);var scr=gr?validScore(gr.score):null;
+        if(scr==null){var mr=String(rawR||'').match(/score\D{0,6}([3-9](?:\.[05])?)/i);if(mr)scr=validScore(parseFloat(mr[1]));}
+        if(scr==null)throw new Error('no score');
+        scores[rk]=scr;feedback[rk]={strength:String((gr&&gr.strength)||''),wrong:'',fix:'',why:'',advice:String((gr&&gr.advice)||''),drill:'',bandLink:''};
+        missing=missing.filter(function(x){return x!==rk;});
+      }catch(e){/* giữ nguyên missing — ghi trung thực ở bản chấm */}
+    }
+  }
+  status.textContent='🦫 Đang soi lỗi trích nguyên văn + viết câu mẫu nâng band — lượt 5-6/6…';
+  await Promise.all([runErrors(),runModel()]);
+  status.remove();
+  var gotKeys=Object.keys(scores);
+  var overall=null;
+  if(gotKeys.length){var sum=0;gotKeys.forEach(function(k){sum+=scores[k];});overall=Math.round((sum/gotKeys.length)*2)/2;}
+  var wpm=null;
+  if(speechSec&&speechSec>2&&wc>0)wpm=Math.round(wc/(speechSec/60));
+  var lines=[];
+  lines.push('📋 BẢN CHẤM — Part '+cur.part+': '+cur.question);
+  lines.push('Bài của bạn ('+wc+' từ'+(wpm?(', tốc độ nói ~'+wpm+' WPM ước tính từ thời gian ghi âm'):'')+'): “'+tr+'”');
+  if(overall!=null&&gotKeys.length===4)lines.push('\n🎯 Overall (ước tính từ 4 tiêu chí): Band '+overall.toFixed(1));
+  else if(overall!=null)lines.push('\n🎯 Điểm trung bình của các tiêu chí chấm được: Band '+overall.toFixed(1)+' — CHƯA đủ 4 tiêu chí nên đây chưa phải overall chính thức.');
+  else lines.push('\n⚠️ Chấm điểm thất bại ở tất cả các tiêu chí — mình không bịa điểm. Bấm xin lại câu hỏi và thử chấm lại nhé.');
+  CRIT.forEach(function(c){
+    var k=c[0];
+    if(scores[k]==null){lines.push('\n— '+k+' ('+c[1]+'): ⚠️ lượt này lỗi/hết hạn, chưa chấm được.');return;}
+    var f=feedback[k]||{};
+    lines.push('\n— '+k+' ('+c[1]+'): Band '+scores[k].toFixed(1));
+    if(f.strength)lines.push('  • Điểm mạnh: '+f.strength);
+    if(f.wrong)lines.push('  • Lỗi: “'+f.wrong+'” → “'+f.fix+'”'+(f.why?' — '+f.why:''));
+    if(f.advice)lines.push('  • Cách sửa: '+f.advice);
+    if(f.drill)lines.push('  • Luyện 5–10 phút: '+f.drill);
+    if(f.bandLink)lines.push('  • '+f.bandLink);
+  });
+  if(errors.length){lines.push('\n🔍 Lỗi trích nguyên văn:');errors.forEach(function(e){lines.push('  • “'+e.wrong+'” → “'+e.fix+'”'+(e.why?' — '+e.why:''));});}
+  if(model)lines.push('\n✨ Câu mẫu nâng band (Band 6.5):\n'+model);
+  if(missing.length)lines.push('\n⚠️ Phần chưa chấm được ở lần này: '+missing.join(', ')+'. Mình hiện phần đã có và ghi rõ phần thiếu — không có điểm giả đâu. Trả lời lại để chấm lại phần thiếu nhé.');
+  add(lines.join('\n'),'bot');
+  return{scores:scores,overall:overall,missing:missing,errors:errors,model:model,wpm:wpm,words:wc};
+}
+
+/* ================= TRA TỪ (Wiktionary + Datamuse song song) ================= */
+async function datamuseWords(word,rel){
+  try{var r=await fetchTimeout('https://api.datamuse.com/words?'+rel+'='+encodeURIComponent(word)+'&max=20',{},12000);if(!r.ok)return[];var j=await r.json();if(!Array.isArray(j))return[];var low=String(word).toLowerCase(),out=[];j.forEach(function(it){var w=String((it&&it.word)||'').trim();if(w&&w.toLowerCase()!==low)out.push(w);});return uniq(out).slice(0,12);}catch(e){return[];}
+}
+async function wiktDefinition(word){
+  var r=await fetchTimeout('https://en.wiktionary.org/api/rest_v1/page/definition/'+encodeURIComponent(word),{},12000);
+  if(r.status===404)throw new Error('notfound');if(!r.ok)throw new Error('HTTP '+r.status);
+  var j=await r.json();var meanings=[];
+  (j.en||[]).forEach(function(m){var defs=[];(m.definitions||[]).slice(0,4).forEach(function(d){var t=stripHtml(d.definition);if(!t)return;var ex='';try{var pe=(d.parsedExamples||[])[0];if(pe&&pe.example)ex=stripHtml(pe.example);}catch(x){}if(!ex&&d.examples&&d.examples[0])ex=stripHtml(d.examples[0]);defs.push({def:t,ex:ex});});if(defs.length)meanings.push({pos:String(m.partOfSpeech||''),defs:defs});});
+  return meanings;
+}
+async function wiktPron(word){
+  try{var r=await fetchTimeout('https://en.wiktionary.org/api/rest_v1/page/html/'+encodeURIComponent(word),{},6000);if(!r.ok)return{};var h=await r.text();var a=h.indexOf('id="English"'),eng=a>=0?h.slice(a):h;if(a>=0){var h2=eng.indexOf('<h2',20);if(h2>0)eng=eng.slice(0,h2);}var out={};var m=eng.match(/<span class="IPA[^"]*"[^>]*>([^<]{1,60})<\/span>/);if(m){var ipa=stripHtml(m[1]).trim();if(/^[\/\[]/.test(ipa))out.phonetic=ipa.replace(/^\/|\/$/g,'');}var urls=[],re=/(?:https?:)?\/\/upload\.wikimedia\.org\/[^"'<>\s]+\.(?:mp3|ogg|oga)/gi,mm;while((mm=re.exec(eng))&&urls.length<8)urls.push(mm[0]);var wl=String(word||'').toLowerCase(),pick=null;for(var i=0;i<urls.length&&!pick;i++){if(/\.mp3$/i.test(urls[i])&&urls[i].toLowerCase().indexOf(wl)>=0)pick=urls[i];}if(!pick)for(var i2=0;i2<urls.length&&!pick;i2++){if(/\.mp3$/i.test(urls[i2]))pick=urls[i2];}if(pick)out.audio=pick.indexOf('//')===0?('https:'+pick):pick;return out;}catch(e){return{};}
+}
+async function myMemoryVi(word){
+  try{var r=await fetchTimeout('https://api.mymemory.translated.net/get?q='+encodeURIComponent(word)+'&langpair=en|vi',{},10000);if(!r.ok)return'';var j=await r.json();var t=j&&j.responseData&&j.responseData.translatedText?String(j.responseData.translatedText).trim():'';if(!t||t.toLowerCase()===String(word).toLowerCase())return'';return t;}catch(e){return'';}
+}
+async function lookupWord(wordRaw){
+  var word=String(wordRaw||'').trim().toLowerCase().replace(/[^a-z'\- ]/g,'').trim();
+  if(!word)throw new Error('empty');
+  var res=await Promise.allSettled([wiktDefinition(word),datamuseWords(word,'rel_syn'),datamuseWords(word,'rel_ant'),wiktPron(word),myMemoryVi(word)]);
+  if(res[0].status!=='fulfilled'||!res[0].value.length)throw new Error(res[0].reason&&res[0].reason.message==='notfound'?'notfound':'sourceerror');
+  var entry={word:word,meanings:res[0].value,syn:res[1].status==='fulfilled'?res[1].value:[],ant:res[2].status==='fulfilled'?res[2].value:[],phonetic:(res[3].value&&res[3].value.phonetic)||'',audio:(res[3].value&&res[3].value.audio)||'',vi:res[4].status==='fulfilled'?res[4].value:''};
+  dictCache[word]=entry;return entry;
+}
+function dictCardHTML(e){
+  var h='<div class="hw">'+esc(e.word)+' <button class="spkbtn" data-speak="'+esc(e.word)+'">🔊</button></div>';
+  if(e.phonetic)h+='<div class="ipa">/'+esc(e.phonetic)+'/</div>';
+  if(e.vi)h+='<div><b>Nghĩa Việt:</b> '+esc(e.vi)+'</div>';
+  (e.meanings||[]).forEach(function(m){h+='<div class="pos">'+esc(m.pos||'')+'</div>';(m.defs||[]).forEach(function(d){h+='<div class="def">• '+esc(d.def)+'</div>';if(d.ex)h+='<div class="ex">“'+esc(d.ex)+'”</div>';});});
+  if(e.syn&&e.syn.length)h+='<div class="sa"><b>Đồng nghĩa:</b> '+e.syn.map(esc).join(', ')+'</div>';
+  if(e.ant&&e.ant.length)h+='<div class="sa"><b>Trái nghĩa:</b> '+e.ant.map(esc).join(', ')+'</div>';
+  h+='<button class="addbtn" data-add="'+esc(e.word)+'">➕ Thêm vào bộ nhớ ôn tập</button>';
+  return h;
+}
+async function doLookup(word){
+  var think=add('🔎 Đang tra “'+word+'”…','bot think');
+  try{var e=await lookupWord(word);think.remove();var el=addHTML(dictCardHTML(e),'bot');
+    var sp=el.querySelector?el.querySelector('[data-speak]'):null;if(sp)sp.addEventListener('click',function(){speakWord(e.word,e.audio);});
+    var ab=el.querySelector?el.querySelector('[data-add]'):null;if(ab)ab.addEventListener('click',function(){addToVocabMemory(e.word);});
+    return e;
+  }catch(err){think.remove();add(err&&err.message==='notfound'?('Không tìm thấy từ “'+word+'” trong từ điển. Kiểm tra chính tả nhé.'):'Tra từ đang lỗi (mạng chậm hoặc từ điển bận) — thử lại sau ít giây nhé.','err');return null;}
+}
+function speakWord(w,audio){
+  if(audio){try{new Audio(audio).play();return;}catch(e){}}
+  try{var u=new SpeechSynthesisUtterance(w);u.lang='en-US';speechSynthesis.speak(u);}catch(e){}
+}
+/* --- Thêm vào bộ nhớ ôn tập của app từ vựng ---
+   Schema thật (đọc từ file nguồn app từ vựng): localStorage key 'vocabSRS.v1'
+   = {words:{<id>:{id,word,vi,phonetic,audio,meanings:[{pos,defs:[{def,ex}]}],syn:[],ant:[],prep,forms,createdAt,viGloss,viAuto}},
+      cards:[{id,wordId,kind,q,aHTML,ans,need,hints,step,due}], v, streak, lastDay}
+   AN TOÀN: chỉ ghi khi store ĐÃ tồn tại; validate shape trước; ghi xong đọc lại
+   kiểm chứng; sai định dạng thì khôi phục nguyên trạng cũ và báo lỗi. */
+function vocabUid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8);}
+function todayStartMs(){var d=new Date();d.setHours(0,0,0,0);return d.getTime();}
+function addToVocabMemory(word){
+  var e=dictCache[String(word||'').toLowerCase()];if(!e){add('Chưa có dữ liệu từ này để thêm. Tra lại từ trước nhé.','err');return false;}
+  var KEY='vocabSRS.v1',raw=null;
+  try{raw=localStorage.getItem(KEY);}catch(err){}
+  if(raw==null){add('ℹ️ Chưa có bộ nhớ ôn tập trên trình duyệt này (bạn chưa mở app Ôn từ vựng ở cùng địa chỉ web này). Mở app Ôn từ vựng 1 lần trước, rồi quay lại bấm Thêm nhé — mình không tự tạo store lạ để tránh ghi sai định dạng.','err');return false;}
+  var S=null;try{S=JSON.parse(raw);}catch(err){}
+  if(!S||typeof S!=='object'||typeof S.words!=='object'||S.words==null||Array.isArray(S.words)||!Array.isArray(S.cards)){add('⚠️ Bộ nhớ ôn tập hiện có định dạng lạ — mình KHÔNG ghi đè để bảo vệ dữ liệu của bạn.','err');return false;}
+  var existId=null;for(var id0 in S.words){if(S.words[id0]&&S.words[id0].word&&String(S.words[id0].word).toLowerCase()===e.word)existId=id0;}
+  if(existId){add('Từ “'+e.word+'” đã có trong bộ nhớ ôn tập rồi 💗','bot');return true;}
+  var id=vocabUid();
+  var viShort=e.vi?(e.vi.length<=40?e.vi:''):'';
+  S.words[id]={id:id,word:e.word,vi:e.vi||'',phonetic:e.phonetic||'',audio:e.audio||'',meanings:e.meanings||[],syn:e.syn||[],ant:e.ant||[],prep:'',forms:null,createdAt:Date.now(),viGloss:viShort,viAuto:''};
+  var aHTML=dictCardHTML(e),due=todayStartMs(),made=0;
+  function pushCard(kind,q,ans){if(!ans||!ans.length)return;S.cards.push({id:vocabUid()+(made++),wordId:id,kind:kind,q:q,aHTML:aHTML,ans:ans,need:1,hints:[],step:0,due:due});}
+  if(viShort)pushCard('en-vi','<div class="q">'+esc(e.word)+'</div>',[viShort]);
+  var fd=e.meanings&&e.meanings[0]&&e.meanings[0].defs&&e.meanings[0].defs[0]?e.meanings[0].defs[0].def:'';
+  if(fd||e.vi)pushCard('vi-en','<div class="q">'+esc(e.vi||fd)+'</div>',[e.word]);
+  if(e.syn&&e.syn.length)pushCard('syn','Từ đồng nghĩa của «'+esc(e.word)+'» là gì?',e.syn.slice());
+  if(e.ant&&e.ant.length)pushCard('ant','Từ trái nghĩa của «'+esc(e.word)+'» là gì?',e.ant.slice());
+  var poss=uniq((e.meanings||[]).map(function(m){return String(m.pos||'').toLowerCase().trim();}).filter(Boolean));
+  if(poss.length)pushCard('pos','Từ "'+esc(e.word)+'" là từ loại gì?',poss);
+  try{localStorage.setItem(KEY,JSON.stringify(S));}catch(err){add('⚠️ Không ghi được vào bộ nhớ (trình duyệt chặn?) — dữ liệu cũ vẫn nguyên.','err');return false;}
+  /* đọc lại kiểm chứng */
+  try{var back=JSON.parse(localStorage.getItem(KEY));var w=back&&back.words&&back.words[id];
+    if(!w||w.word!==e.word||!Array.isArray(back.cards))throw new Error('verify');
+    var cc=back.cards.filter(function(c){return c.wordId===id;});
+    if(cc.length!==made)throw new Error('verify cards');
+  }catch(err){try{localStorage.setItem(KEY,raw);}catch(x){}add('⚠️ Ghi xong nhưng đọc lại không khớp định dạng — mình đã khôi phục bộ nhớ như cũ, không thêm từ này.','err');return false;}
+  add('✅ Đã thêm “'+e.word+'” vào bộ nhớ ôn tập ('+made+' thẻ). Mở app Ôn từ vựng là thấy từ này trong bài ôn hôm nay.','bot');return true;
+}
+
+/* ================= ĐỐ TỪ ================= */
+function lev(a,b){a=String(a);b=String(b);var m=[];for(var i=0;i<=b.length;i++)m[i]=[i];for(var j=0;j<=a.length;j++)m[0][j]=j;for(var i2=1;i2<=b.length;i2++)for(var j2=1;j2<=a.length;j2++)m[i2][j2]=Math.min(m[i2-1][j2]+1,m[i2][j2-1]+1,m[i2-1][j2-1]+(a[j2-1]===b[i2-1]?0:1));return m[b.length][a.length];}
+function normAns(s){return String(s||'').toLowerCase().trim().replace(/[^a-z'\- ]/g,'').replace(/\s+/g,' ');}
+function quizAnswerCorrect(given,answer){var g=normAns(given),a=normAns(answer);if(!g||!a)return false;if(g===a)return true;if(a.length>5&&lev(g,a)<=1)return true;return false;}
+async function startQuiz(wordRaw){
+  var word=String(wordRaw||'').trim().toLowerCase();if(!word){add('Gõ “đố <từ>” kèm 1 từ tiếng Anh nhé, ví dụ: đố convince','bot');return null;}
+  var think=add('🎲 Đang soạn câu đố cho “'+word+'”…','bot think');
+  var syn=[],ant=[],defHint='';
+  var rs=await Promise.allSettled([datamuseWords(word,'rel_syn'),datamuseWords(word,'rel_ant'),wiktDefinition(word)]);
+  if(rs[0].status==='fulfilled')syn=rs[0].value;if(rs[1].status==='fulfilled')ant=rs[1].value;
+  if(rs[2].status==='fulfilled'&&rs[2].value[0]&&rs[2].value[0].defs[0])defHint=rs[2].value[0].defs[0].def;
+  think.remove();
+  var queue=[];syn.slice(0,4).forEach(function(w){queue.push({type:'syn',answer:w});});ant.slice(0,3).forEach(function(w){queue.push({type:'ant',answer:w});});
+  if(!queue.length){add('Từ “'+word+'” chưa có dữ liệu đồng/trái nghĩa trên Datamuse nên mình chưa đố được. Thử từ khác nhé.','err');return null;}
+  quiz={word:word,queue:queue,i:0,score:0,stage:'ask',defHint:defHint};pending=null;
+  add('🎲 ĐỐ TỪ: «'+word+'» — '+queue.length+' câu, hỏi từng từ một. Gõ đáp án tiếng Anh; gõ “dừng” để thoát.','bot');
+  add(quizPromptText(),'bot');return quiz;
+}
+function quizPromptText(){var q=quiz.queue[quiz.i];return 'Câu '+(quiz.i+1)+'/'+quiz.queue.length+': Từ '+(q.type==='syn'?'ĐỒNG':'TRÁI')+' nghĩa với «'+quiz.word+'» là gì?';}
+function quizHintText(){var q=quiz.queue[quiz.i];var h='💡 Gợi ý (tiếng Anh trước nhé): ';if(quiz.defHint)h+='«'+quiz.word+'» nghĩa là: '+quiz.defHint+'. ';h+='Đáp án bắt đầu bằng “'+q.answer.charAt(0).toUpperCase()+'” và có '+q.answer.replace(/[^a-z]/gi,'').length+' chữ cái. Thử lại nào!';return h;}
+function handleQuizAnswer(text){
+  if(/^dừng$|^dung$|^thoát$|^stop$/i.test(text.trim())){var s=quiz.score,t=quiz.queue.length;quiz=null;add('Đã dừng phiên đố. Điểm: '+s+'/'+t+' câu. 🎲','bot');return{done:true};}
+  var q=quiz.queue[quiz.i];
+  if(quizAnswerCorrect(text,q.answer)){
+    quiz.score++;var sc=quiz.score;quiz.i++;quiz.stage='ask';
+    if(quiz.i>=quiz.queue.length){var total=quiz.queue.length,wq=quiz.word;quiz=null;add('✅ Đúng rồi! Đáp án: '+q.answer+'.\n🏁 Hết phiên đố «'+wq+'» — điểm của bạn: '+sc+'/'+total+' câu. Giỏi lắm! Bấm Đố từ để chơi tiếp.','bot');return{correct:true,done:true,score:sc};}
+    add('✅ Đúng rồi! Đáp án: '+q.answer+'. Điểm hiện tại: '+sc+'/'+quiz.queue.length+'\n\n'+quizPromptText(),'bot');return{correct:true,done:false};
+  }
+  if(quiz.stage==='ask'){quiz.stage='hint';add('❌ Chưa đúng. '+quizHintText(),'bot');return{correct:false,hint:true};}
+  var ans=q.answer;quiz.i++;quiz.stage='ask';
+  if(quiz.i>=quiz.queue.length){var total2=quiz.queue.length,sc2=quiz.score,w2=quiz.word;quiz=null;add('❌ Đáp án đúng là: '+ans+'.\n🏁 Hết phiên đố «'+w2+'» — điểm của bạn: '+sc2+'/'+total2+' câu. Ôn thêm rồi đố lại nhé!','bot');return{correct:false,done:true,score:sc2};}
+  add('❌ Đáp án đúng là: '+ans+'. Điểm hiện tại: '+quiz.score+'/'+quiz.queue.length+'\n\n'+quizPromptText(),'bot');return{correct:false,done:false};
+}
+
+/* ================= CHAT TỰ DO ================= */
+async function freeChat(text){
+  var think=add('Bot đang suy nghĩ…','bot think');
+  try{
+    var raw=await polliAsk('User says: "'+String(text).slice(0,500)+'". Reply in Vietnamese, short and helpful (max 6 sentences). If they ask about English or IELTS, teach briefly. Gently suggest the chips: Cau Part 1/2/3, tra <tu>, do <tu>.','You are damu, a pink capybara English tutor inside the damu app. Be warm, blunt and funny in Vietnamese. Output ONLY your reply text, no JSON, no reasoning.',20000);
+    think.remove();add(unwrapEnvelope(raw).trim().slice(0,1500)||'Mình chưa nghĩ ra câu trả lời — thử hỏi cách khác nhé.','bot');
+  }catch(e){think.remove();add('AI miễn phí đang bận hoặc mạng chậm — thử lại sau ít giây nhé. Các chức năng tra từ / đố từ / xin câu hỏi vẫn chạy bình thường.','err');}
+}
+
+/* ================= MÁY CHỦ (nhánh tùy chọn) ================= */
+async function detectServer(){
+  try{
+    var r=await fetchTimeout('../../bot-endpoint.txt',{cache:'no-store'},3000);
+    if(!r.ok)return;var t=(await r.text()).trim().replace(/\/+$/,'');
+    if(!/^https:\/\//.test(t))return;
+    var host='';try{host=new URL(t).hostname;}catch(e){return;}
+    if(/^api\./i.test(host)||/^www\./i.test(host))return; /* con trỏ sai kiểu api.trycloudflare.com -> bỏ */
+    var h=await fetchTimeout(t+'/health',{},3500);
+    if(h.ok){serverBase=t;var ml=$('modeLine');if(ml)ml.textContent='Bot đang dùng máy chủ damu (kênh phụ) — vẫn không cần key 💗';}
+  }catch(e){/* im lặng chạy não trình duyệt */}
+}
+async function serverChat(text){
+  var session='';try{session=localStorage.getItem('damuBot.session')||'';if(!session){session=(crypto.randomUUID?crypto.randomUUID():'s'+Date.now());localStorage.setItem('damuBot.session',session);}}catch(e){}
+  var r=await fetchTimeout(serverBase+'/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session:session,text:text})},30000);
+  if(!r.ok)throw new Error('server '+r.status);var d=await r.json();var rep=d&&(d.reply||d.text||d.message||'');if(!rep)throw new Error('empty');return rep;
+}
+
+/* ================= ĐIỀU PHỐI ================= */
+async function send(text){
+  text=(text||'').trim();if(!text||busy)return;
+  add(text,'me');inp.value='';
+  var low=text.toLowerCase();
+  var mPart=low.match(/^câu part\s*([123])$/)||low.match(/^cau part\s*([123])$/);
+  if(serverBase&&!quiz&&!pending){busy=true;sendBtn.disabled=true;try{add(await serverChat(text),'bot');}catch(e){serverBase=null;add('Máy chủ vừa mất kết nối — mình chuyển sang chế độ chạy ngay trong trình duyệt, bạn gửi lại giúp mình nhé.','err');}busy=false;sendBtn.disabled=false;inp.focus();return;}
+  busy=true;sendBtn.disabled=true;
+  try{
+    if(mPart){askQuestion(parseInt(mPart[1],10));}
+    else if(quiz){handleQuizAnswer(text);}
+    else if(/^tra\s+/i.test(text)||/^tra từ\s*/i.test(text)){var w1=text.replace(/^tra(\s+từ)?\s+/i,'');await doLookup(w1);}
+    else if(/^đố\s+/i.test(text)||/^do\s+/i.test(text)){var w2=text.replace(/^(đố|do)\s+/i,'');await startQuiz(w2);}
+    else if(pending){var sp=null;if(lastSpeech&&(Date.now()-lastSpeech.at<120000))sp=lastSpeech.durationSec;await gradeAnswer(text,sp);lastSpeech=null;}
+    else{await freeChat(text);}
+  }catch(e){add('Có lỗi bất ngờ — thử lại giúp mình nhé.','err');}
+  busy=false;sendBtn.disabled=false;inp.focus();
+}
+sendBtn.addEventListener('click',function(){send(inp.value);});
+inp.addEventListener('keydown',function(e){if(e.key==='Enter')send(inp.value);});
+document.querySelectorAll('.chip').forEach(function(c){c.addEventListener('click',function(){
+  if(c.dataset.act==='part1')send('Câu Part 1');else if(c.dataset.act==='part2')send('Câu Part 2');else if(c.dataset.act==='part3')send('Câu Part 3');
+  else{inp.value=c.dataset.fill||'';inp.focus();}
+});});
+
+/* ================= GIỌNG NÓI (Web Speech) ================= */
+var SR=(typeof window!=='undefined')?(window.SpeechRecognition||window.webkitSpeechRecognition):null;
+var recog=null,recStart=0;
+if(!SR){micBtn.style.display='none';var fn=$('footNote');if(fn)fn.textContent='Trình duyệt này không hỗ trợ nói trực tiếp (Web Speech) — bạn gõ đáp án bằng chữ vẫn chấm được bình thường. Bot chạy chế độ miễn phí không cần key.';}
+else{
+  micBtn.addEventListener('click',function(){
+    if(recog){try{recog.stop();}catch(e){}return;}
+    try{
+      recog=new SR();recog.lang='en-US';recog.interimResults=true;recog.continuous=false;
+      var finalText='',t0=Date.now();recStart=t0;
+      micBtn.classList.add('rec');micBtn.textContent='⏹️';
+      recog.onresult=function(ev){var interim='',fin='';for(var i=ev.resultIndex;i<ev.results.length;i++){var rr=ev.results[i];if(rr.isFinal)fin+=rr[0].transcript;else interim+=rr[0].transcript;}if(fin)finalText+=fin;inp.value=(finalText+interim).trim();};
+      recog.onerror=function(){micBtn.classList.remove('rec');micBtn.textContent='🎙️';recog=null;};
+      recog.onend=function(){micBtn.classList.remove('rec');micBtn.textContent='🎙️';var dur=(Date.now()-t0)/1000;recog=null;var txt=inp.value.trim();if(txt){lastSpeech={durationSec:dur,at:Date.now()};if(pending)send(txt);}};
+      recog.start();
+    }catch(e){recog=null;micBtn.classList.remove('rec');micBtn.textContent='🎙️';add('Không mở được micro / nhận diện giọng nói trên trình duyệt này — gõ đáp án bằng chữ nhé.','err');}
+  });
+}
+add('Chào bạn! Mình là Bot damu 🤖 — mình chạy ngay trong trình duyệt, không cần key. Bấm “Câu Part 1” để mình ra câu hỏi, rồi trả lời bằng chữ hoặc bấm 🎙️ nói trực tiếp — mình chấm như giám khảo IELTS thật. Hoặc gõ “tra <từ>” / “đố <từ>”.','bot');
+detectServer();
 </script>
 </body>
 </html>
