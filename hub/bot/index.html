@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Bot damu — gia sư AI</title>
-<meta name="description" content="Bot damu — gia sư AI: luyện nói IELTS, tra từ và đố từ ngay trong app damu.">
+<title>Vita — gia sư AI</title>
+<meta name="description" content="Vita — gia sư AI: luyện nói IELTS, tra từ và đố từ ngay trong app damu.">
 <meta name="theme-color" content="#ff8fab">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -49,7 +49,7 @@ footer{text-align:center;color:#b06a80;font-size:12px;margin-top:12px}
 <div class="wrap">
   <header>
     <a class="back" href="../">← damu</a>
-    <h1>🤖 Bot damu</h1>
+    <h1>🤖 Vita</h1>
     <p>Gia sư AI của bạn: xin câu Part 1/2/3 rồi trả lời bằng chữ hoặc giọng nói để được chấm, tra từ và đố từ.</p>
   </header>
 
@@ -64,12 +64,12 @@ footer{text-align:center;color:#b06a80;font-size:12px;margin-top:12px}
   </div>
 
   <div class="bar">
-    <input id="inp" type="text" placeholder="Nhắn cho Bot damu…" autocomplete="off" enterkeyhint="send">
+    <input id="inp" type="text" placeholder="Nhắn cho Vita…" autocomplete="off" enterkeyhint="send">
     <button class="btn mic" id="micBtn" title="Nói để trả lời / để Bot chấm">🎙️</button>
     <button class="btn" id="sendBtn">Gửi</button>
   </div>
   <div class="statusline" id="modeLine">Bot đang chạy trên đường riêng của damu — nhanh hơn, không cần key 💗</div>
-  <footer id="footNote">Bot damu chạy trên đường riêng của damu — không cần dán key gì cả 💗</footer>
+  <footer id="footNote">Vita chạy trên đường riêng của damu — không cần dán key gì cả 💗</footer>
 </div>
 <script type="application/json" id="forecastData">{
   "quarter": "Q4 2026 (Sep-Dec)",
@@ -583,7 +583,7 @@ footer{text-align:center;color:#b06a80;font-size:12px;margin-top:12px}
 <script>
 'use strict';
 /* =====================================================================
-   Bot damu — DUONG RIENG (ban 2026-10-24, noi Worker)
+   Vita — DUONG RIENG (ban 2026-10-24, noi Worker)
    AI chay qua Worker damu (duong rieng, KHONG key); tra tu/do tu van chay
    ngay trong trinh duyet bang API tu dien cong khai.
    - Forecast: nhúng sẵn trong trang (thẻ forecastData).
@@ -618,7 +618,7 @@ function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
 
 /* ================= WORKER DAMU (DUONG RIENG) ================= */
 var DAMU_WORKER_URL='https://damu-bot.ntai200508.workers.dev';
-var POLLI_SYS_GRADE='You are damu, a pink capybara and strict IELTS Speaking examiner-coach, like the examiners in real mock-test feedback videos: grade strictly against the OFFICIAL IELTS band descriptors with no grade inflation; quote the candidate exact words before correcting them; explain why that evidence caps the band by referring to the descriptor; then show a concrete upgraded rewrite. Follow the user instruction exactly and output ONLY the requested JSON.';
+var POLLI_SYS_GRADE='You are Vita, a pink capybara and strict IELTS Speaking examiner-coach, like the examiners in real mock-test feedback videos: grade strictly against the OFFICIAL IELTS band descriptors with no grade inflation; quote the candidate exact words before correcting them; explain why that evidence caps the band by referring to the descriptor; then show a concrete upgraded rewrite. Follow the user instruction exactly and output ONLY the requested JSON.';
 async function polliAsk(prompt,sys,timeoutMs){
   /* TRANSPORT sang duong rieng (24/10): Worker /complete thay cho Pollinations
      truc tiep. Giu nguyen signature + hanh vi thu lai (2 luot, nghi 900ms):
@@ -746,7 +746,7 @@ async function gradeAnswer(answerText,speechSec){
   var status=add('🦫 Đang chấm bài của bạn theo 4 tiêu chí IELTS — chia nhiều lượt nhỏ nên hơi lâu một chút, đừng tắt trang nhé…','bot think');
   var scores={},feedback={},missing=[];
   /* Chay 2 luot SONG SONG mot cum (app luyen noi cung chay micro song song):
-     giam thoi gian cho ma khong spam Pollinations qua muc. */
+     giam thoi gian cho ma khong spam Worker qua muc. */
   async function runCrit(idx){
     var key=CRIT[idx][0],name=CRIT[idx][1];
     try{
@@ -779,7 +779,7 @@ async function gradeAnswer(answerText,speechSec){
   }
   async function runModel(){
     try{
-      var rawM=await polliAsk(buildModelPrompt(cur.question,cur.part,tr),'You are damu, a pink capybara and strict IELTS Speaking examiner. Output ONLY the model answer text.',25000);
+      var rawM=await polliAsk(buildModelPrompt(cur.question,cur.part,tr),'You are Vita, a pink capybara and strict IELTS Speaking examiner. Output ONLY the model answer text.',25000);
       model=unwrapEnvelope(rawM).replace(/^["“]|["”]$/g,'').trim();
       if(model.length<25||/^\{/.test(model))model='';
     }catch(e){missing.push('MODEL');}
@@ -957,12 +957,45 @@ function handleQuizAnswer(text){
 }
 
 /* ================= CHAT TỰ DO ================= */
+/* --- Trí nhớ chỉ-đọc của bot (bài học "bot nhớ hội thoại" của video 1, làm theo cách của damu: không thêm máy chủ) ---
+   Chỉ ĐỌC localStorage cùng origin, KHÔNG ghi, KHÔNG gửi dữ liệu đi đâu ngoài prompt chat vốn đã gửi tới /complete.
+   Nguồn: 'vocabSRS.v1' (từ đã học + streak) và 'damuSpeaking.history' (bài nói gần nhất).
+   Parse phòng thủ: sai định dạng thì bỏ qua, hành vi về như cũ. */
+function botMemoryLine(){
+  try{
+    var parts=[];
+    try{
+      var S=JSON.parse(localStorage.getItem('vocabSRS.v1')||'null');
+      if(S&&S.words&&typeof S.words==='object'){
+        var ws=[];for(var id in S.words){var w=S.words[id];if(w&&w.word)ws.push(w);}
+        if(ws.length){
+          ws.sort(function(a,b){return (b.createdAt||0)-(a.createdAt||0);});
+          var recent=ws.slice(0,5).map(function(x){return x.word;}).join(', ');
+          parts.push('từ đã học ('+ws.length+' từ, mới nhất: '+recent+')');
+        }
+        if(S.streak)parts.push('streak '+S.streak+' ngày');
+      }
+    }catch(e){}
+    try{
+      var H=JSON.parse(localStorage.getItem('damuSpeaking.history')||'null');
+      var arr=Array.isArray(H)?H:(H&&Array.isArray(H.items)?H.items:[]);
+      if(arr.length){
+        var last=arr[arr.length-1];
+        var band=(last&&(last.overall||last.band||last.score));
+        if(band!=null&&band!=='')parts.push('bài nói gần nhất band '+band);
+      }
+    }catch(e){}
+    if(!parts.length)return '';
+    return 'Ngữ cảnh học của người này (chỉ dùng để cá nhân hoá câu trả lời, không bịa thêm dữ liệu): '+parts.join('; ')+'.';
+  }catch(e){return '';}
+}
 async function freeChat(text){
   var think=add('Bot đang suy nghĩ…','bot think');
   try{
-    var raw=await polliAsk('User says: "'+String(text).slice(0,500)+'". Reply in Vietnamese, short and helpful (max 6 sentences). If they ask about English or IELTS, teach briefly. Gently suggest the chips: Cau Part 1/2/3, tra <tu>, do <tu>.','You are damu, a pink capybara English tutor inside the damu app. Be warm, blunt and funny in Vietnamese. Output ONLY your reply text, no JSON, no reasoning.',20000);
+    var mem=botMemoryLine();
+    var raw=await polliAsk('User says: "'+String(text).slice(0,500)+'". '+(mem?mem+' ':'')+'Reply in Vietnamese, short and helpful (max 6 sentences). Rules: stay in character as Vita the pink capybara tutor — warm, blunt, funny, tease lightly when the user is wrong and praise when right; when correcting English, FIRST quote the exact words from the user, then give the fix and the rule in one line; when explaining a word, give meaning + 1 example + 1 synonym/antonym if you know them, never invent a meaning — if unsure, say so and point to "tra <từ>"; never dump a list of quiz answers, keep the one-by-one quiz style; if the user asks about English or IELTS, teach briefly with an example. Gently suggest the chips: Cau Part 1/2/3, tra <tu>, do <tu>.','You are Vita, a pink capybara (chuột lang nước — NOT a beaver, never call yourself "hải ly") English tutor inside the damu app. Be warm, blunt and funny in Vietnamese. Output ONLY your reply text, no JSON, no reasoning.',20000);
     think.remove();add(unwrapEnvelope(raw).trim().slice(0,1500)||'Mình chưa nghĩ ra câu trả lời — thử hỏi cách khác nhé.','bot');
-  }catch(e){think.remove();add('Bot damu đang bận — thử lại sau ít giây nhé. Các chức năng tra từ / đố từ / xin câu hỏi vẫn chạy bình thường.','err');}
+  }catch(e){think.remove();add('Vita đang bận — thử lại sau ít giây nhé. Các chức năng tra từ / đố từ / xin câu hỏi vẫn chạy bình thường.','err');}
 }
 
 /* ================= ĐIỀU PHỐI ================= */
@@ -1007,7 +1040,7 @@ else{
     }catch(e){recog=null;micBtn.classList.remove('rec');micBtn.textContent='🎙️';add('Không mở được micro / nhận diện giọng nói trên trình duyệt này — gõ đáp án bằng chữ nhé.','err');}
   });
 }
-add('Chào bạn! Mình là Bot damu 🤖 — mình chạy trên đường riêng của damu, không cần key. Bấm “Câu Part 1” để mình ra câu hỏi, rồi trả lời bằng chữ hoặc bấm 🎙️ nói trực tiếp — mình chấm như giám khảo IELTS thật. Hoặc gõ “tra <từ>” / “đố <từ>”.','bot');
+add('Chào bạn! Mình là Vita 🤖 — mình chạy trên đường riêng của damu, không cần key. Bấm “Câu Part 1” để mình ra câu hỏi, rồi trả lời bằng chữ hoặc bấm 🎙️ nói trực tiếp — mình chấm như giám khảo IELTS thật. Hoặc gõ “tra <từ>” / “đố <từ>”.','bot');
 </script>
 </body>
 </html>
