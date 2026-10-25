@@ -2207,6 +2207,11 @@ function validateGrade(g){
     if(typeof v==='string'&&v.trim()!=='') v=parseFloat(v);
     if(typeof v!=='number'||!isFinite(v)||v<0||v>9) return false;
   }
+  /* LEAN-FIX 25/10: bai lean chi co diem -> giao ngay. Neu la bai lean (co _lean,
+     chi duong lean moi gan) va du 4 diem hop le thi hien ngay, khong bat buoc 2 muc
+     noi dung; phan thieu do nut lay lai tung tieu chi lo. Bai khong co _lean giu
+     luat cu tuyet doi (khong doi hanh vi bai chi tiet cu / lich su cu / thi thu). */
+  if(g._lean===true) return true;
   var content=0;
   if(g.opening&&String(g.opening).trim())content++;
   if(g.errors&&g.errors.length)content++;
@@ -2978,10 +2983,20 @@ function criteriaFeedbackHtml(g){
   if(Array.isArray(g.criteriaFeedback)){
     for(var a=0;a<g.criteriaFeedback.length;a++){var it=g.criteriaFeedback[a]||{};var k2=it.criterion||it.key||it.name||order[a];var r2=renderOne(k2,it);if(r2){any=true;h+=r2;}}
   }else{
-    for(var i=0;i<order.length;i++){var key=order[i];var cfv=g.criteriaFeedback[key];if(cfv==null)cfv=g.criteriaFeedback[key.toLowerCase()];var r=renderOne(key,cfv);if(r){any=true;h+=r;}}
+    var _badPartial=[];try{if(typeof leanCtx!=='undefined'&&leanCtx&&leanCtx.g===g)_badPartial=gradeCfBadKeys(g,_trCf);}catch(e){}
+    for(var i=0;i<order.length;i++){var key=order[i];var cfv=g.criteriaFeedback[key];if(cfv==null)cfv=g.criteriaFeedback[key.toLowerCase()];var r=renderOne(key,cfv);if(!r&&_badPartial.indexOf(key)>=0)r=partialCfPlaceholder(key,sc);if(r){any=true;h+=r;}}
   }
   if(!any)return '';
   return '<h3>🔍 Nhận xét sâu từng tiêu chí: điểm mạnh, lỗi trích nguyên văn &amp; cách luyện</h3>'+h;
+}
+/* PARTIAL v3 (gop vao ban live 25/10): khoi cho tieu chi thieu nhan xet sau —
+   chi hien khi dang xem dung bai hien tai (g === leanCtx.g) de nut khong bao
+   gio bam nham sang bai trong lich su. Nut goi leanRetryCf(key): 1 luot
+   /complete dung 1 tieu chi, khong cham lai tu dau. */
+function partialCfPlaceholder(key,sc){
+  var labels={FC:'Fluency & Coherence',LR:'Lexical Resource',GRA:'Grammar Range & Accuracy',P:'Pronunciation'};
+  var sv=(sc&&sc[key]!=null&&sc[key]!=='')?(' — '+Number(sc[key]).toFixed(1)):'';
+  return '<div class="cfb"><h4>'+key+' — '+labels[key]+sv+'</h4><p class="small">⏳ Nhận xét sâu chưa lấy được do đường Groq đang nghẽn — bấm nút để lấy riêng tiêu chí này, không cần chấm lại từ đầu:</p><button class="btn" onclick="leanRetryCf(\''+key+'\')">🔁 Lấy nhận xét sâu '+key+'</button></div>';
 }
 function renderGrade(g,via,wpm,ev){if(g&&g._raw){return{html:'<p>🩷 damu nhận được bài chấm ở dạng chữ (không phải JSON chuẩn) — đây là nguyên văn:</p><p style="white-space:pre-wrap">'+esc(g._raw)+'</p><p class="small">Chấm bởi: '+esc(via)+'.</p>',overall:null};}
   if(!validateGrade(g))return{html:'<p>😵 Kết quả chấm không hợp lệ (thiếu điểm). Bấm chấm lại nhé.</p>',overall:null};
@@ -3146,6 +3161,220 @@ function gradeExtractModelAnswer(text,tr,part){
   return null;
 }
 /* BAN CUOI 25/10 (them gemini du phong chat): moi luot cham chi tiet trong gradeMicroTurns (core/CF/MA/sections) cho toi 180s de gemini kip tra khi groq nghien (gemini toi da ~161s); luc groq khoe van ve trong ~2s. */
+/* ============ LEAN GRADING v2 25/10 (gop vao ban live 25/10: giu nguyen phuong phap lean) ============
+   PHUONG PHAP (theo video Big Man Marketing + 2 video sang 25/10, chi lay phuong phap):
+   - Luong tung buoc co re nhanh (nhu lap trinh): diem -> nhan xet gom -> cau mau;
+     moi buoc co nhanh sua rieng khi hong, khong goi tran lan song song.
+   - Chi giu ngu canh o cho that can: diem giu descriptors + anchors; nhan xet chi giu
+     descriptors RUT GON tung tieu chi (cfCompactDesc), khong nhet BOT_DESC day du;
+     cau mau chi giu diem FINAL, khong descriptors. Bo muc ERRORS rieng (loi lay tu
+     nhan xet gom qua flatten, khong them luot goi).
+   - Ket qua dung duoc ngay, dang co dinh: moi buoc chi chap nhan khi qua cong
+     kiem (CF: gradeCfBadKeys rong + co examinerNote; MA: gradeModelAnswerOk);
+     khong dat thi re nhanh sua, khong tra ban nua voi.
+   - Hoc theo mau o dang an toan: khung 5 dong/tieu chi (STRENGTH/ERROR/ADVICE/DRILL/
+     BANDLINK) chinh la "mau" co dinh; KHONG nhet ban cham mau co so diem that vao
+     prompt (bai hoc echo-shape 24/10: model mien phi chep so mau).
+   - Chuyen biet: Vita chi phuc vu damu (luyen noi IELTS), khong bot chung.
+   NGAN SACH LUOT GOI: danh nghia 3 (diem 1 + nhan xet gom 1 + cau mau 1); khi hong,
+   nhanh sua toi da: diem 2, nhan xet 5 (gom 2 + sua dich 1 + tach 2), cau mau 2.
+   LUONG NHAN XET: A gom 4 tieu chi -> A2 thu lai gom neu khong parse duoc ->
+   B sua dich chi cac tieu chi hong (badKeys) -> C tach 2 luot (FC+LR, GRA+P)
+   neu van chua dung duoc. */
+function gradeLeanCfSection(k){
+  var fullNames={FC:'Fluency and Coherence',LR:'Lexical Resource',GRA:'Grammatical Range and Accuracy',P:'Pronunciation'};
+  var d='';try{d=cfCompactDesc(k)||'';}catch(e){}
+  var pRule=(k==='P')?' Pronunciation is judged from TEXT ONLY: only flag a word if its spelling strongly suggests a pronunciation risk; the fix MUST be a pronunciation guide (IPA, stress or final sound), never a grammar rewrite.':'';
+  return '===FEEDBACK_'+k+'===\nCriterion '+k+' ('+fullNames[k]+'). Official descriptors (condensed): '+d+'\nSTRENGTH: <real strength of THIS answer for '+k+', short, in Vietnamese>\nERROR: <exact phrase copied word-for-word from the transcript> | CORRECTION: <corrected version> | WHY: <short reason in Vietnamese>\nERROR: <another exact phrase from the transcript> | CORRECTION: <corrected version> | WHY: <short reason in Vietnamese>\n(0-2 REAL errors only: if genuinely no real error for this criterion, OMIT the ERROR lines entirely — never invent one. A style preference is NOT an error.)'+pRule+'\nADVICE: <specific fix in Vietnamese>\nDRILL: <one 5-10 minute drill tied to those errors, in Vietnamese>\nBANDLINK: <1 sentence in Vietnamese: fixing these errors lifts '+k+' to which band>';
+}
+function gradeLeanCfPrompt(g,q,part,tr){
+  var sc=g.scores||{};
+  var secs=[];
+  secs.push('===EXAMINER_NOTE===\n(2-3 cau tieng Anh that ve bai nay: diem manh, diem yeu, cau cuoi neu don bay len band lon nhat)');
+  ['FC','LR','GRA','P'].forEach(function(k){secs.push(gradeLeanCfSection(k));});
+  return 'You are Vita, a strict IELTS Speaking examiner. Scores are FINAL: FC '+sc.FC+', LR '+sc.LR+', GRA '+sc.GRA+', P '+sc.P+' — never change them, never re-grade. Do NOT output JSON. Write PLAIN TEXT using EXACTLY these section markers, each marker on its own line, in this order:\n'+secs.join('\n')+'\nEach criterion follows EXACTLY this 5-line shape: STRENGTH, ERROR(s), ADVICE, DRILL, BANDLINK — same shape every time, content always from THIS transcript. Every line SHORT (max 14 words). Replace every <...> with REAL content about THIS answer only — never write the instruction words themselves as content. Every ERROR quote MUST be copied character-for-character from the transcript; if a phrase cannot be copied exactly, use ONE exact word from the transcript instead. Question: \''+String(q||'').slice(0,200)+'\' Transcript: \''+String(tr||'').slice(0,4000)+'\'';
+}
+function gradeLeanCfSplitPrompt(g,q,part,tr,keys,includeNote){
+  var sc=g.scores||{};
+  var secs=[];
+  if(includeNote)secs.push('===EXAMINER_NOTE===\n(2-3 cau tieng Anh that ve bai nay: diem manh, diem yeu, cau cuoi neu don bay len band lon nhat)');
+  keys.forEach(function(k){secs.push(gradeLeanCfSection(k));});
+  return 'You are Vita, a strict IELTS Speaking examiner. Scores are FINAL: FC '+sc.FC+', LR '+sc.LR+', GRA '+sc.GRA+', P '+sc.P+' — never change them, never re-grade. Do NOT output JSON. Write PLAIN TEXT using EXACTLY these section markers, each marker on its own line, in this order:\n'+secs.join('\n')+'\nEach criterion follows EXACTLY this 5-line shape: STRENGTH, ERROR(s), ADVICE, DRILL, BANDLINK — same shape every time, content always from THIS transcript. Every line SHORT (max 14 words). Replace every <...> with REAL content about THIS answer only — never write the instruction words themselves as content. Every ERROR quote MUST be copied character-for-character from the transcript; if a phrase cannot be copied exactly, use ONE exact word from the transcript instead. Question: \''+String(q||'').slice(0,200)+'\' Transcript: \''+String(tr||'').slice(0,4000)+'\'';
+}
+/* ============ LEAN GRADING v3 25/10 (gop vao ban live 25/10: giao tung phan + nut lay lai) ============
+   DOI SO VOI v2 (theo brief v3: doi cach do + cach giao, khong cho cua so khoe):
+   - Prompt NHAN XET RUT GON THAT SU: bo descriptors day du, chi giu 1 dong neo
+     ngan moi tieu chi; template moi tieu chi tu ~1070 ky tu xuong ~400 ky tu.
+     Khong con prompt gop 6000 ky tu nao nua. Mac dinh la TACH NGAN (2 luot
+     FC+LR, GRA+P); che do gop ngan chi de so sanh (LEAN_CF_MODE='mergedShort').
+     Luu y parser: dong ERROR BAT BUOC dung nhan CORRECTION (khong dung FIX),
+     vi parser chi tao error object day du (wrong/fix/why) khi gap CORRECTION;
+     dung FIX thi loi thanh chuoi tran -> gradeCfBadKeys danh hong.
+   - GIAO TUNG PHAN, khong ha chuan noi dung: luot cham ban dau toi da 5 luot
+     (diem 2 + nhan xet 2 + cau mau 1), khong retry trong luot ban dau; tieu chi
+     nao nhan xet sau hong thi nam trong nut "Lay nhan xet sau <key>" goi
+     gradeLeanCfRetryOne (chi chay lai dung tieu chi do, khong cham lai tu dau);
+     cau mau hong thi nut "Lay cau mau" goi gradeLeanMaRetry. Ban cham van phai
+     du 5 phan/tieu chi — chi khac la phan hong thi lay lai theo nut. */
+function gradeLeanCfAnchor(k){
+  var A={FC:'FC: 5=repetition/self-correction, slow; 6=long turns, coherence slips; 7=effortless, flexible markers.',
+  LR:'LR: 5=basic words, word-choice slips; 6=adequate range, some paraphrase; 7=flexible, idiomatic, precise.',
+  GRA:'GRA: 5=basic structures, frequent errors; 6=mix simple/complex, errors persist; 7=varied, mostly error-free.',
+  P:'P: judge from TEXT only; 5=often hard to understand; 6=generally clear, some mispronunciation; 7=easy to understand, natural. Fix = IPA/stress, never grammar.'};
+  return A[k]||k;
+}
+function gradeLeanCfSectionShort(k){
+  return '===FEEDBACK_'+k+'===\n'+gradeLeanCfAnchor(k)+'\nSTRENGTH: <1 strength in Vietnamese>\nERROR: <exact phrase from transcript> | CORRECTION: <corrected> | WHY: <short reason>\n(up to 2 ERROR lines; omit if none — never invent an error)\nADVICE: <specific fix>\nDRILL: <one 5-10 min drill>\nBANDLINK: <which band fixing this reaches>';
+}
+function gradeLeanCfHeadShort(sc){
+  return 'You are Vita, a strict IELTS Speaking examiner. Scores are FINAL: FC '+sc.FC+', LR '+sc.LR+', GRA '+sc.GRA+', P '+sc.P+' — never re-grade. Output ONLY the sections below, in order, each line max 14 words, content ONLY from this transcript.\n';
+}
+function gradeLeanCfFootShort(){
+  return '\nEvery ERROR quote MUST be copied word-for-word from the transcript; if it cannot be copied exactly, use ONE exact word. Never invent errors. Replace every <...> with real content.';
+}
+function gradeLeanCfPromptShort(g,q,part,tr){
+  var sc=g.scores||{};
+  var secs=['===EXAMINER_NOTE===\n(2-3 sentences in English: strength, weakness, biggest lever)'];
+  ['FC','LR','GRA','P'].forEach(function(k){secs.push(gradeLeanCfSectionShort(k));});
+  return gradeLeanCfHeadShort(sc)+secs.join('\n')+gradeLeanCfFootShort()+' Question: \''+String(q||'').slice(0,200)+'\' Transcript: \''+String(tr||'').slice(0,4000)+'\'';
+}
+function gradeLeanCfSplitPromptShort(g,q,part,tr,keys,includeNote){
+  var sc=g.scores||{};
+  var secs=[];
+  if(includeNote)secs.push('===EXAMINER_NOTE===\n(2-3 sentences in English: strength, weakness, biggest lever)');
+  keys.forEach(function(k){secs.push(gradeLeanCfSectionShort(k));});
+  return gradeLeanCfHeadShort(sc)+secs.join('\n')+gradeLeanCfFootShort()+' Question: \''+String(q||'').slice(0,200)+'\' Transcript: \''+String(tr||'').slice(0,4000)+'\'';
+}
+function gradeLeanCfOnePromptShort(g,q,part,tr,key,includeNote){
+  var sc=g.scores||{};
+  var secs=[];
+  if(includeNote)secs.push('===EXAMINER_NOTE===\n(2-3 sentences in English: strength, weakness, biggest lever)');
+  secs.push(gradeLeanCfSectionShort(key));
+  return gradeLeanCfHeadShort(sc)+secs.join('\n')+gradeLeanCfFootShort()+' Question: \''+String(q||'').slice(0,200)+'\' Transcript: \''+String(tr||'').slice(0,4000)+'\'';
+}
+async function gradeLeanCfRetryOne(g,key,q,part,tr){
+  var qq=(g&&g._q)||q,pp=(g&&typeof g._part==='number')?g._part:part,tt=(g&&g._tr)||tr;
+  if(!qq||!tt)throw new Error('lean-retry-no-context');
+  var includeNote=!(g&&g.examinerNote);
+  var r=await aiAsk(gradeLeanCfOnePromptShort(g,qq,pp,tt,key,includeNote),MICRO_SYS,null,{json:true,timeoutMs:180000});
+  gradeLeanMergeCf(g,parseCompletionSections(r.text));
+  return g;
+}
+async function gradeLeanMaRetry(g,q,part,tr){
+  var qq=(g&&g._q)||q,pp=(g&&typeof g._part==='number')?g._part:part,tt=(g&&g._tr)||tr;
+  if(!qq||!tt)throw new Error('lean-retry-no-context');
+  var rm=await aiAsk(buildCompletionSectionsPrompt(g,['modelAnswer'],qq,pp,tt,null,''),MICRO_SYS,null,{json:true,timeoutMs:180000});
+  var mextra=parseCompletionSections(rm.text);
+  if(mextra&&mextra.modelAnswer&&gradeModelAnswerOk({modelAnswer:mextra.modelAnswer},tt,pp)){g.modelAnswer=mextra.modelAnswer;if(mextra.rewriteNotes)g.rewriteNotes=mextra.rewriteNotes;}
+  return g;
+}
+/* Nut lay lai phan hong (duong gradeNow -> gradeLean, giao tung phan). */
+var leanCtx=null;
+function leanRetryButtons(g,tr){
+  try{
+    var out='';
+    var bad=gradeCfBadKeys(g,tr);
+    for(var i=0;i<bad.length;i++){out+='<button class="btn" onclick="leanRetryCf(\''+bad[i]+'\')">🔁 Lấy nhận xét sâu '+bad[i]+'</button> ';}
+    if(!g.modelAnswer||!gradeModelAnswerOk({modelAnswer:g.modelAnswer},tr,g._part||1))out+='<button class="btn" onclick="leanRetryMa()">🔁 Lấy câu mẫu</button>';
+    if(out)return '<p class="small">🩷 Một số phần chưa lấy được do đường AI đang nghẽn — bấm nút để lấy riêng phần đó, không cần chấm lại từ đầu:</p>'+out;
+  }catch(e){}
+  return '';
+}
+async function leanRetryCf(key){
+  var btn=(typeof event!=='undefined'&&event&&event.target)?event.target:null;
+  try{
+    if(!leanCtx||!leanCtx.g)return;
+    if(btn){btn.disabled=true;btn.textContent='⏳ Đang lấy...';}
+    var g=await gradeLeanCfRetryOne(leanCtx.g,key,leanCtx.q,leanCtx.part,leanCtx.tr);
+    g=gradeApplyGuards(g,leanCtx.part,leanCtx.tr);g._q=leanCtx.q;g._part=leanCtx.part;g._tr=leanCtx.tr;g._lean=true;leanCtx.g=g;
+    try{partialSyncHistory(g,leanCtx.tr);}catch(e){}
+    var r=renderGrade(g,leanCtx.via,leanCtx.wpm,leanCtx.ev);
+    var chat=$('chatBox');chat.innerHTML=leanCtx.myMsg+damuMsg(r.html+leanRetryButtons(g,leanCtx.tr));
+  }catch(e){aiLogErr('leanRetryCf',e);if(btn){btn.disabled=false;btn.textContent='⚠️ Groq đang bận — bấm lại sau';}}
+}
+async function leanRetryMa(){
+  var btn=(typeof event!=='undefined'&&event&&event.target)?event.target:null;
+  try{
+    if(!leanCtx||!leanCtx.g)return;
+    if(btn){btn.disabled=true;btn.textContent='⏳ Đang lấy...';}
+    var g=await gradeLeanMaRetry(leanCtx.g,leanCtx.q,leanCtx.part,leanCtx.tr);
+    g=gradeApplyGuards(g,leanCtx.part,leanCtx.tr);g._q=leanCtx.q;g._part=leanCtx.part;g._tr=leanCtx.tr;g._lean=true;leanCtx.g=g;
+    try{partialSyncHistory(g,leanCtx.tr);}catch(e){}
+    var r=renderGrade(g,leanCtx.via,leanCtx.wpm,leanCtx.ev);
+    var chat=$('chatBox');chat.innerHTML=leanCtx.myMsg+damuMsg(r.html+leanRetryButtons(g,leanCtx.tr));
+  }catch(e){aiLogErr('leanRetryMa',e);if(btn){btn.disabled=false;btn.textContent='⚠️ Groq đang bận — bấm lại sau';}}
+}
+/* PARTIAL v3: sau khi lay lai thanh cong, cap nhat luon ban cham da luu trong
+   lich su (chi khi entry moi nhat dung la bai nay — so transcript) de mo lai
+   lich su van thay ban cham du, khong bi ghi de hay them entry rac. */
+function partialSyncHistory(g,tr){
+  if(typeof loadHist!=='function'||typeof histCompactFeedback!=='function')return;
+  var h=loadHist();if(!h.length)return;
+  if(String(h[0].transcript||'')!==String(tr||''))return;
+  h[0].feedback=histCompactFeedback(g);
+  try{localStorage.setItem(HISTLS,JSON.stringify(h));}catch(e){}
+}
+function gradeLeanMergeCf(g,extra){
+  if(!extra)return;
+  if(extra.examinerNote&&!g.examinerNote)g.examinerNote=extra.examinerNote;
+  if(extra.criteriaFeedback&&typeof extra.criteriaFeedback==='object'){
+    if(!g.criteriaFeedback||typeof g.criteriaFeedback!=='object')g.criteriaFeedback={};
+    ['FC','LR','GRA','P'].forEach(function(k){if(extra.criteriaFeedback[k])g.criteriaFeedback[k]=extra.criteriaFeedback[k];});
+  }
+  if(extra.errors&&!g.errors)g.errors=extra.errors;
+}
+function gradeLeanCfUsable(g,tr){
+  return !!(g.criteriaFeedback&&g.examinerNote&&gradeCfBadKeys(g,tr).length===0);
+}
+async function gradeLean(q,part,tr,wpm,secs){
+  /* LEAN v3: luot cham ban dau toi da 5 luot (diem 2 + nhan xet 2 + cau mau 1),
+     khong retry trong luot ban dau; phan hong -> nut lay lai (gradeLeanCfRetryOne /
+     gradeLeanMaRetry). Che do nhan xet: LEAN_CF_MODE='splitShort' (mac dinh:
+     2 luot FC+LR, GRA+P) hoac 'mergedShort' (1 luot gop ngan, chi de so sanh). */
+  var cfMode=(typeof LEAN_CF_MODE!=='undefined'&&LEAN_CF_MODE)?LEAN_CF_MODE:'splitShort';
+  var g={_completionVia:BOT_VIA,_lean:true,_q:q,_part:part,_tr:tr};
+  var sc=null;
+  for(var a=0;a<2&&!sc;a++){
+    try{
+      var rp=(a===0)?buildScoresPrompt(q,part,tr,wpm,secs):buildScoresPromptUltraMin(q,part,tr);
+      var rr=await aiAsk(rp,(a===0)?MICRO_SYS:MINI_SYS,null,{json:true,temperature:(a===0?undefined:0.3),timeoutMs:180000});
+      var jj=extractJSON(rr.text);
+      var cand=(jj&&jj.scores&&typeof jj.scores==='object')?jj.scores:jj;
+      if(cand&&typeof cand==='object'){
+        var okS=true,tmpS={};
+        ['FC','LR','GRA','P'].forEach(function(k){var v=cand[k];if(typeof v==='string')v=parseFloat(v);if(typeof v!=='number'||!isFinite(v)||v<0||v>9||Math.abs(v*2-Math.round(v*2))>0.001)okS=false;else tmpS[k]=v;});
+        if(okS)sc=tmpS;
+      }
+    }catch(e){await aiDelayMs(2000);}
+  }
+  if(!sc)throw new Error('server|lean-scores-fail');
+  g.scores=sc;
+  /* Nhan xet ngan, khong retry trong luot ban dau. */
+  try{
+    if(cfMode==='mergedShort'){
+      var rc=await aiAsk(gradeLeanCfPromptShort(g,q,part,tr),MICRO_SYS,null,{json:true,timeoutMs:180000});
+      gradeLeanMergeCf(g,parseCompletionSections(rc.text));
+    }else{
+      var groups=[['FC','LR'],['GRA','P']];
+      for(var gi=0;gi<groups.length;gi++){
+        try{var rs=await aiAsk(gradeLeanCfSplitPromptShort(g,q,part,tr,groups[gi],gi===0&&!g.examinerNote),MICRO_SYS,null,{json:true,timeoutMs:180000});gradeLeanMergeCf(g,parseCompletionSections(rs.text));}catch(e){await aiDelayMs(2000);}
+      }
+    }
+  }catch(e){await aiDelayMs(2000);}
+  if(!Array.isArray(g.errors))g.errors=[];
+  if(!g.errors.length&&g.criteriaFeedback){
+    var seen={},flat=[];
+    ['FC','LR','GRA','P'].forEach(function(k){var cc=g.criteriaFeedback[k];if(cc&&Array.isArray(cc.errors))cc.errors.forEach(function(e){if(e&&typeof e==='object'&&e.wrong&&!seen[String(e.wrong).toLowerCase()]){seen[String(e.wrong).toLowerCase()]=1;flat.push(e);}});});
+    if(flat.length)g.errors=flat;
+  }
+  /* Cau mau: 1 luot duy nhat trong luot ban dau; hong -> nut lay lai. */
+  try{
+    var rm=await aiAsk(buildCompletionSectionsPrompt(g,['modelAnswer'],q,part,tr,null,''),MICRO_SYS,null,{json:true,timeoutMs:180000});
+    var mextra=parseCompletionSections(rm.text);
+    if(mextra&&mextra.modelAnswer&&gradeModelAnswerOk({modelAnswer:mextra.modelAnswer},tr,part)){g.modelAnswer=mextra.modelAnswer;if(mextra.rewriteNotes)g.rewriteNotes=mextra.rewriteNotes;}
+  }catch(e){await aiDelayMs(2000);}
+  return g;
+}
 async function gradeMicroTurns(q,part,tr,wpm,secs){
   aiSetStatus('Vita đang chấm từng phần (điểm → nhận xét → câu mẫu)...');
   var g={};
@@ -3296,21 +3525,23 @@ async function gradeNow(){if(aiGrading)return;var tr=$('transcript').value.trim(
   function statusBubble(){chat.innerHTML=myMsg+damuMsg('<span class="spin"></span> <span id="gradeStatusTxt"></span> 🩷');paintStatus();}
   statusBubble();
   try{
-    var g=await gradeMicroTurns(curQuestion,curPart,tr,wpm,secs); /* DUONG RIENG 24/10: cham tung phan nho (diem -> loi/moi -> cau mau -> tung tieu chi); khong dung prompt FULL/LITE khoi lon nua (tra rong/cut trong che do Groq hien tai) */
+    var g=await gradeLean(curQuestion,curPart,tr,wpm,secs); /* LEAN v3 (ban gop live): diem -> nhan xet ngan -> cau mau, giao tung phan + nut lay lai, khong bo sung don */
     var res={text:'',via:(g._completionVia||BOT_VIA),geminiErr:null,groqErr:null};
     /* ROUND4 25/10: bo sung TRUOC khi kiem dinh — ban cham thieu core (chi co diem+cau mau, nhu BARISTA vong B 5x2) truoc day bi loai ngay ma khong duoc bo sung, du bo sung sinh ra de dien dung cac muc do (examinerNote/errors/CF). Bo sung xong moi kiem dinh; van khong dat thi bao loi nhu cu. Cua so tot khong doi (bo sung von chay o do). */
     statusBubble();
     var missBefore=gradeMissingFields(g,tr,curPart);
-    g=await completeGradeIfNeeded(g,res,curQuestion,curPart,tr,3); /* MICRO-TURNS: bo sung dien muc thieu (luot gop + CF rieng + cau mau + vi mo) */
-    if(!validateGrade(g)){
+    /* LEAN v3 (ban gop live): khong bo sung don — phan nao hong thi nut lay lai lo. */
+    if(!g.scores){
       chat.innerHTML=myMsg+damuMsg('😵 Vita chấm chưa thành công — Vita trả về kết quả không đọc được điểm. Bài nói của bạn vẫn còn nguyên, bấm nút dưới để chấm lại nhé.<br><button class="btn" onclick="gradeNow()">🔁 Chấm lại</button>'+geminiErrHtml(res)+groqSuggestHtml());
       saveHistory(null,tr,wpm);
     }else{
       var evNow=computeEvidence(tr,secs);
-      g=await auditGradeIfNeeded(g,tr,evNow,{via:(g._completionVia||res.via),extraUsed:missBefore.length>0,didFix:false,didVariant:false,part:curPart,q:curQuestion});
-      g=gradeApplyGuards(g,curPart,tr); /* GUARD 24/10: kep P, loc loi P, dedupe loi, kep bang chung don le */
+      /* LEAN v3 (ban gop live): bo audit (ton luot goi) — guard local thi giu. */
+      g=gradeApplyGuards(g,curPart,tr);
+      g._q=curQuestion;g._part=curPart;g._tr=tr;g._lean=true;
       var r=renderGrade(g,res.via,wpm,evNow);
-      chat.innerHTML=myMsg+damuMsg(r.html+geminiErrHtml(res));
+      leanCtx={g:g,q:curQuestion,part:curPart,tr:tr,wpm:wpm,ev:evNow,myMsg:myMsg,via:res.via};
+      chat.innerHTML=myMsg+damuMsg(r.html+leanRetryButtons(g,tr)+geminiErrHtml(res));
       saveHistory(r.overall,tr,wpm,(g&&!g._fallback)?g.scores:null,g);
       syncHintBandChip();
     }
