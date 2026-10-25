@@ -350,7 +350,7 @@ nav button#nav-mocktest.on{background:#f59e0b;color:#fff;border-color:#f59e0b}
   </div>
   <div class="card">
     <h2>🎯 Band Speaking hiện tại của bạn</h2>
-    <p class="small">Chọn mức bạn tự đánh giá mình hiện tại. Khi chưa chấm đủ 3 bài trong app, <b>trợ giảng gợi ý</b> dùng mức này làm "band hiện tại" để viết câu mẫu cao hơn bạn khoảng 1–1.5 band — vừa tầm để học theo. Chấm đủ 3 bài trở lên, app tự dùng điểm trung bình các bài gần nhất, bạn không cần sửa ô này nữa.</p>
+    <p class="small">Chọn mức bạn tự đánh giá mình hiện tại. <b>Trợ giảng gợi ý</b> luôn dùng mức này làm "band hiện tại" để viết câu mẫu cao hơn bạn khoảng 1 band — vừa tầm để học theo. Bạn đổi mức ở đây lúc nào thì gợi ý đổi theo lúc đó.</p>
     <div class="row">
       <label class="small" style="flex:0 0 auto;align-self:center" for="selfBandSel">Band tự khai:</label>
       <select id="selfBandSel" onchange="saveSelfBandUI()" style="flex:1">
@@ -1572,6 +1572,41 @@ async function aiAsk(prompt,sysOverride,litePrompt,opts){
 }
 
 async function aiAskGrade(promptFull,promptLite,opts){var o={json:true};if(opts){for(var _ok in opts)o[_ok]=opts[_ok];}o.isGrade=true; /* moi luot qua aiAskGrade (cham bai + cham thi thu + prompt bien doi) deu la LUOT CHAM: huong ngan sach Groq 60s/30s + 429-retry 70B + Gemini 1 model */return aiAsk(promptFull,null,promptLite,o);}
+/* ===== INTENT-ROUTER (port tu doi intent-router, code nguyen van — KHONG dung Dialogflow) ===== */
+/* TRANG THAI: LOGIC THUAN, CHUA NOI VAO UI NAO (lenh dong bang giao dien 18:50).
+   6 intent + cau soan san san dung khi parent noi vao o chat SAN CO (vd freeChat
+   trang Bot); tren trang luyen noi nay KHONG co o chat tro giang nen khong tu
+   them hop/nut. NGUYEN TAC AN TOAN (goc): cau hoc that LUON lot qua Groq. */
+function intentNorm(s){
+  return String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+}
+var INTENT_GUARD_PASS=['nghia','dong nghia','trai nghia','ngu phap','do tu','do toi','giup toi','giup minh','cham ho','sua bai','cau mau','dich ','phat am','hien tai hoan thanh','qua khu don','hien tai don'];
+function intentHasAny(norm,list){for(var i=0;i<list.length;i++){if(norm.indexOf(list[i])!==-1)return true;}return false;}
+var INTENT_REPLIES={
+  greeting:'Chào bạn nè! 🩷 Mình là Vita, trợ giảng luyện nói của damu. Hôm nay bạn muốn luyện câu nào, hay cần mình gợi ý cách học? Bấm nút 💡 cạnh câu hỏi là mình gợi ý ngay.',
+  identity:'Mình là Vita, capybara hồng trợ giảng của damu nè! 🩷 Mình chấm bài nói, gợi ý câu mẫu và lập chiến lược học cho bạn. Cứ hỏi mình cách học hay bấm chấm bài là mình làm việc ngay.',
+  howtouse:'Dùng app này đơn giản lắm: chọn câu hỏi ở tab Luyện nói, bấm ghi âm rồi nói tiếng Anh, xong bấm chấm bài là Vita chấm 4 tiêu chí cho bạn. Muốn ôn từ thì sang tab Ôn từ vựng. Nhớ mở app mỗi ngày để giữ streak 🔥 nhé!',
+  howtolearn:'Học hiệu quả nhất là: mỗi ngày chấm 2–3 bài, đọc kỹ lỗi Vita chỉ ra rồi nói lại câu đó cho đúng, xong ôn từ cũ ở tab Ôn từ vựng. Đừng học thuộc lòng câu mẫu — lấy ý rồi nói lại theo trải nghiệm của bạn mới lên band thật. Muốn chiến lược riêng theo đúng điểm của bạn thì bấm nút lập chiến lược ở tab Lịch sử nhé.',
+  features:'App có: luyện nói theo forecast (Part 1/2/3), chấm 4 tiêu chí kèm câu mẫu, trợ giảng gợi ý, thi thử, ôn từ vựng ngắt quãng, biểu đồ tiến độ 14 ngày. Lịch sử bài chấm nằm ở tab Lịch sử, bấm vào từng bài là xem lại nhận xét.',
+  thanks:'Không có gì nè! 🩷 Học đều mỗi ngày nhé, mai gặp lại — đừng để streak tắt đấy!'
+};
+function intentRouter(raw){
+  var norm=intentNorm(raw);
+  if(!norm)return null;
+  if(intentHasAny(norm,INTENT_GUARD_PASS))return null; /* cau hoc that -> Groq */
+  if(/^(xin chao|chao|hi|hello|hey)( |$)/.test(norm)||norm.indexOf('chao vita')!==-1||norm.indexOf('chao damu')!==-1)return 'greeting';
+  if(intentHasAny(norm,['ban la ai','vita la ai','ban ten gi','ten ban la gi']))return 'identity';
+  if(intentHasAny(norm,['cach dung','dung app','dung web','su dung app','huong dan dung','app dung the nao','dung the nao','web dung the nao','lam sao de dung','app nay la gi','web nay la gi','app nay de lam gi','bat dau o dau','vao dau de']))return 'howtouse';
+  if(intentHasAny(norm,['cach hoc','hoc the nao','hoc noi the nao','hoc noi hieu qua','noi hieu qua','hoc sao cho','hoc hieu qua','luyen noi the nao','bat dau hoc','moi bat dau','hoc moi ngay','luyen moi ngay','lich hoc','ke hoach hoc','chien luoc hoc']))return 'howtolearn';
+  if(intentHasAny(norm,['tinh nang','co nhung gi','co gi trong app','xem lich su','lich su luyen','lich su bai','bieu do','heatmap','thi thu','streak','cham bai o dau','cham bai nhu the nao','ghi am o dau','ghi am nhu the nao','tai app','cai app'])){
+    if(intentHasAny(norm,['giup','ho toi','ho minh','lam ho','cham ho','cho toi','cho minh','muon thi','dang ky']))return null;
+    return 'features';
+  }
+  if(intentHasAny(norm,['cam on','thanks','thank you','tam biet','bye','hen gap lai','ngu ngon']))return 'thanks';
+  return null;
+}
+var QUICK_ASK_CHIPS=['App này dùng thế nào?','Học nói hiệu quả nhất là sao?','Cho mình 1 câu mẫu Band 6.5','Mình yếu phát âm thì luyện sao?'];
+/* ===== INTENT-ROUTER — END ===== */
 /* ================= CHẤM BÀI ================= */
 function roundBand(avg){var f=Math.floor(avg),frac=avg-f;if(frac<0.25)return f;if(frac<0.75)return f+0.5;return f+1;}
 /* ================= SO LIEU KHACH QUAN (EVIDENCE - tinh cuc bo bang JS, KHONG goi AI) ================= */
@@ -3302,31 +3337,58 @@ function currentBandInfo(){var list=gradedBandList();
   if(list.length>=HINT_MIN_GRADED){var recent=list.slice(0,HINT_WINDOW);var sum=0;for(var i=0;i<recent.length;i++)sum+=recent[i];var avg=sum/recent.length;var band=Math.round(avg*2)/2;if(band<1)band=1;if(band>9)band=9;return{band:band,source:'history',n:recent.length};}
   return{band:loadSelfBand(),source:'self',n:list.length};}
 function hintTarget(cur){var from=Math.min(9,cur+1.0),to=Math.min(9,cur+1.5),disp=Math.round((cur+1.25)*2)/2;if(disp>to)disp=to;if(disp<from)disp=from;return{from:from,to:to,display:disp};}
-function hintBandText(){var info=currentBandInfo();var t=hintTarget(info.band);
-  var src=info.source==='history'?('(trung bình '+info.n+' bài chấm gần nhất)'):('(theo band tự khai ở Cài đặt — chấm thêm vài bài để app tự đo)');
-  return 'Band hiện tại ~'+info.band.toFixed(1)+' '+src+' • Câu mẫu ~Band '+t.display.toFixed(1);}
+/* TUTOR-LEVEL 25/10 (chot cua Nguyen): tro giang CHI dung band TU NHAN
+   (loadSelfBand, mac dinh 5.0), KHONG suy tu lich su cham nua. Cau mau o tam
+   trinh do tu nhan hoac hon khoang 1 band. currentBandInfo/hintTarget cu
+   giu nguyen ben duoi (khong xoa) nhung tro giang khong dung nua. */
+function tutorTarget(self){var s=(typeof self==='number'&&isFinite(self))?self:5.0;var to=Math.min(9,s+1);return{from:s,to:to,display:to};}
+/* TUTOR-HISTORY 25/10 (chot cua Nguyen): lich su gui thong tin sang tro giang.
+   MUC DO mau VAN lay tu band tu nhan (tutorTarget, tu nhan hoac +1, capped 9);
+   thong tin lich su chi quyet dinh TRONG TAM cua cau mau (tieu chi yeu nhat +
+   loi hay lap), khong phai mau chung chung. TAI DUNG dung stratQuick da tinh
+   san (yeu nhat, loi lap, xu huong) — khong bia them chi so moi. Lich su rong
+   hoac chua co bai cham co diem -> tra rong: tro giang khi do chi dung band
+   tu nhan, KHONG bia loi hay diem yeu. Logic thuan, khong UI. */
+function hintHistoryFocus(hist){
+  try{
+    var q=stratQuick(hist);
+    if(!q||q.scoredCount<1)return '';
+    var parts=[];
+    if(q.crit&&q.crit.weakest&&STRAT_NAMES[q.crit.weakest])parts.push('Tiêu chí yếu nhất: '+STRAT_NAMES[q.crit.weakest]);
+    if(q.topErrs&&q.topErrs.length){
+      var tops=q.topErrs.slice(0,3).map(function(e){return e.label+(e.n>1?' (lặp '+e.n+' lần)':'');});
+      parts.push('Lỗi hay lặp lại: '+tops.join('; '));
+    }
+    if(q.trend!=null&&isFinite(q.trend)&&Math.abs(q.trend)>=0.05)parts.push('Xu hướng band: '+(q.trend>0?'đang lên':'đang xuống'));
+    if(!parts.length)return '';
+    return parts.join(' • ').replace(/"/g,"'").replace(/[\r\n]+/g,' ');
+  }catch(e){return '';}
+}
+function hintBandText(){var sb=loadSelfBand();var t=tutorTarget(sb);
+  return 'Band tự nhận ~'+sb.toFixed(1)+' • Câu mẫu ~Band '+t.display.toFixed(1)+' (tầm trình độ của bạn hoặc hơn 1 band)';}
 function syncHintBandChip(){var c=$('hintBandChip');if(c&&!hintLocked())c.textContent=hintBandText();var p=$('hintChip');if(p)p.textContent=hintBandText();}
 function hintLocked(){return (typeof mt!=='undefined'&&mt!==null);}
 function syncHintLock(){var b=$('hintBtn');if(!b)return;var locked=hintLocked();
   if(locked){b.disabled=true;b.classList.add('locked');b.innerHTML='🔒 Trợ giảng đang khóa — đang trong buổi thi thử';var c=$('hintBandChip');if(c)c.textContent='🔒 Thi thật không ai nhắc bài — kết thúc buổi thi thử là trợ giảng mở lại ngay.';closeHintPanel();}
   else{b.disabled=false;b.classList.remove('locked');b.innerHTML='💡 Bí ý tưởng? Nhờ trợ giảng gợi ý';syncHintBandChip();}}
-function buildHintPromptLite(q, part, cur, tgt){
+function buildHintPromptLite(q, part, cur, tgt, histFocus){
   var band=(tgt&&typeof tgt.display==='number')?tgt.display.toFixed(1):'6.5';
   var curB=(typeof cur==='number'&&isFinite(cur))?cur.toFixed(1):'5.0';
   var lenRule=part===2?'150-200 words':(part===3?'70-100 words':'45-70 words');
-  return 'Return ONLY JSON, no other text, no markdown. You are an IELTS Speaking tutor helping a Vietnamese learner at about Band '+curB+' who is stuck on this Part '+part+' question: \''+String(q||'')+'\' Give answer ideas in Vietnamese, useful English phrases, and ONE sample answer at about Band '+band+' ('+lenRule+', simple and natural English, first person). Use EXACTLY this JSON shape: {"ideas":["short idea in Vietnamese","short idea in Vietnamese"],"phrases":[{"en":"useful English phrase","vi":"short Vietnamese meaning"}],"sampleAnswer":"the sample answer in English","sampleBand":'+band+'} Rules: ideas 2-3 items; phrases 4-5 items; never use a double-quote character inside any string value, use single quotes instead.';
+  return 'Return ONLY JSON, no other text, no markdown. You are an IELTS Speaking tutor helping a Vietnamese learner at about Band '+curB+' who is stuck on this Part '+part+' question: \''+String(q||'')+'\' Give answer ideas in Vietnamese, useful English phrases, and ONE sample answer at about Band '+band+' ('+lenRule+', simple and natural English, first person)'+(histFocus?' Aim the sample at this weakness taken from graded history, without changing the question topic: '+histFocus+'.':'')+'. Use EXACTLY this JSON shape: {"ideas":["short idea in Vietnamese","short idea in Vietnamese"],"phrases":[{"en":"useful English phrase","vi":"short Vietnamese meaning"}],"sampleAnswer":"the sample answer in English","sampleBand":'+band+'} Rules: ideas 2-3 items; phrases 4-5 items; never use a double-quote character inside any string value, use single quotes instead.';
 }
-function buildHintPromptUltra(q, part, tgt){
+function buildHintPromptUltra(q, part, tgt, histFocus){
   var band=(tgt&&typeof tgt.display==='number')?tgt.display.toFixed(1):'6.5';
-  return 'Reply ONLY with JSON: {"ideas":["y tuong 1 bang tieng Viet","y tuong 2 bang tieng Viet"],"phrases":[{"en":"English phrase","vi":"nghia Viet ngan"}],"sampleAnswer":"Sample answer in English, 45-70 words, first person","sampleBand":'+band+'} Question Part '+part+': '+String(q||'')+'. No markdown, no explanation, no double quotes inside string values.';
+  return 'Reply ONLY with JSON: {"ideas":["y tuong 1 bang tieng Viet","y tuong 2 bang tieng Viet"],"phrases":[{"en":"English phrase","vi":"nghia Viet ngan"}],"sampleAnswer":"Sample answer in English, 45-70 words, first person","sampleBand":'+band+'} Question Part '+part+': '+String(q||'')+'.'+(histFocus?' Focus the sample on this weakness from graded history, same question topic: '+histFocus+'.':'')+' No markdown, no explanation, no double quotes inside string values.';
 }
-function buildHintPrompt(q, part, points, cur, tgt){
+function buildHintPrompt(q, part, points, cur, tgt, histFocus){
   var lenRule = part===1 ? '45-70 words (2-4 spoken sentences)'
     : part===2 ? '170-220 words, covering ALL the cue card points below'
     : '70-110 words (4-6 spoken sentences)';
   var pts = (points && points.length) ? '\nCue card points to cover: ' + points.join(' | ') : '';
   return 'You are a friendly and patient IELTS Speaking TUTOR (teaching assistant) helping a Vietnamese learner who is STUCK on a question and does not know what to say. Your job is to UNBLOCK them, not to test them: no scoring, no roasting, no examiner tone, no criticism of the learner. Be warm and practical, like a good teaching assistant sitting next to them.\n\n'
     + 'LEARNER LEVEL: the learner currently speaks at about Band ' + cur.toFixed(1) + '. The model answer you write MUST be at Band ' + tgt.display.toFixed(1) + ' (allowed range: Band ' + tgt.from.toFixed(1) + ' to Band ' + tgt.to.toFixed(1) + ') — just ONE step above the learner, close enough that they can learn it, copy its patterns and reuse them today. Do NOT write a Band 8-9 answer: no rare idioms, no exotic structures (no inversion, no cleft sentences), no flashy vocabulary the learner would never meet again. At Band ' + tgt.display.toFixed(1) + ' that means: mostly common natural vocabulary with a few good collocations at this level; a mix of simple sentences plus some accurate compound/complex ones (because, when, which, if); the question answered directly, then ONE detail or small personal example.\n\n'
+    + (histFocus?'LEARNER HISTORY FOCUS (from real graded history — aim the sample answer here, do NOT change the question topic): '+histFocus+'\nThe ideas, phrases and sample answer should deliberately practise the weakest criterion and help repair the repeated errors above, while still answering THIS question directly.\n\n':'')
     + 'QUESTION (IELTS Speaking Part ' + part + '): "' + q + '"' + pts + '\n\n'
     + 'Respond with ONLY a valid JSON object (no markdown fences, no text outside JSON) in EXACTLY this shape:\n'
     + '{"ideas":["...","..."],"phrases":[{"en":"...","vi":"..."}],"sampleAnswer":"...","sampleBand":' + tgt.display.toFixed(1) + '}\n'
@@ -3335,12 +3397,13 @@ function buildHintPrompt(q, part, points, cur, tgt){
     + '- phrases: 4-6 items. en = a natural English phrase, collocation or sentence starter genuinely useful for THIS question and learnable at Band ' + tgt.display.toFixed(1) + '; vi = a very short Vietnamese meaning (max 8 words).\n'
     + '- sampleAnswer: ONE complete model answer in natural spoken English, first person, which the learner can shadow and then adapt with their own details. Length: ' + lenRule + '. It must stay at Band ' + tgt.display.toFixed(1) + ' — simple, correct and natural beats fancy and wrong. Do not mention bands or levels inside the answer.\n'
     + '- sampleBand: exactly ' + tgt.display.toFixed(1) + '.\n'
+    + (histFocus?'- HISTORY FOCUS: the sample answer MUST target the history focus above (weakest criterion / repeated errors); a generic sample ignoring it is wrong.\n':'')
     + '- CRITICAL JSON RULES: output ONLY the JSON object; NEVER use a double-quote character inside any string value — use single quotes instead; keep ideas and phrases within the word limits above.';
 }
 function toggleHintPanel(){if(hintOpen){closeHintPanel();return;}var p=$('hintPanel');if(!p)return;hintOpen=true;p.classList.add('open');p.setAttribute('aria-hidden','false');syncHintBandChip();requestHint(false);}
 function closeHintPanel(){stopSpeak();hintOpen=false;var p=$('hintPanel');if(p){p.classList.remove('open');p.setAttribute('aria-hidden','true');}}
 function resetHintPanel(){closeHintPanel();var b=$('hintBody');if(b)b.innerHTML='<p class="small">Bấm nút 💡 cạnh câu hỏi, trợ giảng sẽ gợi ý hướng trả lời + cho 1 câu mẫu vừa tầm với bạn.</p>';syncHintBandChip();}
-function renderHint(g,info,via){var body=$('hintBody');if(!body)return;var tgt=hintTarget(info.band);
+function renderHint(g,info,via){var body=$('hintBody');if(!body)return;var tgt=tutorTarget(info.band);
   var h='<p>Câu hỏi: <b>'+esc(curQuestion)+'</b></p>';
   if(curPart===2){var d=partData()[curTopicIdx];if(d&&d.points&&d.points.length){h+='<p class="small">Ý cue card cần bao phủ: '+esc(d.points.join(' • '))+'</p>';}}
   h+='<h4>🧭 Hướng triển khai</h4><ul>';for(var i=0;i<g.ideas.length;i++)h+='<li>'+esc(g.ideas[i])+'</li>';h+='</ul>';
@@ -3376,13 +3439,14 @@ async function requestHint(force){var body=$('hintBody');if(!body)return;
   if(hintLoading)return;
   var ck=curPart+'|'+curQuestion;
   if(!force&&hintCache[ck]){renderHint(hintCache[ck].g,hintCache[ck].info,hintCache[ck].via);return;}
-  var info=currentBandInfo();var tgt=hintTarget(info.band);
+  var info={band:loadSelfBand(),source:'self'};var tgt=tutorTarget(info.band);
+  var histFocus=hintHistoryFocus();
   var points=curPart===2?((partData()[curTopicIdx]&&partData()[curTopicIdx].points)||null):null;
   body.innerHTML='<p><span class="spin"></span> Trợ giảng đang nghĩ ý cho câu này…</p>';
   hintLoading=true;var btn=$('hintBtn');if(btn)btn.disabled=true;
   try{
-    var lite=buildHintPromptLite(curQuestion,curPart,info.band,tgt);
-    var res=await hintAskWithLimitRetry(buildHintPrompt(curQuestion,curPart,points,info.band,tgt),HINT_SYS,lite);
+    var lite=buildHintPromptLite(curQuestion,curPart,info.band,tgt,histFocus);
+    var res=await hintAskWithLimitRetry(buildHintPrompt(curQuestion,curPart,points,info.band,tgt,histFocus),HINT_SYS,lite);
     var g=parseHint(res.text);
     if(!isValidHint(g)){
       /* RETRY 1 bang prompt CUC NGAN (lite lam ca prompt chinh lan lite):
@@ -3390,7 +3454,7 @@ async function requestHint(force){var body=$('hintBody');if(!body)return;
          Ket qua duoc GOP (mergeHints) voi phan da trich duoc o luot truoc chu khong bo di:
          ca that HINT_LITE_1 bi cat cut dung o '"phrases":[' nen chi co ideas — gop giu tron ideas. */
       aiSetStatus('Trợ giảng đang thử lại bằng prompt ngắn…');
-      var res2=await hintAskWithLimitRetry(buildHintPromptUltra(curQuestion,curPart,tgt),HINT_SYS,lite);
+      var res2=await hintAskWithLimitRetry(buildHintPromptUltra(curQuestion,curPart,tgt,histFocus),HINT_SYS,lite);
       var g2=parseHint(res2.text);
       var merged=mergeHints(g,g2);
       if(isValidHint(merged)){g=merged;res=res2;}
@@ -3563,7 +3627,7 @@ function renderStrategy(){
 }
 var stratLoading=false;
 function buildStrategyPromptLite(summary){
-  return 'Write an IELTS Speaking band-up strategy IN VIETNAMESE as PLAIN TEXT (no JSON, no markdown), max 250 words, with these 3 headings on their own lines: NHẬN XÉT TỔNG QUAN / CHIẾN LƯỢC NÂNG BAND / MỤC TIÊU TUẦN NÀY. Give concrete daily exercises and 2-3 measurable goals for this week. Base it ONLY on this learner data:\n'+summary;
+  return 'Write an IELTS Speaking band-up strategy IN VIETNAMESE as PLAIN TEXT (no JSON, no markdown), max 250 words, with these 3 headings on their own lines: NHẬN XÉT TỔNG QUAN / CHIẾN LƯỢC NÂNG BAND / MỤC TIÊU TUẦN NÀY. In NHẬN XÉT TỔNG QUAN, name the strongest and weakest criteria and the most repeated errors from the data. Give concrete daily exercises and 2-3 measurable goals for this week. Base it ONLY on this learner data:\n'+summary;
 }
 async function genStrategy(){
   if(stratLoading)return;
@@ -3577,7 +3641,7 @@ async function genStrategy(){
     +'\nXu hướng band: '+(q.trend==null?'chưa đủ dữ liệu':(q.trend>0.04?'đang lên (+'+q.trend.toFixed(1)+')':(q.trend<-0.04?'đang xuống ('+q.trend.toFixed(1)+')':'đi ngang')))
     +'\nLỗi lặp lại nhiều nhất: '+(q.topErrs.length?q.topErrs.map(function(e){return e.label+' (lặp '+e.n+' lần'+(e.fix?', sửa đúng: '+e.fix:'')+')';}).join('; '):'chưa ghi nhận')
     +'\nTổng số bài đã chấm: '+q.scoredCount;
-  var prompt='You are Vita, an IELTS Speaking examiner-coach. Based ONLY on this learner data summary, write a band-up strategy IN VIETNAMESE as PLAIN TEXT (no JSON, no markdown code fences). Structure with these 3 clear headings on their own lines: 1) NHẬN XÉT TỔNG QUAN — 3-4 câu thẳng thắn về tình trạng hiện tại, bám đúng số liệu. 2) CHIẾN LƯỢC NÂNG BAND — ưu tiên tiêu chí nào trước và vì sao, kèm bài tập cụ thể làm được ngay mỗi ngày (nói rõ làm gì, bao lâu, lấy ví dụ từ lỗi lặp lại ở trên). 3) MỤC TIÊU TUẦN NÀY — 2-3 mục tiêu đo được (số bài chấm, lỗi phải sửa dứt điểm, band mục tiêu cho tiêu chí yếu nhất). Giọng: thẳng, có roast nhẹ cho có động lực nhưng không xúc phạm người học. Tối đa khoảng 350 từ.\n\nDỮ LIỆU HỌC VIÊN:\n'+summary;
+  var prompt='You are Vita, an IELTS Speaking examiner-coach. Based ONLY on this learner data summary, write a band-up strategy IN VIETNAMESE as PLAIN TEXT (no JSON, no markdown code fences). Structure with these 3 clear headings on their own lines: 1) NHẬN XÉT TỔNG QUAN — 3-4 câu thẳng thắn về tình trạng hiện tại, bám đúng số liệu: nêu rõ ĐIỂM MẠNH, ĐIỂM YẾU và TIÊU CHÍ HAY LẶP LỖI từ dữ liệu trên. 2) CHIẾN LƯỢC NÂNG BAND — ưu tiên tiêu chí nào trước và vì sao, kèm bài tập cụ thể làm được ngay mỗi ngày (nói rõ làm gì, bao lâu, lấy ví dụ từ lỗi lặp lại ở trên). 3) MỤC TIÊU TUẦN NÀY — 2-3 mục tiêu đo được (số bài chấm, lỗi phải sửa dứt điểm, band mục tiêu cho tiêu chí yếu nhất). Giọng: thẳng, có roast nhẹ cho có động lực nhưng không xúc phạm người học. Tối đa khoảng 350 từ.\n\nDỮ LIỆU HỌC VIÊN:\n'+summary;
   try{
     var res=await aiAsk(prompt,null,buildStrategyPromptLite(summary));
     var text=String((res&&res.text)||'').trim();
