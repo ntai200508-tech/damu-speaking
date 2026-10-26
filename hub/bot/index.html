@@ -616,9 +616,57 @@ function wordCount(t){var m=String(t||'').trim().match(/\S+/g);return m?m.length
 function fetchTimeout(url,opts,ms){return new Promise(function(resolve,reject){var c=(typeof AbortController!=='undefined')?new AbortController():null;var t=setTimeout(function(){if(c)c.abort();reject(new Error('timeout'));},ms||15000);var o={};if(opts)for(var k in opts)o[k]=opts[k];if(c)o.signal=c.signal;fetch(url,o).then(function(r){clearTimeout(t);resolve(r);},function(e){clearTimeout(t);reject(e);});});}
 function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
 
+/* ===== PROMPTS_v1 — NGUON DUY NHAT CUA MOI CHUOI PROMPT (STEP1) =====
+   Version: 'v1'. Key cache tuong lai phai chua version, quy uoc: 'v1:' + key.
+   (vi du 'v1:grade:<hash>'). Chua noi KV o buoc nay. polliAsk giu nguyen ten
+   (transport song la Worker /complete); chi chuoi prompt doi noi dat vao day. */
+var PROMPTS_v1={
+  version:'v1',
+  keyPrefix:'v1:',
+  sys:{
+    grade:'You are Vita, a pink capybara and strict IELTS Speaking examiner-coach, like the examiners in real mock-test feedback videos: grade strictly against the OFFICIAL IELTS band descriptors with no grade inflation; quote the candidate exact words before correcting them; explain why that evidence caps the band by referring to the descriptor; then show a concrete upgraded rewrite. Follow the user instruction exactly and output ONLY the requested JSON.',
+    model:'You are Vita, a pink capybara and strict IELTS Speaking examiner. Output ONLY the model answer text.',
+    chat:'You are Vita, a pink capybara (chuột lang nước — NOT a beaver, never call yourself "hải ly") English tutor inside the damu app. Be warm, blunt and funny in Vietnamese. Output ONLY your reply text, no JSON, no reasoning.',
+  },
+  desc:{
+FC:'Band 4: cannot keep going without noticeable pauses; slow speech with frequent repetition and self-correction; links simple sentences only, with repetitious connectives; some breakdowns in coherence. Band 5: usually keeps going but relies on repetition and self-correction and/or slow speech; hesitations often mid-sentence while searching for fairly basic lexis and grammar; overuses certain discourse markers and connectives; complex speech usually causes disfluency but simpler language may be fluent. Band 6: keeps going and willing to produce long turns; coherence may be lost at times through hesitation, repetition and/or self-correction; uses a range of discourse markers, connectives and cohesive features though not always appropriately. Band 7: long turns produced without noticeable effort; some hesitation, repetition or self-correction, often mid-sentence, but coherence is not affected; flexible use of discourse markers, connectives and cohesive features. Band 8: fluent with only very occasional repetition or self-correction; hesitation mostly to find content, not language; topic development coherent, appropriate and relevant. Band 9 (summary): fluent; hesitation only to prepare content; fully coherent, appropriately extended topic development.',
+LR:'Band 4: resource sufficient for familiar topics but only basic meaning conveyed on unfamiliar topics; frequent inappropriacies and errors in word choice; rarely attempts paraphrase. Band 5: resource sufficient for familiar and unfamiliar topics but limited flexibility; attempts paraphrase but not always with success. Band 6: resource sufficient to discuss topics at length; vocabulary use may be inappropriate but meaning is clear; generally able to paraphrase successfully. Band 7: resource flexibly used for a variety of topics; some less common and idiomatic items, with awareness of style and collocation though inappropriacies occur; effective paraphrase as required. Band 8: wide resource readily and flexibly used for all topics and precise meaning; skilful use of less common and idiomatic items despite occasional word-choice and collocation inaccuracies; effective paraphrase. Band 9 (summary): total flexibility and precise use in all contexts; sustained accurate idiomatic language.',
+GRA:'Band 4: can produce basic sentence forms and some short utterances are error-free; subordinate clauses rare; turns short, structures repetitive, errors frequent. Band 5: basic sentence forms fairly well controlled for accuracy; complex structures attempted but limited in range, nearly always contain errors and may need reformulation. Band 6: mix of short and complex forms and a variety of structures with limited flexibility; errors frequently occur in complex structures but rarely impede communication. Band 7: a range of structures flexibly used; error-free sentences are frequent; simple and complex sentences used effectively despite some errors; a few basic errors persist. Band 8: wide range of structures flexibly used; the majority of sentences are error-free; only occasional inappropriacies and non-systematic errors; a few basic errors may persist. Band 9 (summary): structures precise and accurate at all times apart from native-like slips.',
+P:'Band 4: uses some acceptable phonological features but range limited; some acceptable chunking but frequent lapses in rhythm; intonation and stress attempted but control limited; individual words and phonemes frequently mispronounced causing lack of clarity; understanding requires effort and some patches cannot be understood. Band 5: displays all the positive features of Band 4 and some, but not all, of the positive features of Band 6. Band 6: uses a range of phonological features but control is variable; chunking generally appropriate but rhythm may be affected by lack of stress-timing and/or a rapid rate; some effective intonation and stress but not sustained; individual words or phonemes may be mispronounced but only occasional lack of clarity; generally understood throughout without much effort. Band 7: displays all the positive features of Band 6 and some, but not all, of the positive features of Band 8. Band 8: wide range of phonological features to convey precise and subtle meaning; can sustain appropriate rhythm; flexible stress and intonation across long utterances despite occasional lapses; easily understood throughout; accent has minimal effect on intelligibility. Band 9 (summary): full range of phonological features; effortlessly understood throughout; accent has no effect on intelligibility.'
+},
+  anchor:'Anchors from real mock tests: Band 5.0 = chains of short simple sentences, ends sentences with "Yeah", repeats the question stem, basic errors even in simple sentences (e.g. "when I were a child", "the story have traditional Vietnam value"), basic repetitive vocabulary, word-class slips ("physical healthy"), final sounds and final -s dropped. Band 5.5 = answers extended to 3-4 sentences, natural fillers, some relative clauses and one idiom attempt, but tense range narrow (past/present simple only) and slips still land in simple sentences. Band 6.5 = ideas developed across topics, errors only occasional slips. Band 7.5 = long fluent turns on many topics, precise topic-specific vocabulary (heavy footfall, activations), mostly error-free sentences; weakest point often double comparatives (the most hard part, the more easier).',
+  scoreRule:'SCORING RULE (official): grade by MATCHING the performance against the descriptors above. The candidate must FULLY fit ALL positive features of a band to receive that band; if the fit is incomplete, award the band BELOW. Give .0 or .5 scores only.',
+  examinerStyle:'EXAMINER STYLE (from real examiner feedback videos): name the criterion, QUOTE the candidate exact words, explain WHY that evidence caps the band by referring to the descriptor, then give a concrete upgrade with a rewritten example. English is the main language of the judgement; keep Vietnamese notes short.',
+  buildMicroPrompt(key,name,q,part,tr){
+  return 'Grade ONLY '+key+' ('+name+') for this IELTS Speaking answer. Be strict, never inflate.\n'
+    +'OFFICIAL IELTS BAND DESCRIPTORS for '+key+' ('+name+'):\n'+PROMPTS_v1.desc[key]+'\n'
+    +PROMPTS_v1.scoreRule+'\n'
+    +'CALIBRATION: '+PROMPTS_v1.anchor+'\n'
+    +PROMPTS_v1.examinerStyle+'\n'
+    +'Return ONLY valid JSON, no markdown: {"score":5.0,"descRef":"Band X: descriptor feature — matches or not fully, because evidence","strength":"1 short genuine strength in Vietnamese tied to this answer","wrong":"exact phrase copied word-for-word from the transcript","fix":"corrected version of that exact phrase","why":"short reason in Vietnamese referring to the descriptor","advice":"specific fix in Vietnamese","drill":"one concrete 5-10 minute drill in Vietnamese tied to that error","bandLink":"Not yet Band X because ...; fixing ... lifts this criterion to Band Y (English, plus a short Vietnamese note if needed)"}\n'
+    +'Rules: score is a multiple of 0.5 between 3.0 and 9.0. descRef MUST cite the descriptor band that decided the score. "wrong" MUST be copied character-for-character from the transcript; never invent one — if the answer has no error for '+key+', set "wrong" and "fix" to empty strings. For P (Pronunciation), judge only what a transcript can show (word stress clues, final sounds likely dropped, pausing) and note that limit in "why" if needed. Never use a double-quote character inside string values.\n'
+    +'Question (Part '+part+'): "'+String(q||'').slice(0,300)+'"\nTranscript: "'+String(tr||'').slice(0,1100)+'"';
+},
+  buildRecoveryPrompt(key,name,q,part,tr){
+  return 'Grade ONLY '+key+' ('+name+') for this IELTS Speaking answer. Be strict, never inflate.\n'
+    +'OFFICIAL IELTS BAND DESCRIPTORS for '+key+':\n'+PROMPTS_v1.desc[key]+'\n'
+    +PROMPTS_v1.scoreRule+'\nCALIBRATION: '+PROMPTS_v1.anchor+'\n'
+    +'Return ONLY valid JSON, no markdown: {"score":5.0,"descRef":"Band X: descriptor feature — matches or not fully, because evidence","strength":"1 short strength in Vietnamese","advice":"1 specific fix in Vietnamese"}. Never use a double-quote character inside string values.\n'
+    +'Question (Part '+part+'): "'+String(q||'').slice(0,200)+'"\nTranscript: "'+String(tr||'').slice(0,900)+'"';
+},
+  buildErrorsPrompt(q,part,tr){
+  return 'List the 3 most important language errors in this IELTS Speaking answer. Anchor: prioritise errors that cap the band under the official descriptors — basic errors in SIMPLE sentences cap GRA at Band 5; word-choice and word-class errors cap LR at Band 5. Return ONLY valid JSON, no markdown: {"errors":[{"wrong":"exact phrase copied word-for-word from the transcript","fix":"corrected version","why":"short reason in Vietnamese"}]}. Never invent a phrase: every "wrong" must appear word-for-word in the transcript. Never use a double-quote character inside string values.\nQuestion (Part '+part+'): "'+String(q||'').slice(0,300)+'"\nTranscript: "'+String(tr||'').slice(0,1100)+'"';
+},
+  buildModelPrompt(q,part,tr){
+  var len=(part===2)?'180-220 words':'60-90 words';
+  return 'Write a Band 6.5 model answer to this IELTS Speaking Part '+part+' question, '+len+', keeping the learner ideas and order but fixing grammar and vocabulary. Anchor: Band 6.5 means ideas developed at length, successful paraphrase, a mix of sentence forms, and errors only as occasional slips. Output ONLY the model answer text, no title, no quotes, no explanation.\nQuestion: "'+String(q||'').slice(0,300)+'"\nLearner answer: "'+String(tr||'').slice(0,1100)+'"';
+},
+  freeChatPrompt(text,mem){return 'User says: "'+String(text).slice(0,500)+'". '+(mem?mem+' ':'')+'Reply in Vietnamese, short and helpful (max 6 sentences). Rules: stay in character as Vita the pink capybara tutor — warm, blunt, funny, tease lightly when the user is wrong and praise when right; when correcting English, FIRST quote the exact words from the user, then give the fix and the rule in one line; when explaining a word, give meaning + 1 example + 1 synonym/antonym if you know them, never invent a meaning — if unsure, say so and point to "tra <từ>"; never dump a list of quiz answers, keep the one-by-one quiz style; if the user asks about English or IELTS, teach briefly with an example. Gently suggest the chips: Cau Part 1/2/3, tra <tu>, do <tu>.';}
+};
+/* ===== END PROMPTS_v1 ===== */
 /* ================= WORKER DAMU (DUONG RIENG) ================= */
 var DAMU_WORKER_URL='https://damu-bot.ntai200508.workers.dev';
-var POLLI_SYS_GRADE='You are Vita, a pink capybara and strict IELTS Speaking examiner-coach, like the examiners in real mock-test feedback videos: grade strictly against the OFFICIAL IELTS band descriptors with no grade inflation; quote the candidate exact words before correcting them; explain why that evidence caps the band by referring to the descriptor; then show a concrete upgraded rewrite. Follow the user instruction exactly and output ONLY the requested JSON.';
+var POLLI_SYS_GRADE=PROMPTS_v1.sys.grade; /* STEP1: ten cu giu nguyen (polliAsk song bang Worker); chuoi nay nam trong PROMPTS_v1. */
 async function polliAsk(prompt,sys,timeoutMs){
   /* TRANSPORT sang duong rieng (24/10): Worker /complete thay cho Pollinations
      truc tiep. Giu nguyen signature + hanh vi thu lai (2 luot, nghi 900ms):
@@ -677,12 +725,7 @@ function validateGrade(g){ /* rút gọn: đủ 4 điểm hợp lệ mới coi l
    Nguồn rubric: IELTS Speaking Band Descriptors (public version, ielts.org) — bản đầy đủ lưu ở
    damu-speaking/research/band-descriptors-public.md. Hai ghi chú chính thức: (i) thí sinh phải khớp
    ĐẦY ĐỦ đặc điểm tích cực của một band mới đạt band đó; (ii) điểm là hiệu năng trung bình qua các phần. */
-var DESC={
-FC:'Band 4: cannot keep going without noticeable pauses; slow speech with frequent repetition and self-correction; links simple sentences only, with repetitious connectives; some breakdowns in coherence. Band 5: usually keeps going but relies on repetition and self-correction and/or slow speech; hesitations often mid-sentence while searching for fairly basic lexis and grammar; overuses certain discourse markers and connectives; complex speech usually causes disfluency but simpler language may be fluent. Band 6: keeps going and willing to produce long turns; coherence may be lost at times through hesitation, repetition and/or self-correction; uses a range of discourse markers, connectives and cohesive features though not always appropriately. Band 7: long turns produced without noticeable effort; some hesitation, repetition or self-correction, often mid-sentence, but coherence is not affected; flexible use of discourse markers, connectives and cohesive features. Band 8: fluent with only very occasional repetition or self-correction; hesitation mostly to find content, not language; topic development coherent, appropriate and relevant. Band 9 (summary): fluent; hesitation only to prepare content; fully coherent, appropriately extended topic development.',
-LR:'Band 4: resource sufficient for familiar topics but only basic meaning conveyed on unfamiliar topics; frequent inappropriacies and errors in word choice; rarely attempts paraphrase. Band 5: resource sufficient for familiar and unfamiliar topics but limited flexibility; attempts paraphrase but not always with success. Band 6: resource sufficient to discuss topics at length; vocabulary use may be inappropriate but meaning is clear; generally able to paraphrase successfully. Band 7: resource flexibly used for a variety of topics; some less common and idiomatic items, with awareness of style and collocation though inappropriacies occur; effective paraphrase as required. Band 8: wide resource readily and flexibly used for all topics and precise meaning; skilful use of less common and idiomatic items despite occasional word-choice and collocation inaccuracies; effective paraphrase. Band 9 (summary): total flexibility and precise use in all contexts; sustained accurate idiomatic language.',
-GRA:'Band 4: can produce basic sentence forms and some short utterances are error-free; subordinate clauses rare; turns short, structures repetitive, errors frequent. Band 5: basic sentence forms fairly well controlled for accuracy; complex structures attempted but limited in range, nearly always contain errors and may need reformulation. Band 6: mix of short and complex forms and a variety of structures with limited flexibility; errors frequently occur in complex structures but rarely impede communication. Band 7: a range of structures flexibly used; error-free sentences are frequent; simple and complex sentences used effectively despite some errors; a few basic errors persist. Band 8: wide range of structures flexibly used; the majority of sentences are error-free; only occasional inappropriacies and non-systematic errors; a few basic errors may persist. Band 9 (summary): structures precise and accurate at all times apart from native-like slips.',
-P:'Band 4: uses some acceptable phonological features but range limited; some acceptable chunking but frequent lapses in rhythm; intonation and stress attempted but control limited; individual words and phonemes frequently mispronounced causing lack of clarity; understanding requires effort and some patches cannot be understood. Band 5: displays all the positive features of Band 4 and some, but not all, of the positive features of Band 6. Band 6: uses a range of phonological features but control is variable; chunking generally appropriate but rhythm may be affected by lack of stress-timing and/or a rapid rate; some effective intonation and stress but not sustained; individual words or phonemes may be mispronounced but only occasional lack of clarity; generally understood throughout without much effort. Band 7: displays all the positive features of Band 6 and some, but not all, of the positive features of Band 8. Band 8: wide range of phonological features to convey precise and subtle meaning; can sustain appropriate rhythm; flexible stress and intonation across long utterances despite occasional lapses; easily understood throughout; accent has minimal effect on intelligibility. Band 9 (summary): full range of phonological features; effortlessly understood throughout; accent has no effect on intelligibility.'
-};
+var DESC=PROMPTS_v1.desc;
 /* Dòng đối chiếu descriptor XÁC ĐỊNH: luôn lấy từ rubric nhúng sẵn (DESC) theo band đạt được,
    KHÔNG phụ thuộc lượt AI có trả descRef hay không — mọi tiêu chí có điểm đều có dòng này. */
 function descSegment(key,band){
@@ -700,33 +743,13 @@ function descLineFor(key,score){
   if(score>lo){var segHi=descSegment(key,lo+1);return 'Band '+lo+': '+seg+(segHi?(' — đã chạm một phần Band '+(lo+1)+': '+segHi):'');}
   return 'Band '+lo+': '+seg;
 }
-var ANCHOR='Anchors from real mock tests: Band 5.0 = chains of short simple sentences, ends sentences with "Yeah", repeats the question stem, basic errors even in simple sentences (e.g. "when I were a child", "the story have traditional Vietnam value"), basic repetitive vocabulary, word-class slips ("physical healthy"), final sounds and final -s dropped. Band 5.5 = answers extended to 3-4 sentences, natural fillers, some relative clauses and one idiom attempt, but tense range narrow (past/present simple only) and slips still land in simple sentences. Band 6.5 = ideas developed across topics, errors only occasional slips. Band 7.5 = long fluent turns on many topics, precise topic-specific vocabulary (heavy footfall, activations), mostly error-free sentences; weakest point often double comparatives (the most hard part, the more easier).';
-var SCORE_RULE='SCORING RULE (official): grade by MATCHING the performance against the descriptors above. The candidate must FULLY fit ALL positive features of a band to receive that band; if the fit is incomplete, award the band BELOW. Give .0 or .5 scores only.';
-var EXAMINER_STYLE='EXAMINER STYLE (from real examiner feedback videos): name the criterion, QUOTE the candidate exact words, explain WHY that evidence caps the band by referring to the descriptor, then give a concrete upgrade with a rewritten example. English is the main language of the judgement; keep Vietnamese notes short.';
-function buildMicroPrompt(key,name,q,part,tr){
-  return 'Grade ONLY '+key+' ('+name+') for this IELTS Speaking answer. Be strict, never inflate.\n'
-    +'OFFICIAL IELTS BAND DESCRIPTORS for '+key+' ('+name+'):\n'+DESC[key]+'\n'
-    +SCORE_RULE+'\n'
-    +'CALIBRATION: '+ANCHOR+'\n'
-    +EXAMINER_STYLE+'\n'
-    +'Return ONLY valid JSON, no markdown: {"score":5.0,"descRef":"Band X: descriptor feature — matches or not fully, because evidence","strength":"1 short genuine strength in Vietnamese tied to this answer","wrong":"exact phrase copied word-for-word from the transcript","fix":"corrected version of that exact phrase","why":"short reason in Vietnamese referring to the descriptor","advice":"specific fix in Vietnamese","drill":"one concrete 5-10 minute drill in Vietnamese tied to that error","bandLink":"Not yet Band X because ...; fixing ... lifts this criterion to Band Y (English, plus a short Vietnamese note if needed)"}\n'
-    +'Rules: score is a multiple of 0.5 between 3.0 and 9.0. descRef MUST cite the descriptor band that decided the score. "wrong" MUST be copied character-for-character from the transcript; never invent one — if the answer has no error for '+key+', set "wrong" and "fix" to empty strings. For P (Pronunciation), judge only what a transcript can show (word stress clues, final sounds likely dropped, pausing) and note that limit in "why" if needed. Never use a double-quote character inside string values.\n'
-    +'Question (Part '+part+'): "'+String(q||'').slice(0,300)+'"\nTranscript: "'+String(tr||'').slice(0,1100)+'"';
-}
-function buildRecoveryPrompt(key,name,q,part,tr){
-  return 'Grade ONLY '+key+' ('+name+') for this IELTS Speaking answer. Be strict, never inflate.\n'
-    +'OFFICIAL IELTS BAND DESCRIPTORS for '+key+':\n'+DESC[key]+'\n'
-    +SCORE_RULE+'\nCALIBRATION: '+ANCHOR+'\n'
-    +'Return ONLY valid JSON, no markdown: {"score":5.0,"descRef":"Band X: descriptor feature — matches or not fully, because evidence","strength":"1 short strength in Vietnamese","advice":"1 specific fix in Vietnamese"}. Never use a double-quote character inside string values.\n'
-    +'Question (Part '+part+'): "'+String(q||'').slice(0,200)+'"\nTranscript: "'+String(tr||'').slice(0,900)+'"';
-}
-function buildErrorsPrompt(q,part,tr){
-  return 'List the 3 most important language errors in this IELTS Speaking answer. Anchor: prioritise errors that cap the band under the official descriptors — basic errors in SIMPLE sentences cap GRA at Band 5; word-choice and word-class errors cap LR at Band 5. Return ONLY valid JSON, no markdown: {"errors":[{"wrong":"exact phrase copied word-for-word from the transcript","fix":"corrected version","why":"short reason in Vietnamese"}]}. Never invent a phrase: every "wrong" must appear word-for-word in the transcript. Never use a double-quote character inside string values.\nQuestion (Part '+part+'): "'+String(q||'').slice(0,300)+'"\nTranscript: "'+String(tr||'').slice(0,1100)+'"';
-}
-function buildModelPrompt(q,part,tr){
-  var len=(part===2)?'180-220 words':'60-90 words';
-  return 'Write a Band 6.5 model answer to this IELTS Speaking Part '+part+' question, '+len+', keeping the learner ideas and order but fixing grammar and vocabulary. Anchor: Band 6.5 means ideas developed at length, successful paraphrase, a mix of sentence forms, and errors only as occasional slips. Output ONLY the model answer text, no title, no quotes, no explanation.\nQuestion: "'+String(q||'').slice(0,300)+'"\nLearner answer: "'+String(tr||'').slice(0,1100)+'"';
-}
+var ANCHOR=PROMPTS_v1.anchor;
+var SCORE_RULE=PROMPTS_v1.scoreRule;
+var EXAMINER_STYLE=PROMPTS_v1.examinerStyle;
+function buildMicroPrompt(key,name,q,part,tr){return PROMPTS_v1.buildMicroPrompt(key,name,q,part,tr);}
+function buildRecoveryPrompt(key,name,q,part,tr){return PROMPTS_v1.buildRecoveryPrompt(key,name,q,part,tr);}
+function buildErrorsPrompt(q,part,tr){return PROMPTS_v1.buildErrorsPrompt(q,part,tr);}
+function buildModelPrompt(q,part,tr){return PROMPTS_v1.buildModelPrompt(q,part,tr);}
 
 /* ================= FORECAST ================= */
 function pickQuestion(part){
@@ -779,7 +802,7 @@ async function gradeAnswer(answerText,speechSec){
   }
   async function runModel(){
     try{
-      var rawM=await polliAsk(buildModelPrompt(cur.question,cur.part,tr),'You are Vita, a pink capybara and strict IELTS Speaking examiner. Output ONLY the model answer text.',25000);
+      var rawM=await polliAsk(buildModelPrompt(cur.question,cur.part,tr),PROMPTS_v1.sys.model,25000);
       model=unwrapEnvelope(rawM).replace(/^["“]|["”]$/g,'').trim();
       if(model.length<25||/^\{/.test(model))model='';
     }catch(e){missing.push('MODEL');}
@@ -989,11 +1012,74 @@ function botMemoryLine(){
     return 'Ngữ cảnh học của người này (chỉ dùng để cá nhân hoá câu trả lời, không bịa thêm dữ liệu): '+parts.join('; ')+'.';
   }catch(e){return '';}
 }
+/* ===== INTENT-ROUTER (hoc theo bai Dialogflow, lam trong code damu — KHONG dung Dialogflow) — START ===== */
+/* Phan loai intent nhe, chay local, KHONG goi AI. Dung truoc duong goi aiAsk
+   cua hop "Hoi nhanh Vita" (tro giang): khop mau co dinh -> tra cau soan san,
+   khong khop -> tra null de di Groq nhu cu. NGUYEN TAC AN TOAN: cau hoc that
+   (nghia tu, ngu phap, do tu, nho cham/sua bai, xin cau mau, dich, phat am)
+   LUON lot qua Groq — router khong bao gio chan chung. */
+function intentNorm(s){
+  return String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+}
+var INTENT_GUARD_PASS=['nghia','dong nghia','trai nghia','ngu phap','do tu','do toi','giup toi','giup minh','cham ho','sua bai','cau mau','dich ','phat am','hien tai hoan thanh','qua khu don','hien tai don'];
+function intentHasAny(norm,list){for(var i=0;i<list.length;i++){if(norm.indexOf(list[i])!==-1)return true;}return false;}
+var INTENT_REPLIES={
+  greeting:'Chào bạn nè! 🩷 Mình là Vita, trợ giảng luyện nói của damu. Hôm nay bạn muốn luyện câu nào, hay cần mình gợi ý cách học? Bấm nút 💡 cạnh câu hỏi là mình gợi ý ngay.',
+  identity:'Mình là Vita, capybara hồng trợ giảng của damu nè! 🩷 Mình chấm bài nói, gợi ý câu mẫu và lập chiến lược học cho bạn. Cứ hỏi mình cách học hay bấm chấm bài là mình làm việc ngay.',
+  howtouse:'Dùng app này đơn giản lắm: chọn câu hỏi ở tab Luyện nói, bấm ghi âm rồi nói tiếng Anh, xong bấm chấm bài là Vita chấm 4 tiêu chí cho bạn. Muốn ôn từ thì sang tab Ôn từ vựng. Nhớ mở app mỗi ngày để giữ streak 🔥 nhé!',
+  howtolearn:'Học hiệu quả nhất là: mỗi ngày chấm 2–3 bài, đọc kỹ lỗi Vita chỉ ra rồi nói lại câu đó cho đúng, xong ôn từ cũ ở tab Ôn từ vựng. Đừng học thuộc lòng câu mẫu — lấy ý rồi nói lại theo trải nghiệm của bạn mới lên band thật. Muốn chiến lược riêng theo đúng điểm của bạn thì bấm nút lập chiến lược ở tab Lịch sử nhé.',
+  features:'App có: luyện nói theo forecast (Part 1/2/3), chấm 4 tiêu chí kèm câu mẫu, trợ giảng gợi ý, thi thử, ôn từ vựng ngắt quãng, biểu đồ tiến độ 14 ngày. Lịch sử bài chấm nằm ở tab Lịch sử, bấm vào từng bài là xem lại nhận xét.',
+  thanks:'Không có gì nè! 🩷 Học đều mỗi ngày nhé, mai gặp lại — đừng để streak tắt đấy!'
+};
+function intentRouter(raw){
+  var norm=intentNorm(raw);
+  if(!norm)return null;
+  if(intentHasAny(norm,INTENT_GUARD_PASS))return null; /* cau hoc that -> Groq */
+  if(/^(xin chao|chao|hi|hello|hey)( |$)/.test(norm)||norm.indexOf('chao vita')!==-1||norm.indexOf('chao damu')!==-1)return 'greeting';
+  if(intentHasAny(norm,['ban la ai','vita la ai','ban ten gi','ten ban la gi']))return 'identity';
+  if(intentHasAny(norm,['cach dung','dung app','dung web','su dung app','huong dan dung','app dung the nao','dung the nao','web dung the nao','lam sao de dung','app nay la gi','web nay la gi','app nay de lam gi','bat dau o dau','vao dau de']))return 'howtouse';
+  if(intentHasAny(norm,['cach hoc','hoc the nao','hoc noi the nao','hoc noi hieu qua','noi hieu qua','hoc sao cho','hoc hieu qua','luyen noi the nao','bat dau hoc','moi bat dau','hoc moi ngay','luyen moi ngay','lich hoc','ke hoach hoc','chien luoc hoc']))return 'howtolearn';
+  if(intentHasAny(norm,['tinh nang','co nhung gi','co gi trong app','xem lich su','lich su luyen','lich su bai','bieu do','heatmap','thi thu','streak','cham bai o dau','cham bai nhu the nao','ghi am o dau','ghi am nhu the nao','tai app','cai app'])){
+    if(intentHasAny(norm,['giup','ho toi','ho minh','lam ho','cham ho','cho toi','cho minh','muon thi','dang ky']))return null;
+    return 'features';
+  }
+  if(intentHasAny(norm,['cam on','thanks','thank you','tam biet','bye','hen gap lai','ngu ngon']))return 'thanks';
+  return null;
+}
+var QUICK_ASK_CHIPS=['App này dùng thế nào?','Học nói hiệu quả nhất là sao?','Cho mình 1 câu mẫu Band 6.5','Mình yếu phát âm thì luyện sao?'];
+/* ===== INTENT-ROUTER — END ===== */
+
+/* ===== STEP5 — CACHE CHI CHO INTENT / CAU SOAN SAN (bot page) =====
+   - Chi cache ket qua phan loai intent (key -> intent hoac null) trong bo
+     nho client (bien INTENT_CACHE, mat khi tai lai trang).
+   - Key LUON chua version tu PROMPTS_v1.keyPrefix ('v1:'), vd 'v1:intent:xin chao'.
+   - TUYET DOI KHONG cache noi dung cham/chat LLM, KHONG ghi localStorage,
+     KHONG ghi KV/DO (ban sao nay la file tinh, khong co KV that).
+   - Fallback: routeFreeChat tra false -> freeChat goi LLM nhu cu, khong bao
+     loi chung; loi LLM van hien thong bao cu cua freeChat. */
+var INTENT_CACHE={};
+function routeFreeChat(text){
+  var norm=intentNorm(text);
+  var ck=PROMPTS_v1.keyPrefix+'intent:'+norm;
+  if(Object.prototype.hasOwnProperty.call(INTENT_CACHE,ck)){
+    var hit=INTENT_CACHE[ck];
+    if(hit){add(INTENT_REPLIES[hit],'bot');return true;}
+    return false;
+  }
+  var key=intentRouter(text);
+  INTENT_CACHE[ck]=key;
+  if(key){add(INTENT_REPLIES[key],'bot');return true;}
+  return false;
+}
+/* ===== STEP5 — END CACHE ===== */
+
 async function freeChat(text){
+  /* STEP5: cau hoi lap -> tra soan san, 0 luot LLM; cau hoc that -> xuong duoi goi LLM nhu cu. */
+  if(routeFreeChat(text))return;
   var think=add('Bot đang suy nghĩ…','bot think');
   try{
     var mem=botMemoryLine();
-    var raw=await polliAsk('User says: "'+String(text).slice(0,500)+'". '+(mem?mem+' ':'')+'Reply in Vietnamese, short and helpful (max 6 sentences). Rules: stay in character as Vita the pink capybara tutor — warm, blunt, funny, tease lightly when the user is wrong and praise when right; when correcting English, FIRST quote the exact words from the user, then give the fix and the rule in one line; when explaining a word, give meaning + 1 example + 1 synonym/antonym if you know them, never invent a meaning — if unsure, say so and point to "tra <từ>"; never dump a list of quiz answers, keep the one-by-one quiz style; if the user asks about English or IELTS, teach briefly with an example. Gently suggest the chips: Cau Part 1/2/3, tra <tu>, do <tu>.','You are Vita, a pink capybara (chuột lang nước — NOT a beaver, never call yourself "hải ly") English tutor inside the damu app. Be warm, blunt and funny in Vietnamese. Output ONLY your reply text, no JSON, no reasoning.',20000);
+    var raw=await polliAsk(PROMPTS_v1.freeChatPrompt(text,mem),PROMPTS_v1.sys.chat,20000);
     think.remove();add(unwrapEnvelope(raw).trim().slice(0,1500)||'Mình chưa nghĩ ra câu trả lời — thử hỏi cách khác nhé.','bot');
   }catch(e){think.remove();add('Vita đang bận — thử lại sau ít giây nhé. Các chức năng tra từ / đố từ / xin câu hỏi vẫn chạy bình thường.','err');}
 }
