@@ -2973,15 +2973,15 @@ function renderGrade(g,via,wpm,ev){if(g&&g._raw){return{html:'<p>🩷 damu nhậ
   h+='<div class="bandbox"><div class="bb total"><b>'+overall.toFixed(1)+'</b>Band tổng</div><div class="bb"><b>'+fc.toFixed(1)+'</b>Fluency &amp; Coherence</div><div class="bb"><b>'+lr.toFixed(1)+'</b>Lexical Resource</div><div class="bb"><b>'+gra.toFixed(1)+'</b>Grammar Range &amp; Accuracy</div><div class="bb"><b>'+p.toFixed(1)+'</b>Pronunciation*</div></div>';
   if(ev)h+='<p class="small">\uD83D\uDCCA <b>So lieu khach quan:</b> '+ev.words+' tu \u2022 '+ev.wpm+' tu/phut \u2022 '+ev.sentences+' cau (trung binh '+ev.avgSentLen+' tu/cau) \u2022 da dang tu vung (type-token) '+ev.ttr+' \u2022 tu dem/ngap ngung '+ev.fillers+' lan \u2022 cum dai bi lap '+ev.repPhrases+'</p>';
   h+=(typeof auditNoteHtml==='function')?auditNoteHtml(g):'';
-  var _cfHtml=criteriaFeedbackHtml(g);if(_cfHtml)h+=_cfHtml;else h+='<h3>🔍 Lỗi riêng từng tiêu chí &amp; cách khắc phục</h3><p class="small">Phần nhận xét chi tiết theo từng tiêu chí (criteriaFeedback) chưa có lần này — xem điểm từng tiêu chí ở trên, phần lỗi sai và mẹo bên dưới nhé.</p>';
+  var _cfHtml=criteriaFeedbackHtml(g);if(_cfHtml)h+=_cfHtml;/* VIDEO-FORMAT 26/10: CF thieu thi AN muc nay (khong placeholder, khong nut) — leanAutoRun tu lay not, ve du se render dung muc Nhan xet sau nhu video. */
   if(g.praise&&!(typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(g.praise)))h+='<p>✅ <b>Điểm tốt:</b> '+esc(g.praise)+'</p>';
-  if(g.examinerNote&&!(typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(g.examinerNote)))h+='<h3>🎓 Examiner note</h3><p>'+esc(g.examinerNote)+'</p>';else h+='<h3>🎓 Examiner note</h3><p class="small">Giám khảo chưa để lại ghi chú riêng lần này — bám vào điểm từng tiêu chí, band cap trong mẹo và phần lỗi sai bên dưới nhé.</p>';
+  if(g.examinerNote&&!(typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(g.examinerNote)))h+='<h3>🎓 Examiner note</h3><p>'+esc(g.examinerNote)+'</p>';/* VIDEO-FORMAT 26/10: note thieu thi AN, leanAutoRun tu lay not. */
   var validErrs=(g.errors||[]).filter(function(e){return e&&String(e.wrong||'').trim()!==''&&String(e.fix||'').trim()!==''&&String(e.why||'').trim()!==''&&(typeof gradeQuoteAcceptable!=='function'||gradeQuoteAcceptable(e.wrong,gradeTrOf(g)));});
   if(validErrs.length){h+='<h3>❌ Lỗi sai cần sửa</h3><table class="errs"><tr><th>Bạn nói</th><th>Sửa đúng</th><th>Vì sao</th></tr>';for(var i=0;i<validErrs.length;i++){h+='<tr><td class="wrong">'+esc(validErrs[i].wrong)+'</td><td class="fix">'+esc(validErrs[i].fix)+'</td><td>'+esc(validErrs[i].why)+'</td></tr>';}h+='</table>';}
   else if(g.errors&&g.errors.length){h+='<p class="small">Một số dòng lỗi AI trả về thiếu cột sửa/vì sao nên damu đã ẩn đi để bảng không trống cột — xem lỗi theo từng tiêu chí ở mục 🔍 phía trên nhé.</p>';}
   var validUps=(g.upgrades||[]).filter(function(u){return u&&String(u.original||'').trim()!==''&&String(u.better||'').trim()!=='';});
   if(validUps.length){h+='<h3>🚀 Nâng cấp lên band 7+</h3><table class="errs"><tr><th>Cách nói thường</th><th>Cách nói nâng band</th></tr>';for(var j=0;j<validUps.length;j++){h+='<tr><td>'+esc(validUps[j].original)+'</td><td class="fix">'+esc(validUps[j].better)+'</td></tr>';}h+='</table>';}
-  if(g.modelAnswer&&!(typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(g.modelAnswer))){lastModelAnswer=String(g.modelAnswer);h+='<h3>⭐ Câu trả lời của bạn — bản nâng Band 8</h3>'+(g.rewriteNotes?'<p class="small">📝 '+esc(g.rewriteNotes)+'</p>':'')+'<p style="white-space:pre-wrap">'+esc(g.modelAnswer)+'</p>'+speakBtnsHtml('lastModelAnswer','🔊 Nghe đọc bản nâng cấp');}else h+='<h3>⭐ Câu trả lời của bạn — bản nâng Band 8</h3><p class="small">Chưa có bản nâng cấp lần này — tự viết lại câu trả lời bằng các cụm nâng band ở mục 🚀 phía trên rồi nói lại từ đầu nhé.</p>';
+  if(g.modelAnswer&&!(typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(g.modelAnswer))){lastModelAnswer=String(g.modelAnswer);h+='<h3>⭐ Câu trả lời của bạn — bản nâng Band 8</h3>'+(g.rewriteNotes?'<p class="small">📝 '+esc(g.rewriteNotes)+'</p>':'')+'<p style="white-space:pre-wrap">'+esc(g.modelAnswer)+'</p>'+speakBtnsHtml('lastModelAnswer','🔊 Nghe đọc bản nâng cấp');}/* VIDEO-FORMAT 26/10: MA thieu thi AN, leanAutoRun tu lay not. */
   var realTips=(g.tips||[]).filter(function(t){return t&&String(t).trim()&&!(typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(t))&&!(typeof gradeTipIsGeneric==='function'&&gradeTipIsGeneric(t,g,(g&&g._transcript)||''));});
   if(realTips.length){h+='<h3>💡 3 mẹo lên band nhanh</h3><ol>';for(var k=0;k<realTips.length;k++)h+='<li>'+esc(realTips[k])+'</li>';h+='</ol>';}
   h+='<p class="small">* Pronunciation là điểm <b>ước tính</b> từ transcript + tốc độ nói của bạn ('+wpm+' từ/phút), không phải điểm nghe trực tiếp. Chấm bởi: '+esc(via)+'.</p>';
@@ -3150,15 +3150,86 @@ async function gradeLeanMaRetry(g,q,part,tr){
 }
 /* Nut lay lai phan hong (duong gradeNow -> gradeLean, giao tung phan). */
 var leanCtx=null;
+/* VIDEO-FORMAT 26/10 (theo lenh Nguyen: web phai giong video, khong nut bam tay):
+   - leanRetryButtons GIU TEN de khoi doi call-site, nhung KHONG tra nut nua: chi tra
+     1 dong trang thai tu dong lay not (khi con thieu) hoac '' (khi da du — dung nhu video).
+   - Nut lay lai o TAB LICH SU (histRetryButtons) GIU NGUYEN: do la duong lay not khi mo
+     lai bai cu, khong phai nut o man hinh cham.
+   - leanAutoRun: sau khi cham xong ma con thieu phan, tu chay lai cac luot thieu theo
+     vong tre (mac dinh 30s, 60s, 120s, 240s — toi da 4 vong, moi vong chi goi luot thieu),
+     ve phan nao render ngay phan do (giong video: 1 lan bam, du ban cham). Het vong ma
+     van thieu thi dung, dong trang thai chi ve tab Lich su. Bam cham bai moi se tang
+     leanAutoSeq de vong cu dung ngay, khong goi chen vao bai moi. */
+var leanAutoSeq=0,leanAutoDone=false;
+var LEAN_AUTO_DELAYS=[30000,60000,120000,240000];
+function leanAutoMissing(g,tr){
+  try{
+    var bad=(typeof gradeCfBadKeys==='function')?gradeCfBadKeys(g,tr):[];
+    var maMiss=!g.modelAnswer||(typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(g.modelAnswer))||!(typeof gradeModelAnswerOk==='function'&&gradeModelAnswerOk({modelAnswer:g.modelAnswer},tr,g._part||1));
+    var noteMiss=!g.examinerNote||(typeof gradeIsPlaceholderText==='function'&&gradeIsPlaceholderText(g.examinerNote));
+    return {bad:bad,maMiss:maMiss,noteMiss:noteMiss};
+  }catch(e){return {bad:[],maMiss:false,noteMiss:false};}
+}
 function leanRetryButtons(g,tr){
   try{
-    var out='';
-    var bad=gradeCfBadKeys(g,tr);
-    for(var i=0;i<bad.length;i++){out+='<button class="btn" onclick="leanRetryCf(\''+bad[i]+'\')">🔁 Lấy nhận xét sâu '+bad[i]+'</button> ';}
-    if(!g.modelAnswer||!gradeModelAnswerOk({modelAnswer:g.modelAnswer},tr,g._part||1))out+='<button class="btn" onclick="leanRetryMa()">🔁 Lấy câu mẫu</button>';
-    if(out)return '<p class="small">🩷 Một số phần chưa lấy được do đường AI đang nghẽn — bấm nút để lấy riêng phần đó, không cần chấm lại từ đầu:</p>'+out;
+    var m=leanAutoMissing(g,tr);
+    if(!m.bad.length&&!m.maMiss&&!m.noteMiss)return '';
+    if(leanAutoDone)return '<p class="small">🩷 Đường AI vẫn nghẽn nên còn vài phần chưa về — mở lại bài này từ tab Lịch sử để lấy nốt khi đường thoáng, không cần chấm lại từ đầu.</p>';
+    return '<p class="small" id="leanAutoStatus">🩷 damu đang lấy nốt nhận xét sâu, ghi chú giám khảo và bản nâng Band 8 — xong phần nào hiện ngay phần đó, anh không cần bấm gì thêm.</p>';
+  }catch(e){return '';}
+}
+function leanAutoRender(){
+  try{
+    if(!leanCtx)return;
+    var r=renderGrade(leanCtx.g,leanCtx.via,leanCtx.wpm,leanCtx.ev);
+    var chat=$('chatBox');if(chat)chat.innerHTML=leanCtx.myMsg+damuMsg(r.html+leanRetryButtons(leanCtx.g,leanCtx.tr));
   }catch(e){}
-  return '';
+}
+function leanAutoSleep(ms){return new Promise(function(res){setTimeout(res,ms);});}
+async function leanAutoRun(seq){
+  var delays=(typeof LEAN_AUTO_DELAYS!=='undefined'&&LEAN_AUTO_DELAYS)?LEAN_AUTO_DELAYS:[30000,60000,120000,240000];
+  for(var ri=0;ri<delays.length;ri++){
+    await leanAutoSleep(delays[ri]);
+    if(seq!==leanAutoSeq||!leanCtx)return;
+    var g=leanCtx.g,tr=leanCtx.tr;
+    var m=leanAutoMissing(g,tr);
+    if(!m.bad.length&&!m.maMiss&&!m.noteMiss)return;
+    var changed=false;
+    for(var i=0;i<m.bad.length;i++){
+      if(seq!==leanAutoSeq||!leanCtx)return;
+      try{
+        await gradeLeanCfRetryOne(g,m.bad[i],leanCtx.q,leanCtx.part,tr);
+        g=gradeApplyGuards(g,leanCtx.part,tr);g._q=leanCtx.q;g._part=leanCtx.part;g._tr=tr;g._lean=true;leanCtx.g=g;
+        try{partialSyncHistory(g,tr);}catch(e){}
+        changed=true;leanAutoRender();
+      }catch(e){aiLogErr('leanAutoCf',e);}
+    }
+    if(seq!==leanAutoSeq||!leanCtx)return;
+    m=leanAutoMissing(g,tr);
+    if(m.maMiss){
+      try{
+        await gradeLeanMaRetry(g,leanCtx.q,leanCtx.part,tr);
+        g=gradeApplyGuards(g,leanCtx.part,tr);g._q=leanCtx.q;g._part=leanCtx.part;g._tr=tr;g._lean=true;leanCtx.g=g;
+        try{partialSyncHistory(g,tr);}catch(e){}
+        changed=true;leanAutoRender();
+      }catch(e){aiLogErr('leanAutoMa',e);}
+    }
+    if(seq!==leanAutoSeq||!leanCtx)return;
+    m=leanAutoMissing(g,tr);
+    if(m.noteMiss){
+      try{
+        await gradeLeanNoteRetryOne(g,leanCtx.q,leanCtx.part,tr);
+        g=gradeApplyGuards(g,leanCtx.part,tr);g._q=leanCtx.q;g._part=leanCtx.part;g._tr=tr;g._lean=true;leanCtx.g=g;
+        try{partialSyncHistory(g,tr);}catch(e){}
+        changed=true;leanAutoRender();
+      }catch(e){aiLogErr('leanAutoNote',e);}
+    }
+    if(changed)leanAutoRender();
+    m=leanAutoMissing(leanCtx.g,tr);
+    if(!m.bad.length&&!m.maMiss&&!m.noteMiss)return;
+  }
+  if(seq!==leanAutoSeq||!leanCtx)return;
+  leanAutoDone=true;leanAutoRender();
 }
 async function leanRetryCf(key){
   var btn=(typeof event!=='undefined'&&event&&event.target)?event.target:null;
@@ -3365,6 +3436,7 @@ async function gradeNow(){if(aiGrading)return;var tr=$('transcript').value.trim(
     var missBefore=gradeMissingFields(g,tr,curPart);
     /* LEAN v3 (ban gop live): khong bo sung don — phan nao hong thi nut lay lai lo. */
     if(!g.scores){
+      leanAutoSeq++;
       chat.innerHTML=myMsg+damuMsg('😵 Vita chấm chưa thành công — Vita trả về kết quả không đọc được điểm. Bài nói của bạn vẫn còn nguyên, bấm nút dưới để chấm lại nhé.<br><button class="btn" onclick="gradeNow()">🔁 Chấm lại</button>'+geminiErrHtml(res)+groqSuggestHtml());
       saveHistory(null,tr,wpm);
     }else{
@@ -3375,10 +3447,14 @@ async function gradeNow(){if(aiGrading)return;var tr=$('transcript').value.trim(
       var r=renderGrade(g,res.via,wpm,evNow);
       leanCtx={g:g,q:curQuestion,part:curPart,tr:tr,wpm:wpm,ev:evNow,myMsg:myMsg,via:res.via};
       chat.innerHTML=myMsg+damuMsg(r.html+leanRetryButtons(g,tr)+geminiErrHtml(res));
+      /* VIDEO-FORMAT 26/10: con thieu phan thi tu dong lay not (khong doi bam nut). */
+      leanAutoSeq++;leanAutoDone=false;
+      try{var _m=leanAutoMissing(g,tr);if(_m.bad.length||_m.maMiss||_m.noteMiss)leanAutoRun(leanAutoSeq);}catch(e){}
       saveHistory(r.overall,tr,wpm,(g&&!g._fallback)?g.scores:null,g);
       syncHintBandChip();
     }
   }catch(e){
+    leanAutoSeq++;
     aiLogErr('gradeNow',e);
     chat.innerHTML=myMsg+damuMsg('😵 Vita chấm không được: '+esc(aiFriendlyErr(e))+'<br><span class="small">Thử: đợi ít phút rồi bấm chấm lại nhé — Vita chấm, không cần key.</span><br><button class="btn" onclick="gradeNow()">🔁 Chấm lại</button>'+groqSuggestHtml());
     saveHistory(null,tr,wpm);
