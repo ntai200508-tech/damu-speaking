@@ -1013,7 +1013,7 @@ function finishStop(r){
 function finishStopUI(){
   $('recBtn').textContent='🎙 BẮT ĐẦU GHI ÂM';$('recBtn').className='btn big';
   $('liveBox').innerHTML=finalText?esc(finalText):'<span class="small">Lời bạn nói sẽ hiện ở đây theo thời gian thực…</span>'; /* dọn span interim đóng băng */
-  $('recStatus').textContent=stopNote||'Đã dừng ghi. Kiểm tra lại bản ghi ở ô dưới, sửa tay nếu máy nghe nhầm, rồi bấm "DAMU CHẤM BÀI".';
+  $('recStatus').textContent=stopNote||'✅ Đã ghi âm xong - nghe lại bản ghi bên dưới, hoặc bấm DAMU CHẤM BÀI.';
   stopNote='';
   updateStats();
 }
