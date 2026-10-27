@@ -3527,7 +3527,7 @@ function renderHint(g,info,via){var body=$('hintBody');if(!body)return;var tgt=t
   h+='<p class="small">Đọc mẫu để lấy ý + cụm từ, rồi TỰ nói lại theo trải nghiệm của bạn — đừng học thuộc lòng nhé.</p><p class="small">Gợi ý bởi: '+esc(via)+'</p>';
   body.innerHTML=h;}
 async function hintAskWithLimitRetry(prompt,sys,lite){
-  var waits=[15000,30000];
+  var waits=[5000,10000];
   for(var a=0;a<=waits.length;a++){
     var res;
     try{res=await aiAsk(prompt,sys,lite,{json:true});}
