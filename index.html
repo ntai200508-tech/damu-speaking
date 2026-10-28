@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="referrer" content="strict-origin-when-cross-origin">
-<title>damu — Luyện nói IELTS (demo v6, chưa live)</title>
+<title>damu — Luyện nói IELTS (demo vui nhộn 29/10, chưa live)</title>
 <style>
 :root{--pink:#ff5c8a;--pink2:#ff8fab;--pinksoft:#ffe5ec;--pinkbg:#fff5f7;--ink:#3a2430;--mut:#8a6a76;--ok:#1d9e75;--bad:#d6455b;--card:#ffffff}
 *{box-sizing:border-box}
@@ -206,6 +206,117 @@ details.v6d summary{font-weight:700;color:var(--pink);cursor:pointer}
 .fb-btn.ghost{background:#fff;color:#c2255c;border:2px solid #ffc2d1}
 .fb-hubbtn{width:100%;border:2px solid #ff8fab;background:#fff;color:#c2255c;font-weight:800;font-size:16px;padding:14px;border-radius:999px;cursor:pointer;margin:4px 0 2px}
 .fb-note{font-size:13px;color:#8a4a5e;line-height:1.5}
+
+/* ===== DEMO THIẾT KẾ 29/10 — chỉ đổi giao diện, không đổi logic ===== */
+:root{--p1:#ff7a45;--p1soft:#fff0e6;--p1dark:#c2410c;--p2:#7c5cf0;--p2soft:#efeaff;--p2dark:#5b3df0;--p3:#0e9f7a;--p3soft:#e2f7ef;--p3dark:#047857;--mock:#f59e0b;--mocksoft:#fff7ed;--mockdark:#b45309;--shad:#0ea5e9;--shadsoft:#e0f2fe;--shaddark:#0284c7;--fc:#8b5cf6;--fcsoft:#f0ebff;--fcdark:#7c3aed}
+body{background:linear-gradient(180deg,#fff5f7 0%,#fff7f0 45%,#f5f3ff 100%)}
+header{background:linear-gradient(135deg,#ff8fab,#ff5c8a 55%,#e879a6)}
+.card{border-radius:20px;box-shadow:0 6px 20px rgba(255,92,138,.14);border:1px solid rgba(255,92,138,.15)}
+.card h2{font-size:19px}
+.v6-hero{background:linear-gradient(135deg,#ffe5ec,#fff0e6 50%,#efeaff);border:none}
+button.btn{min-height:48px;padding:13px 20px}
+button.btn.big{font-size:18px;padding:16px 24px}
+button:focus-visible,select:focus-visible,textarea:focus-visible,input:focus-visible{outline:3px solid #ffb3c7;outline-offset:2px}
+.qbox{background:linear-gradient(90deg,var(--pinksoft),#fff);border-radius:16px}
+.stats .st{border-radius:16px}
+details.v6d{border-radius:14px}
+/* Màu nhấn từng Part — nút chọn Part trong màn Luyện nói */
+#pb1{border-color:var(--p1);color:var(--p1dark)}#pb1.on{background:var(--p1);color:#fff;border-color:var(--p1)}
+#pb2{border-color:var(--p2);color:var(--p2dark)}#pb2.on{background:var(--p2);color:#fff;border-color:var(--p2)}
+#pb3{border-color:var(--p3);color:var(--p3dark)}#pb3.on{background:var(--p3);color:#fff;border-color:var(--p3)}
+/* Câu hỏi tự đặt: nút Part theo màu riêng (đang chọn = nền màu đó) */
+#cqPartBtns button.ghost[data-part="1"]{border-color:var(--p1);color:var(--p1dark)}
+#cqPartBtns button.ghost[data-part="2"]{border-color:var(--p2);color:var(--p2dark)}
+#cqPartBtns button.ghost[data-part="3"]{border-color:var(--p3);color:var(--p3dark)}
+#cqPartBtns button.btn[data-part="1"]{background:var(--p1)}
+#cqPartBtns button.btn[data-part="2"]{background:var(--p2)}
+#cqPartBtns button.btn[data-part="3"]{background:var(--p3)}
+/* Truy cập nhanh trang chủ: mỗi ô một màu nhấn */
+.qGrid button{border-radius:18px;padding:16px 6px}
+.qGrid button:nth-child(1){border-color:var(--p1);color:var(--p1dark);background:linear-gradient(180deg,var(--p1soft),#fff)}
+.qGrid button:nth-child(2){border-color:var(--p2);color:var(--p2dark);background:linear-gradient(180deg,var(--p2soft),#fff)}
+.qGrid button:nth-child(3){border-color:var(--p3);color:var(--p3dark);background:linear-gradient(180deg,var(--p3soft),#fff)}
+.qGrid button:nth-child(4){border-color:var(--mock);color:var(--mockdark);background:linear-gradient(180deg,var(--mocksoft),#fff)}
+.qGrid button:nth-child(5){border-color:var(--shad);color:var(--shaddark);background:linear-gradient(180deg,var(--shadsoft),#fff)}
+/* Sidebar: vạch màu trái để phân biệt nhanh */
+.shell nav button{border-radius:14px}
+#nav-home{border-left:5px solid var(--pink)}
+#nav-practice{border-left:5px solid var(--pink)}
+#nav-mocktest{border-left:5px solid var(--mock)}
+#nav-history{border-left:5px solid var(--p2)}
+#nav-settings{border-left:5px solid var(--shad)}
+/* Tiêu đề từng tab theo màu tính năng */
+#tab-mocktest .card h2{color:var(--mockdark)}
+#tab-forecast .card h2{color:var(--fcdark)}
+#tab-shadowing .card h2{color:var(--shaddark)}
+#tab-history .card h2{color:#be185d}
+/* 4 thẻ tiêu chí / 3 bước Shadowing: mỗi thẻ một tông nhạt */
+.crit .c{border-radius:16px}
+.crit .c:nth-child(1){background:var(--pinksoft)}
+.crit .c:nth-child(2){background:var(--p2soft)}
+.crit .c:nth-child(3){background:var(--p3soft)}
+.crit .c:nth-child(4){background:var(--shadsoft)}
+/* Nút Thi thử / Shadowing trong màn Luyện nói giữ màu tính năng */
+#tab-practice .row button[onclick="showTab('mocktest')"]{border-color:var(--mock);color:var(--mockdark)}
+#tab-practice .row button[onclick="showTab('shadowing')"]{border-color:var(--shad);color:var(--shaddark)}
+#tab-practice .row button[onclick="showTab('forecast')"]{border-color:var(--fc);color:var(--fcdark)}
+@media (max-width:899px){.shell nav button{min-height:48px}.qGrid button{min-height:64px}}
+
+/* ===== DEMO VUI NHỘN 29/10 — chỉ đổi màu/bóng/bo tròn, không đổi logic, prompt, descriptors hay band ===== */
+/* Bảng màu vui nhộn (nền tươi sáng, thẻ bo tròn lớn, nút bấm có cảm giác bấm): */
+/*  Hồng Capy chủ đạo (đậm, đạt AA): #c2255c | Hồng tươi chỉ làm viền/trang trí, không đặt chữ trắng lên: #ff5c8a/#ff8fab */
+/*  Part 1 cam đậm #c2410c | Part 2 tím đậm #5b3df0 | Part 3 xanh lá đậm #047857 | Thi thử hổ phách đậm #b45309 */
+/*  Shadowing xanh dương đậm #0369a1 | Forecast tím đậm #7c3aed | Đúng #047857 | Sai (đỏ nhẹ, nền vẫn nhạt) #b91c1c | Streak vàng kem + chữ đậm */
+/*  Tương phản đã đo (WCAG, chữ trắng trên nền đặc): hồng 5.66 | cam 5.18 | tím Part 2 6.23 | xanh Part 3 5.48 | hổ phách 5.02 — đều >= 4.5:1 */
+:root{--pink:#c2255c;--pink2:#ff8fab;--ok:#047857;--bad:#b91c1c;--mut:#7a5560;
+--p1:#c2410c;--p1dark:#c2410c;--p2:#5b3df0;--p2dark:#5b3df0;--p3:#047857;--p3dark:#047857;
+--mock:#b45309;--mockdark:#b45309;--shad:#0369a1;--shaddark:#0369a1;--fc:#7c3aed;--fcdark:#7c3aed}
+body{background:linear-gradient(180deg,#fff7ed 0%,#fff5f7 38%,#eff6ff 72%,#f5f3ff 100%)}
+header{background:linear-gradient(135deg,#d6336c,#c2255c 55%,#9d174d)}
+header .streak{background:#fff;color:#c2255c;box-shadow:0 3px 0 rgba(0,0,0,.18)}
+header img{border-color:#fff}
+/* Thẻ bo tròn lớn + bóng mềm, vui hơn mà không đổi bố cục */
+.card{border-radius:24px;box-shadow:0 10px 28px rgba(194,37,92,.13)}
+.qbox{border-radius:18px}
+.stats .st,.bandbox .bb,.crit .c,.ovGrid .ov{border-radius:18px}
+.shell nav button{border-radius:16px}
+.partbtns button{border-radius:16px}
+.qGrid button{border-radius:20px}
+/* Nút "bấm là vui": bóng nổi + trạng thái bấm rõ (chỉ hiệu ứng nhấn, không che nút Ghi âm/Chấm bài, không thêm phần tử) */
+button.btn{box-shadow:0 4px 0 #8f1d45,0 8px 18px rgba(194,37,92,.25)}
+button.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #8f1d45}
+button.btn.ghost{box-shadow:0 3px 0 rgba(194,37,92,.18)}
+button.btn.ghost:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(194,37,92,.18)}
+.partbtns button,.qGrid button,.srcBtns button{box-shadow:0 3px 0 rgba(0,0,0,.08)}
+.partbtns button:active,.qGrid button:active,.srcBtns button:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.08)}
+nav button:active{transform:translateY(1px)}
+button:focus-visible,select:focus-visible,textarea:focus-visible,input:focus-visible{outline:3px solid #c2255c;outline-offset:2px}
+/* Nút Part đang chọn: nền đặc đậm + chữ trắng (đã đạt AA). Nút chưa chọn: nền nhạt + chữ đậm, vẫn phân biệt màu rõ */
+#pb1{background:var(--p1soft)}#pb1.on{background:var(--p1);color:#fff;border-color:var(--p1)}
+#pb2{background:var(--p2soft)}#pb2.on{background:var(--p2);color:#fff;border-color:var(--p2)}
+#pb3{background:var(--p3soft)}#pb3.on{background:var(--p3);color:#fff;border-color:var(--p3)}
+#cqPartBtns button.ghost[data-part="1"]{background:var(--p1soft)}
+#cqPartBtns button.ghost[data-part="2"]{background:var(--p2soft)}
+#cqPartBtns button.ghost[data-part="3"]{background:var(--p3soft)}
+/* Các cặp tương phản thấp còn lại trong file gốc — ghi đè bằng màu đậm tương ứng (không đổi vị trí/vai trò) */
+nav button#nav-mocktest.on{background:#b45309;color:#fff;border-color:#b45309}
+.vidPlay{background:#c2255c}
+.fb-link{color:#c2255c}
+.fb-chip[aria-pressed="true"]{background:#c2255c;color:#fff;border-color:#c2255c}
+.fb-btn{background:#c2255c}
+.fb-sheet h3{color:#c2255c}
+.fcBadge.b-high{background:#047857}
+.fcBadge.b-none{color:#6d4a56}
+.fcChip.c-fc,.fcChip.c-gra,.fcChip.c-p{background:#047857}
+.fcChip.dim{color:#7a5560}
+.fcProgBar i{background:#047857}
+.fcDone{color:#047857}
+.progDelta.up{color:#047857}
+.progDelta.down{color:#b91c1c}
+.bandbox .bb .wk{color:#b91c1c}
+.err{background:#fef2f2;border-color:#fecdd3}
+.warn{background:#fffbeb;border-color:#fde68a}
+
 </style>
 </head>
 <body>
@@ -221,15 +332,15 @@ details.v6d summary{font-weight:700;color:var(--pink);cursor:pointer}
 <!-- ============ v6: TAB TRANG CHỦ (màn mới) ============ -->
 <section class="tab on" id="tab-home">
   <div class="card v6-hero"><h2>damu 🩷 · Luyện nói cùng Capy</h2>
-    <p class="small" style="margin:0">Số liệu dưới tính lúc chạy từ dữ liệu trên trình duyệt này, không phải số mẫu.</p>
-    <details class="v6d"><summary>ⓘ Giới thiệu</summary><p class="small">Luyện nói IELTS mỗi ngày cùng Capy — nói đi, sai thì damu sửa cho! Giữ nguyên bản sắc hồng + Capy hồng của luyện nói (không đổi sang viền xanh + Capy xanh của v5 — đổi màu thương hiệu cần duyệt riêng).</p></details>
+    <p class="small" style="margin:0">Số liệu từ trình duyệt này.</p>
+    <details class="v6d"><summary>ⓘ Giới thiệu</summary><p class="small">Số liệu dưới tính lúc chạy từ dữ liệu trên trình duyệt này, không phải số mẫu.</p><p class="small">Luyện nói IELTS mỗi ngày cùng Capy — nói đi, sai thì damu sửa cho! Giữ nguyên bản sắc hồng + Capy hồng của luyện nói (không đổi sang viền xanh + Capy xanh của v5 — đổi màu thương hiệu cần duyệt riêng).</p></details>
   </div>
   <div class="card"><h2>Tổng quan</h2><div class="ovGrid">
     <div class="ov"><b id="homeStatCount">0</b><span>Bài đã chấm</span></div>
     <div class="ov"><b id="homeStatStreak">0 ngày</b><span>Streak</span></div>
     <div class="ov"><b id="homeStatBand">—</b><span>Band gần nhất</span><div class="small" id="homeBandNote">Chưa có</div></div>
     <div class="ov"><b id="homeStatReview">0</b><span>Đến lượt ôn</span></div>
-  </div><p class="small">Band gần nhất = trung bình tối đa 5 bài gần nhất đã chấm. Đến lượt ôn = câu đã luyện, lần luyện gần nhất cũ hơn hôm nay từ 7 ngày trở lên.</p></div>
+  </div><p class="small">Band: TB 5 bài gần nhất · Ôn: câu từ 7 ngày trước.</p><details class="v6d"><summary>ⓘ Cách tính</summary><p class="small">Band gần nhất = trung bình tối đa 5 bài gần nhất đã chấm. Đến lượt ôn = câu đã luyện, lần luyện gần nhất cũ hơn hôm nay từ 7 ngày trở lên.</p></details></div>
   <div class="card"><h2>Truy cập nhanh</h2><div class="qGrid">
     <button onclick="v6GoPart(1)">🎙<br>Part 1</button>
     <button onclick="v6GoPart(2)">🗒<br>Part 2</button>
@@ -239,7 +350,7 @@ details.v6d summary{font-weight:700;color:var(--pink);cursor:pointer}
   </div></div>
 </section>
 
-<div class="card fb-home"><h2>💬 Góp ý cho damu</h2><p class="small">Thấy lỗi, chấm sai hay có ý tưởng hay? Góp ý nhanh, không cần đăng nhập.</p><button class="btn ghost" onclick="fbOpen()">💬 Gửi góp ý</button></div>
+<div class="card fb-home"><h2>💬 Góp ý cho damu</h2><p class="small">Thấy lỗi hay có ý hay? Góp ý nhanh, không cần đăng nhập.</p><button class="btn ghost" onclick="fbOpen()">💬 Gửi góp ý</button></div>
 <!-- ============ TAB LUYỆN NÓI ============ -->
 <section class="tab" id="tab-practice">
   <div class="card">
@@ -273,7 +384,7 @@ details.v6d summary{font-weight:700;color:var(--pink);cursor:pointer}
   </div>
 
   <div class="card" id="cqFormCard"><h2>✏️ Câu hỏi của tôi</h2>
-    <p class="small">Tạo đề của riêng bạn rồi luyện như bình thường: ghi âm → trợ giảng theo band tự nhận → chấm đủ 4 tiêu chí + câu mẫu + examinerNote. Thi thử chỉ dùng câu Forecast — câu tự đặt không vào thi thử.</p>
+    <p class="small">Tạo đề riêng, luyện như bình thường.</p><details class="v6d"><summary>ⓘ Chi tiết</summary><p class="small">Tạo đề của riêng bạn rồi luyện như bình thường: ghi âm → trợ giảng theo band tự nhận → chấm đủ 4 tiêu chí + câu mẫu + examinerNote. Thi thử chỉ dùng câu Forecast — câu tự đặt không vào thi thử.</p></details>
     <div class="row" id="cqPartBtns">
       <button class="btn ghost" data-part="1" onclick="v6CqSetPart(1)">Part 1 · Hỏi đáp</button>
       <button class="btn ghost" data-part="2" onclick="v6CqSetPart(2)">Part 2 · Cue card</button>
@@ -341,12 +452,12 @@ details.v6d summary{font-weight:700;color:var(--pink);cursor:pointer}
 </section>
 
 
-<p class="small fb-foot">Gặp lỗi hoặc thấy chấm chưa đúng? <button class="fb-link" type="button" onclick="fbOpen()">💬 Góp ý nhanh</button> — không cần đăng nhập.</p>
+<p class="small fb-foot">Gặp lỗi? <button class="fb-link" type="button" onclick="fbOpen()">💬 Góp ý nhanh</button> — không cần đăng nhập.</p>
 <!-- ============ TAB THI THỬ ============ -->
 <section class="tab" id="tab-mocktest"><p class="small"><button class="btn ghost" onclick="showTab('home')">← Về lại</button> <button class="btn ghost" onclick="showTab('home')">🏠 Trang chủ</button></p>
   <div class="card">
-    <h2>🎓 Thi thử</h2><p class="small">11–14 phút · 3 Part · Như thi thật<br>Chấm sau khi thi xong · 🔒 Thi thử: không trợ giảng<br>Ở nơi yên tĩnh · Đừng dừng giữa chừng</p>
-    <details class="v6d"><summary>ⓘ Thể lệ thi</summary><p>damu đóng vai <b>giám khảo IELTS thật</b>, dẫn bạn qua <b>cả buổi thi liên tục 3 Part</b> đúng format phòng thi (11–14 phút): mở đầu kiểm tra danh tính → Part 1 phỏng vấn → Part 2 cue card (1 phút chuẩn bị, nói tối đa 2 phút) → Part 3 thảo luận. <b>Trong suốt buổi thi, giám khảo chỉ nói câu chuyển trung lập, TUYỆT ĐỐI không nhận xét / không chấm giữa buổi</b> — chấm tổng chỉ diễn ra SAU câu chốt kết thúc, khi đó damu mới được "mỏ hỗn" trở lại trong phần feedback.</p>
+    <h2>🎓 Thi thử</h2><p class="small">11–14 phút · 3 Part · Như thi thật · 🔒 Không trợ giảng</p>
+    <details class="v6d"><summary>ⓘ Thể lệ thi</summary><p class="small">11–14 phút · 3 Part · Như thi thật<br>Chấm sau khi thi xong · 🔒 Thi thử: không trợ giảng<br>Ở nơi yên tĩnh · Đừng dừng giữa chừng</p><p>damu đóng vai <b>giám khảo IELTS thật</b>, dẫn bạn qua <b>cả buổi thi liên tục 3 Part</b> đúng format phòng thi (11–14 phút): mở đầu kiểm tra danh tính → Part 1 phỏng vấn → Part 2 cue card (1 phút chuẩn bị, nói tối đa 2 phút) → Part 3 thảo luận. <b>Trong suốt buổi thi, giám khảo chỉ nói câu chuyển trung lập, TUYỆT ĐỐI không nhận xét / không chấm giữa buổi</b> — chấm tổng chỉ diễn ra SAU câu chốt kết thúc, khi đó damu mới được "mỏ hỗn" trở lại trong phần feedback.</p>
     <p class="small">Câu hỏi lấy trực tiếp từ ngân hàng Forecast sẵn có trong app. Hãy ở nơi yên tĩnh, nói liên tục như thi thật, đừng dừng buổi thi giữa chừng nhé.</p>
       <p class="small">🔒 Khi thi thử, trợ giảng gợi ý ở tab Luyện nói bị khóa hoàn toàn — đúng như phòng thi thật, không ai nhắc bài cho bạn.</p></details>
     <div id="mtIdle">
@@ -390,7 +501,6 @@ details.v6d summary{font-weight:700;color:var(--pink);cursor:pointer}
       <div class="c"><b>② Nói đuổi</b><details class="v6d"><summary>ⓘ</summary><span class="small">Phát lại video, nói chồng lên giọng mẫu chậm hơn khoảng nửa giây, bắt chước y hệt nhịp và ngữ điệu. Lặp lại từng đoạn ngắn nhiều lần.</span></details></div>
       <div class="c"><b>③ Ghi &amp; so sánh</b><details class="v6d"><summary>ⓘ</summary><span class="small">Tắt phụ đề, tự nói lại đoạn vừa luyện; qua tab Luyện nói ghi âm để damu chấm và chỉ ra chỗ phát âm chưa rõ.</span></details></div>
     </div>
-    <p class="small">10–15 phút/ngày · A2 → B2</p>
   </div>
   <div class="card"><h2>🎙 Nhại 1 câu</h2>
     <details class="v6d"><summary>ⓘ</summary><p class="small">Gõ/dán <b>1 câu tiếng Anh</b> bạn đang nhại vào ô dưới, nghe giọng mẫu đọc trước, rồi bấm ghi âm nói lại câu đó và nghe lại giọng của chính mình để so sánh trọng âm, nối âm và ngữ điệu.</p></details>
@@ -426,7 +536,7 @@ details.v6d summary{font-weight:700;color:var(--pink);cursor:pointer}
   </div>
   <div class="card">
     <h2>📚 Lịch sử</h2>
-    <p>Mỗi lần bấm "Chấm bài" (hoặc ghi âm xong), buổi luyện được lưu lại ngay trong trình duyệt này. Chuỗi ngày luyện liên tiếp: <b id="histStreak">🔥 0 ngày</b></p>
+    <p>Lưu ngay trong trình duyệt này · Chuỗi: <b id="histStreak">🔥 0 ngày</b></p><details class="v6d"><summary>ⓘ Lưu trữ</summary><p class="small">Mỗi lần bấm "Chấm bài" (hoặc ghi âm xong), buổi luyện được lưu lại ngay trong trình duyệt này.</p></details>
     <div class="row"><button class="btn ghost" onclick="clearHistory()">🗑 Xóa lịch sử</button></div>
     <div id="histList"></div>
   </div>
@@ -3718,10 +3828,10 @@ function pgCriteriaAvg(hist){var sums={FC:0,LR:0,GRA:0,P:0},cnts={FC:0,LR:0,GRA:
 function pgSessionCounts(hist){var map=pgGroupByDay(hist);var today=map[dayStr(new Date())];var week=0;for(var d=0;d<7;d++){var dt=new Date();dt.setDate(dt.getDate()-d);var g=map[dayStr(dt)];if(g)week+=g.total;}return{today:today?today.total:0,week:week};}
 function pgCurrentStreak(){var s=getStreak();var today=dayStr(new Date());var y=new Date();y.setDate(y.getDate()-1);var alive=(s.lastDay===today||s.lastDay===dayStr(y));return alive?(s.count||0):0;}
 function pgChartSVG(days){var x0=34,x1=592,yTop=14,yBot=150;function Y(v){var c=Math.max(4,Math.min(9,v));return yBot-(c-4)/5*(yBot-yTop);}var s='<svg class="progChart" viewBox="0 0 600 190" role="img" aria-label="Biểu đồ band 14 ngày">';
-  [5,6,7,8,9].forEach(function(b){var y=Y(b);s+='<line x1="'+x0+'" y1="'+y+'" x2="'+x1+'" y2="'+y+'" stroke="#ffd3e0" stroke-width="1"/><text x="6" y="'+(y+3)+'" font-size="10" fill="#b0607e">'+b+'.0</text>';});
+  [5,6,7,8,9].forEach(function(b){var y=Y(b);s+='<line x1="'+x0+'" y1="'+y+'" x2="'+x1+'" y2="'+y+'" stroke="#ffd3e0" stroke-width="1"/><text x="6" y="'+(y+3)+'" font-size="10" fill="#7a5560">'+b+'.0</text>';});
   var prev=null;
   for(var i=0;i<days.length;i++){var d=days[i];var x=x0+i*(x1-x0)/13;
-    s+='<text x="'+(x-11)+'" y="168" font-size="9" fill="#b0607e"'+(d.today?' font-weight="700"':'')+'>'+d.label+'</text>';
+    s+='<text x="'+(x-11)+'" y="168" font-size="9" fill="#7a5560"'+(d.today?' font-weight="700"':'')+'>'+d.label+'</text>';
     if(d.avg!=null){var y=Y(d.avg);if(prev&&prev.i===i-1)s+='<line x1="'+prev.x+'" y1="'+prev.y+'" x2="'+x+'" y2="'+y+'" stroke="#ff5c8a" stroke-width="2.5"/>';
       s+='<circle cx="'+x+'" cy="'+y+'" r="4" fill="#fff" stroke="#ff5c8a" stroke-width="2.5"><title>'+d.day+': Band '+d.avg.toFixed(1)+'</title></circle><text x="'+(x-9)+'" y="'+(y-9)+'" font-size="10" fill="#3a2430">'+d.avg.toFixed(1)+'</text>';prev={x:x,y:y,i:i};}
     else prev=null;}
