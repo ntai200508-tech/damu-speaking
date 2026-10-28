@@ -35,6 +35,30 @@ body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background
 .ios-tip b{color:#c2255c}
 .installed{display:none;text-align:center;color:#2b8a3e;font-weight:700;margin-top:22px;font-size:15px}
 footer{text-align:center;color:#b06a80;font-size:13px;margin-top:28px;line-height:1.6}
+.fb-navbtn{font-size:14px}
+.fb-home{border-style:dashed}
+.fb-foot{margin:14px 2px 2px;text-align:center}
+.fb-link{background:none;border:none;color:#ff5c8a;font-weight:700;font-size:15px;cursor:pointer;text-decoration:underline;padding:4px}
+.fb-backdrop{position:fixed;inset:0;background:rgba(60,20,35,.55);z-index:9999;display:flex;align-items:flex-end;justify-content:center;padding:12px}
+.fb-backdrop[hidden]{display:none!important}
+.fb-sheet{background:#fff;color:#4a2432;width:100%;max-width:520px;max-height:92dvh;overflow:auto;border-radius:20px;padding:18px;box-shadow:0 16px 40px rgba(0,0,0,.3)}
+.fb-sheet h3{margin:0 0 6px;color:#d6336c;font-size:19px}
+.fb-sheet .fb-close{float:right;background:#fff;border:2px solid #ffc2d1;color:#d6336c;border-radius:999px;width:34px;height:34px;font-size:16px;cursor:pointer}
+.fb-chiprow{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 12px}
+.fb-chip{border:2px solid #ffc2d1;background:#fff;color:#c2255c;border-radius:999px;padding:8px 13px;font-size:14px;font-weight:700;cursor:pointer}
+.fb-chip[aria-pressed="true"]{background:#ff5c8a;color:#fff;border-color:#ff5c8a}
+.fb-sheet label.fb-lab{display:block;font-weight:700;margin:10px 0 4px;font-size:15px}
+.fb-sheet textarea,.fb-sheet input[type=text],.fb-sheet select{width:100%;padding:11px;border:2px solid #ffd0dd;border-radius:10px;font-size:15px;font-family:inherit;box-sizing:border-box}
+.fb-count{text-align:right;font-size:13px;color:#8a4a5e}
+.fb-err{color:#c2255c;font-weight:700;font-size:14px}
+.fb-err[hidden]{display:none!important}
+.fb-success[hidden]{display:none!important}
+.fb-form[hidden]{display:none!important}
+.fb-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.fb-btn{background:#ff5c8a;color:#fff;border:none;padding:12px 18px;border-radius:999px;font-weight:700;font-size:15px;cursor:pointer}
+.fb-btn.ghost{background:#fff;color:#c2255c;border:2px solid #ffc2d1}
+.fb-hubbtn{width:100%;border:2px solid #ff8fab;background:#fff;color:#c2255c;font-weight:800;font-size:16px;padding:14px;border-radius:999px;cursor:pointer;margin:4px 0 2px}
+.fb-note{font-size:13px;color:#8a4a5e;line-height:1.5}
 </style>
 </head>
 <body>
@@ -61,6 +85,7 @@ footer{text-align:center;color:#b06a80;font-size:13px;margin-top:28px;line-heigh
 
 
 
+  <button class="fb-hubbtn" type="button" onclick="fbOpen()">💬 Góp ý cho damu</button>
   <button class="install" id="installBtn">📲 Cài app damu</button>
   <div class="ios-tip" id="iosTip">📲 <b>Cài app damu trên iPhone:</b><br>Bấm nút <b>Chia sẻ</b> (ô vuông có mũi tên lên ở thanh dưới Safari) → chọn <b>Thêm vào màn hình chính</b> → <b>Thêm</b>. Xong! Mở damu từ màn hình chính như app thật.</div>
   <div class="installed" id="installedMsg">✅ damu đã được cài trên máy này rồi!</div>
@@ -81,5 +106,191 @@ btn.addEventListener('click',async()=>{if(!deferredPrompt)return;deferredPrompt.
 window.addEventListener('appinstalled',()=>{btn.style.display='none';iosTip.style.display='none';installedMsg.style.display='block';});
 if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(()=>{});});}
 </script>
+<!-- FEEDBACK-DEMO:MODAL-START (chi them, khong sua layout cu; khong dung nut noi) -->
+<div id="fbModal" class="fb-backdrop" hidden>
+  <div class="fb-sheet" role="dialog" aria-modal="true" aria-labelledby="fbTitle">
+    <button class="fb-close" type="button" onclick="fbClose()" aria-label="Đóng">✕</button>
+    <h3 id="fbTitle">💬 Góp ý cho damu</h3>
+    <p class="fb-note">Bấm vào form Google bên dưới mới là gửi tới team. Gửi ở đây chỉ lưu bản nháp trên máy này; sao chép và email chỉ là dự phòng. Không cần đăng nhập.</p>
+    <form id="fbForm" class="fb-form" onsubmit="return fbSubmit(event)">
+      <label class="fb-lab">Loại góp ý *</label>
+      <div class="fb-chiprow" id="fbChips">
+        <button type="button" class="fb-chip" data-type="Lỗi" aria-pressed="false" onclick="fbPickType(this)">🐞 Lỗi</button>
+        <button type="button" class="fb-chip" data-type="Góp ý tính năng" aria-pressed="false" onclick="fbPickType(this)">💡 Góp ý tính năng</button>
+        <button type="button" class="fb-chip" data-type="Nội dung/chấm sai" aria-pressed="false" onclick="fbPickType(this)">📝 Nội dung / chấm sai</button>
+        <button type="button" class="fb-chip" data-type="Giao diện khó dùng" aria-pressed="false" onclick="fbPickType(this)">🎨 Giao diện khó dùng</button>
+      </div>
+      <label class="fb-lab" for="fbSeverity">Mức độ (tùy chọn)</label>
+      <select id="fbSeverity">
+        <option value="">Không chọn</option>
+        <option value="Nhẹ">Nhẹ — vẫn học được</option>
+        <option value="Vừa">Vừa — hơi khó chịu</option>
+        <option value="Nặng">Nặng — không học được / chấm sai hẳn</option>
+      </select>
+      <label class="fb-lab" for="fbContent">Nội dung *</label>
+      <textarea id="fbContent" rows="5" maxlength="1000" placeholder="Ví dụ: bấm Chấm bài thì… / câu này chấm chưa đúng vì…"></textarea>
+      <div class="fb-count" id="fbCount">0/1000 ký tự</div>
+      <p class="fb-note">Trang đang dùng: <b id="fbPageLabel">—</b> (tự ghi kèm, bạn không cần gõ).</p>
+      <label class="fb-lab" for="fbContact">Tên / liên hệ (tùy chọn)</label>
+      <input type="text" id="fbContact" maxlength="120" placeholder="Ví dụ: Nguyễn — để team hỏi thêm nếu cần">
+      <p class="fb-note">Đừng ghi mật khẩu, mã OTP hay thông tin nhạy cảm.</p>
+      <p class="fb-err" id="fbError" hidden></p>
+      <p class="fb-note" id="fbFormNote"><a id="fbFormLink" href="https://docs.google.com/forms/d/e/1FAIpQLSdZu3Oc_R1aMgZqDlj0SQhuG2Zwip3y-C5BkEaucsfG-gbkNA/viewform" target="_blank" rel="noopener">📝 Mở Google Form để gửi tới team</a> — bấm vào form Google mới là gửi tới team; lưu ở dưới chỉ là bản nháp trên máy mình.</p>
+      <div class="fb-actions">
+        <button class="fb-btn" type="submit">Gửi góp ý</button>
+        <button class="fb-btn ghost" type="button" onclick="fbClose()">Đóng</button>
+      </div>
+    </form>
+    <div id="fbSuccess" class="fb-success" hidden>
+      <p><b id="fbSuccessTitle">✅ Đã nhận góp ý!</b></p>
+      <p>Mã: <b id="fbCodeOut">—</b><br>Thời gian gửi: <span id="fbTimeOut">—</span></p>
+      <p class="fb-note" id="fbSavedNote"></p>
+      <div class="fb-actions">
+        <a class="fb-btn" href="https://docs.google.com/forms/d/e/1FAIpQLSdZu3Oc_R1aMgZqDlj0SQhuG2Zwip3y-C5BkEaucsfG-gbkNA/viewform" target="_blank" rel="noopener">📝 Mở Google Form để gửi tới team</a>
+        <button class="fb-btn ghost" type="button" id="fbCopyBtn" onclick="fbCopyText()">📋 Sao chép nội dung feedback</button>
+        <button class="fb-btn ghost" type="button" onclick="fbMail()">✉️ Mở email soạn sẵn</button>
+        <button class="fb-btn ghost" type="button" onclick="fbAgain()">Gửi góp ý khác</button>
+        <button class="fb-btn" type="button" onclick="fbClose()">Xong</button>
+      </div>
+      <p class="fb-note">Sao chép và email chỉ là dự phòng: bấm form Google ở trên mới là gửi tới team. Nút email chỉ mở bản soạn sẵn trên máy bạn, app không tự gửi email thay bạn; bạn tự điền người nhận.</p>
+    </div>
+  </div>
+</div>
+<!-- FEEDBACK-DEMO:MODAL-END -->
+<!-- FEEDBACK-DEMO:JS-START (chi them, khong sua logic cu) -->
+<script>
+/* ================= FEEDBACK DEMO — PLACEHOLDER CHO DUYET =================
+   - Kênh nhận chính thức: Google Form ở FB_FORM_URL (mở tab mới).
+   - FB_FORM_URL: link Google Form chính thức, đã gắn.
+   - FB_RECEIVER_EMAIL: dán địa chỉ email nhận feedback khi có và được duyệt.
+     Khi còn trống, nút "Mở email soạn sẵn" mở bản soạn sẵn KHÔNG có người nhận
+     (người dùng tự điền) và app KHONG tự gửi email thay người dùng.
+   - Chỉ lưu vào localStorage trên máy người dùng, key riêng:
+     "damuFeedback.v1" — không đè tiến độ học, lịch sử, hay câu hỏi tự đặt.
+   ========================================================================== */
+var FB_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdZu3Oc_R1aMgZqDlj0SQhuG2Zwip3y-C5BkEaucsfG-gbkNA/viewform";
+var FB_RECEIVER_EMAIL = "";
+var FB_APP = "hub";
+var FB_KEY = "damuFeedback.v1";
+var fbType = "";
+var fbLastPayload = null;
+var fbSubmitted = false;
+function fbCurrentPage(){return {tab:'hub',label:'Trang t\u1ed5ng (hub)'};}
+function fbOpen(){
+  var m=document.getElementById('fbModal'); if(!m) return;
+  if(fbSubmitted){ fbAgain(); fbSubmitted=false; }
+  var pg=fbCurrentPage();
+  var lab=document.getElementById('fbPageLabel'); if(lab) lab.textContent=pg.label;
+  document.getElementById('fbForm').hidden=false;
+  document.getElementById('fbSuccess').hidden=true;
+  document.getElementById('fbError').hidden=true;
+  var note=document.getElementById('fbFormNote');
+  if(note && FB_FORM_URL) note.innerHTML = '<a href="' + FB_FORM_URL + '" target="_blank" rel="noopener">📝 Mở Google Form để gửi tới team</a> — bấm vào form Google mới là gửi tới team; lưu ở dưới chỉ là bản nháp trên máy mình.';
+  m.hidden=false;
+  var t=document.getElementById('fbContent'); if(t) t.focus();
+}
+function fbClose(){ var m=document.getElementById('fbModal'); if(m) m.hidden=true; }
+function fbPickType(btn){
+  fbType=btn.getAttribute('data-type')||"";
+  var chips=document.querySelectorAll('#fbChips .fb-chip');
+  for(var i=0;i<chips.length;i++) chips[i].setAttribute('aria-pressed', chips[i]===btn ? 'true' : 'false');
+  document.getElementById('fbError').hidden=true;
+}
+function fbCount(){
+  var t=document.getElementById('fbContent');
+  var c=document.getElementById('fbCount');
+  if(t&&c) c.textContent=(t.value.length)+"/1000 ký tự";
+}
+function fbCode(){
+  var d=new Date();
+  var y=String(d.getFullYear());
+  var mo=('0'+(d.getMonth()+1)).slice(-2), da=('0'+d.getDate()).slice(-2);
+  var r=Math.random().toString(36).slice(2,6).toUpperCase();
+  return "FB-"+y+mo+da+"-"+r;
+}
+function fbSubmit(ev){
+  if(ev) ev.preventDefault();
+  var err=document.getElementById('fbError');
+  var contentEl=document.getElementById('fbContent');
+  var content=(contentEl.value||"").trim();
+  if(!fbType){ err.textContent="Chọn 1 loại góp ý ở trên nhé."; err.hidden=false; return false; }
+  if(!content){ err.textContent="Gõ nội dung góp ý đã nhé (bắt buộc)."; err.hidden=false; contentEl.focus(); return false; }
+  if(content.length>1000) content=content.slice(0,1000);
+  var sevEl=document.getElementById('fbSeverity');
+  var contactEl=document.getElementById('fbContact');
+  var pg=fbCurrentPage();
+  var now=new Date();
+  var payload={id:fbCode(),createdAt:now.toISOString(),createdAtLocal:now.toLocaleString('vi-VN'),
+    app:FB_APP,page:pg.label,pageTab:pg.tab,type:fbType,
+    severity:(sevEl&&sevEl.value)||null,content:content,
+    contact:(((contactEl&&contactEl.value)||"").trim().slice(0,120))||null,demo:true};
+  fbLastPayload=payload;
+  var saved=true;
+  try{
+    var list=[]; var raw=null;
+    try{ raw=localStorage.getItem(FB_KEY); }catch(e){ raw=null; }
+    if(raw){ var parsed=JSON.parse(raw); if(parsed&&parsed.length!==undefined) list=parsed; }
+    list.push(payload);
+    try{ localStorage.setItem(FB_KEY, JSON.stringify(list)); }catch(e){ saved=false; }
+  }catch(e){ saved=false; }
+  document.getElementById('fbCodeOut').textContent=payload.id;
+  document.getElementById('fbTimeOut').textContent=payload.createdAtLocal;
+  var fbTitleEl=document.getElementById('fbSuccessTitle');
+  if(fbTitleEl) fbTitleEl.textContent = saved ? "✅ Đã nhận góp ý!" : "Chưa lưu được — hãy sao chép lại góp ý";
+  document.getElementById('fbSavedNote').textContent = saved
+    ? "Đã lưu bản nháp trên máy này (" + FB_KEY + "). Đây chưa phải gửi tới team — bấm form Google mới là gửi tới team."
+    : "Lưu trên máy này không thành công — hãy dùng nút Sao chép bên dưới để giữ lại góp ý.";
+  fbSubmitted=true;
+  document.getElementById('fbForm').hidden=true;
+  document.getElementById('fbSuccess').hidden=false;
+  err.hidden=true;
+  return false;
+}
+function fbCopyText(){
+  if(!fbLastPayload) return;
+  var p=fbLastPayload;
+  var lines=["[Góp ý damu — "+p.id+"]","Thời gian: "+p.createdAtLocal,"Trang: "+p.page+" ("+p.app+")",
+    "Loại: "+p.type,"Mức độ: "+(p.severity||"không chọn"),"Nội dung: "+p.content];
+  if(p.contact) lines.push("Liên hệ: "+p.contact);
+  var text=lines.join("\n");
+  var done=function(){ var b=document.getElementById('fbCopyBtn'); if(b) b.textContent="✅ Đã sao chép"; };
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(done).catch(function(){ fbFallbackCopy(text); done(); }); }
+  else { fbFallbackCopy(text); done(); }
+}
+function fbFallbackCopy(text){
+  var ta=document.createElement('textarea'); ta.value=text; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); }catch(e){}
+  document.body.removeChild(ta);
+}
+function fbMail(){
+  if(!fbLastPayload) return;
+  var p=fbLastPayload;
+  var subject=encodeURIComponent("[Góp ý damu "+p.id+"] "+p.type+" — "+p.page);
+  var body=encodeURIComponent("Mã: "+p.id+"\nThời gian: "+p.createdAtLocal+"\nTrang: "+p.page+" ("+p.app+")\nLoại: "+p.type+"\nMức độ: "+(p.severity||"không chọn")+"\nNội dung: "+p.content+(p.contact?("\nLiên hệ: "+p.contact):""));
+  var to=FB_RECEIVER_EMAIL ? FB_RECEIVER_EMAIL : "";
+  window.location.href="mailto:"+to+"?subject="+subject+"&body="+body;
+}
+function fbAgain(){
+  fbSubmitted=false;
+  fbType=""; fbLastPayload=null;
+  var fbCopyBtn=document.getElementById('fbCopyBtn'); if(fbCopyBtn) fbCopyBtn.textContent="📋 Sao chép nội dung feedback";
+  var chips=document.querySelectorAll('#fbChips .fb-chip');
+  for(var i=0;i<chips.length;i++) chips[i].setAttribute('aria-pressed','false');
+  document.getElementById('fbContent').value="";
+  document.getElementById('fbSeverity').value="";
+  document.getElementById('fbContact').value="";
+  fbCount();
+  document.getElementById('fbForm').hidden=false;
+  document.getElementById('fbSuccess').hidden=true;
+}
+document.addEventListener('DOMContentLoaded', function(){
+  var m=document.getElementById('fbModal');
+  if(m) m.addEventListener('click', function(e){ if(e.target===m) fbClose(); });
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') fbClose(); });
+  var c=document.getElementById('fbContent'); if(c) c.addEventListener('input', fbCount);
+});
+</script>
+<!-- FEEDBACK-DEMO:JS-END -->
 </body>
 </html>
