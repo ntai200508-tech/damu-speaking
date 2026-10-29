@@ -5345,6 +5345,120 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 </script>
 <!-- FEEDBACK-DEMO:JS-END -->
-<style>/* 29/10 theo y Nguyen: an o Gop y o trang chu, giu nut Feedback o sidebar */ .fb-home{display:none!important} .fb-foot{display:none!important}</style>
+<!-- SPEAKING-CLEAN: chi them CSS/JS cuoi file, khong sua logic cu, khong xoa tinh nang -->
+<style>
+.clean-start{border:2px solid #ff5c8a;border-radius:20px;padding:16px;margin:12px 0;background:#fff5f8}
+.clean-start .row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.clean-stepnav{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0}
+/* Bo o Gop y trang chu: fb-home nam NGOAI tab-home nen query trong home khong thay, an bang CSS luon */
+.fb-home{display:none!important}.fb-foot{display:none!important}
+.clean-stepnav button.on{background:#c2255c;color:#fff}
+.clean-details{border:1px solid #ffd3e0;border-radius:16px;padding:12px;margin:12px 0;background:#fff}
+.clean-details summary{font-weight:700;cursor:pointer}
+.clean-next{border:2px solid #c2255c;border-radius:16px;padding:12px;margin:12px 0;background:#fff0f4}
+.clean-bar{margin:6px 0}
+.clean-bar-track{height:10px;border-radius:6px;background:#ffe0ea;overflow:hidden}
+.clean-bar-fill{height:100%;background:#c2255c}
+</style>
+<script>
+/* SPEAKING-CLEAN (demo gon khoa hoc, progressive disclosure)
+   Nguyen tac: chi AN/THEO THU TU hien thi, khong xoa node, khong doi prompt/descriptor/
+   ham cham/forecast/cau hoi tu dat/thi thu/shadowing/lich su/cai dat/Feedback.
+   Tat ca node goc deu duoc DI CHUYEN (appendChild), khong clone, nen id + onclick
+   + listener cu van giu nguyen. Nut "Hien tat ca" tra lai dang cu ngay lap tuc. */
+(function(){
+  function el(tag,html,cls){var d=document.createElement(tag);if(cls)d.className=cls;if(html!=null)d.innerHTML=html;return d;}
+  function btn(txt,fn,on){var b=document.createElement('button');b.type='button';b.className='btn'+(on?' on':'');b.textContent=txt;b.onclick=fn;return b;}
+  /* ---------- Trang chu: them khoi bat dau, giu hero + Tong quan ---------- */
+  function cleanHome(){
+    var home=document.getElementById('tab-home');if(!home||home.dataset.cleanHome)return;home.dataset.cleanHome='1';
+    /* Theo y anh 29/10: bo o Gop y o trang chu (da co nut Feedback rieng o sidebar) */
+    var fbHome=document.querySelector('.fb-home'); if(fbHome) fbHome.style.display='none';
+    var fbFoot=document.querySelector('.fb-foot'); if(fbFoot) fbFoot.style.display='none';
+    var cards=home.querySelectorAll(':scope > .card');if(cards.length<3)return;
+    var start=el('div','<h2>▶ Bắt đầu luyện ngay</h2><p class="small">Một việc chính mỗi lần mở app: chọn câu, ghi âm, chấm — xong mới xem tiến độ.</p>','clean-start');
+    var big=document.createElement('button');big.type='button';big.className='btn big';big.textContent='▶ Bắt đầu luyện ngay';big.onclick=function(){showTab('practice');cleanGoStep(1);};start.appendChild(big);
+    var row=el('div',null,'row');
+    [['🎙 Luyện nói',function(){showTab('practice');}],['🎓 Thi thử',function(){showTab('mocktest');}],['📋 Forecast',function(){showTab('forecast');}],['📚 Lịch sử',function(){showTab('history');}]].forEach(function(p){var b=document.createElement('button');b.type='button';b.className='btn ghost';b.textContent=p[0];b.onclick=p[1];row.appendChild(b);});
+    start.appendChild(row);home.insertBefore(start,cards[1]);
+    /* Truy cap nhanh cu (Part 1/2/3, Thi thu, Shadowing) van con, chi thu vao details */
+    var det=el('details',null,'clean-details');det.appendChild(el('summary','Xem thêm lối vào nhanh (Part 1 / 2 / 3, Thi thử, Shadowing)'));det.appendChild(cards[2]);home.appendChild(det);
+  }
+  /* ---------- Lich su: bieu do, heatmap, chien luoc thu vao 1 details ---------- */
+  function cleanHistory(){
+    var h=document.getElementById('tab-history');if(!h||h.dataset.cleanHist)return;h.dataset.cleanHist='1';
+    var heat=document.getElementById('heatCard'),prog=document.getElementById('progCard'),strat=document.getElementById('stratCard');
+    if(!heat||!prog||!strat)return;
+    var det=el('details',null,'clean-details');det.appendChild(el('summary','Xem tiến độ & chiến lược (biểu đồ, lịch luyện, chiến lược)'));
+    det.appendChild(heat);det.appendChild(prog);det.appendChild(strat);h.insertBefore(det,h.querySelector(':scope > .card:last-child'));
+  }
+  /* ---------- Man Luyen noi: 3 buoc, hien 1 buoc tai 1 thoi diem ---------- */
+  var stepWraps=[],stepAll=false,stepNav=null;
+  function cleanGoStep(n){
+    stepAll=false;stepWraps.forEach(function(w,i){w.style.display=(i===n-1)?'':'none';});
+    if(stepNav)Array.prototype.forEach.call(stepNav.querySelectorAll('button[data-step]'),function(b){b.className='btn'+(Number(b.getAttribute('data-step'))===n?' on':'');});
+    var p=document.getElementById('tab-practice');if(p)p.scrollIntoView();
+  }
+  function cleanShowAll(){
+    stepAll=true;stepWraps.forEach(function(w){w.style.display='';});
+    if(stepNav)Array.prototype.forEach.call(stepNav.querySelectorAll('button[data-step]'),function(b){b.className='btn';});
+  }
+  window.cleanGoStep=cleanGoStep;window.cleanShowAll=cleanShowAll;
+  function cleanPractice(){
+    var p=document.getElementById('tab-practice');if(!p||p.dataset.cleanPractice)return;p.dataset.cleanPractice='1';
+    var cards=p.querySelectorAll(':scope > .card');if(cards.length<5)return;
+    var qCard=cards[0],cqForm=cards[1],cqList=cards[2],recCard=cards[3],gradeCard=cards[4];
+    var mkStep=function(title){var w=el('div');w.appendChild(el('h2',title,'small'));return w;};
+    var s1=mkStep('Bước 1 · Chọn câu hỏi (tác vụ)'),s2=mkStep('Bước 2 · Ghi âm + Transcript'),s3=mkStep('Bước 3 · Chấm điểm');
+    s1.appendChild(qCard);
+    var det=el('details',null,'clean-details');det.appendChild(el('summary','✏️ Câu hỏi của tôi (tạo đề riêng, không bắt buộc — vẫn chấm như bình thường)'));det.appendChild(cqForm);det.appendChild(cqList);s1.appendChild(det);
+    s2.appendChild(recCard);s3.appendChild(gradeCard);
+    stepWraps=[s1,s2,s3];
+    var nav=el('div',null,'clean-stepnav');stepNav=nav;
+    [[1,'Bước 1 · Chọn câu hỏi'],[2,'Bước 2 · Ghi âm'],[3,'Bước 3 · Chấm điểm']].forEach(function(s){var b=btn(s[1],function(){cleanGoStep(s[0]);});b.setAttribute('data-step',s[0]);nav.appendChild(b);});
+    nav.appendChild(btn('Hiện tất cả',cleanShowAll));
+    p.insertBefore(nav,p.firstChild);stepWraps.forEach(function(w){p.appendChild(w);});
+    [[s1,1],[s2,2],[s3,3]].forEach(function(pair){
+      var row=el('div',null,'row');
+      if(pair[1]>1)row.appendChild(btn('← Quay lại',function(){cleanGoStep(pair[1]-1);}));
+      if(pair[1]<3)row.appendChild(btn(pair[1]===1?'Vào ghi âm →':'Sang chấm điểm →',function(){cleanGoStep(pair[1]+1);}));
+      pair[0].appendChild(row);
+    });
+    cleanGoStep(1);
+  }
+  /* ---------- Ket qua cham: band + 4 thanh len dau, chi tiet thu vao details ---------- */
+  var lastBand=null,processing=false;
+  function cleanResult(){
+    if(processing)return;var box=document.getElementById('chatBox');if(!box)return;
+    var band=box.querySelector('.bandbox');if(!band||band===lastBand)return;processing=true;lastBand=band;
+    try{
+      var bbs=band.querySelectorAll('.bb');var scores=[];
+      for(var i=0;i<bbs.length;i++){var b=bbs[i];if(b.className.indexOf('total')>=0)continue;var num=parseFloat((b.querySelector('b')||{}).textContent||'0');var lab=b.textContent.replace(/^[0-9.]+/,'').trim();if(!isNaN(num))scores.push({n:num,l:lab});}
+      var weakest=null;scores.forEach(function(s){if(!weakest||s.n<weakest.n)weakest=s;});
+      var bar=el('div','<b>👉 Việc tiếp theo:</b> luyện lại câu này, tập trung vào tiêu chí thấp nhất'+(weakest?(' — <b>'+weakest.l+' ('+weakest.n.toFixed(1)+')</b>'):'')+'.','clean-next');
+      var rb=document.createElement('button');rb.type='button';rb.className='btn';rb.textContent='🔁 Luyện lại câu này';rb.onclick=function(){cleanGoStep(1);};bar.appendChild(rb);
+      box.insertBefore(bar,band);
+      var bars=el('div');scores.forEach(function(s){var d=el('div','<span class="small">'+s.l+' — '+s.n.toFixed(1)+'/9</span><div class="clean-bar-track"><div class="clean-bar-fill" style="width:'+Math.max(0,Math.min(100,s.n/9*100))+'%"></div></div>','clean-bar');bars.appendChild(d);});
+      band.parentNode.insertBefore(bars,band.nextSibling);
+      /* Thu cac khoi chi tiet vao 1 details, giu nguyen node (nut nghe mau, nut lay lai tieu chi van chay) */
+      var kids=Array.prototype.slice.call(box.childNodes),startIdx=-1,foot=null;
+      for(var k=0;k<kids.length;k++){var nd=kids[k];if(nd.nodeType===1&&nd.tagName==='H3'&&/(Examiner note|Lỗi sai|Nâng cấp|Câu trả lời|mẹo lên band)/.test(nd.textContent)){startIdx=k;break;}}
+      if(startIdx>=0){
+        var det=el('details',null,'clean-details');det.appendChild(el('summary','Xem chi tiết: lỗi, câu mẫu Band 8, examinerNote, mẹo (không mất nội dung)'));
+        var moving=[];for(var m=startIdx;m<kids.length;m++){var x=kids[m];if(x.nodeType===1&&x.tagName==='P'&&x.className==='small'&&x.textContent.indexOf('Pronunciation là điểm')>=0){foot=x;break;}moving.push(x);}
+        box.insertBefore(det,kids[startIdx]);moving.forEach(function(x){det.appendChild(x);});
+        if(foot)box.appendChild(foot);
+      }
+    }catch(e){}
+    processing=false;
+  }
+  function init(){cleanHome();cleanHistory();cleanPractice();
+    var box=document.getElementById('chatBox');if(box&&window.MutationObserver){new MutationObserver(cleanResult).observe(box,{childList:true,subtree:true});}
+    setInterval(cleanResult,3000);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+</script>
+
 </body>
 </html>
