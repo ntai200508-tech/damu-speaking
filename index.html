@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="referrer" content="strict-origin-when-cross-origin">
-<title>damu — Luyện nói IELTS (demo vui nhộn 29/10, chưa live)</title>
+<title>damu — Luyện nói IELTS</title>
 <style>
 :root{--pink:#ff5c8a;--pink2:#ff8fab;--pinksoft:#ffe5ec;--pinkbg:#fff5f7;--ink:#3a2430;--mut:#8a6a76;--ok:#1d9e75;--bad:#d6455b;--card:#ffffff}
 *{box-sizing:border-box}
@@ -579,7 +579,7 @@ nav button#nav-mocktest.on{background:#b45309;color:#fff;border-color:#b45309}
   <div id="hintBody"><p class="small">Bấm nút 💡 cạnh câu hỏi, trợ giảng sẽ gợi ý hướng trả lời + cho 1 câu mẫu vừa tầm với bạn.</p></div>
 </aside>
 </main></div>
-<footer>damu 🩷 — Luyện nói IELTS mỗi ngày. Điểm trong app là ước tính để luyện tập, không phải điểm thi chính thức.</footer>
+<footer>damu 🩷 — Luyện nói IELTS mỗi ngày. Điểm trong app là ước tính để luyện tập, không phải điểm thi chính thức.<br> <button type="button" onclick="showDamuInfo('about')" style="background:none;border:none;color:#d6336c;font-weight:700;font-size:inherit;cursor:pointer;text-decoration:underline;padding:0 2px">Giới thiệu</button> · <button type="button" onclick="showDamuInfo('privacy')" style="background:none;border:none;color:#d6336c;font-weight:700;font-size:inherit;cursor:pointer;text-decoration:underline;padding:0 2px">Bảo mật</button> · <button type="button" onclick="showDamuInfo('terms')" style="background:none;border:none;color:#d6336c;font-weight:700;font-size:inherit;cursor:pointer;text-decoration:underline;padding:0 2px">Điều khoản</button></footer><div id="damuInfoModal" style="display:none;position:fixed;inset:0;background:rgba(60,20,35,.55);z-index:10000;align-items:flex-end;justify-content:center;padding:12px"><div style="background:#fff;color:#4a2432;width:100%;max-width:520px;max-height:92dvh;overflow:auto;border-radius:20px;padding:18px;box-shadow:0 16px 40px rgba(0,0,0,.3);text-align:left"><button type="button" onclick="damuInfoClose()" aria-label="Đóng" style="float:right;background:#fff;border:2px solid #ffc2d1;color:#d6336c;border-radius:999px;width:34px;height:34px;font-size:16px;cursor:pointer">✕</button><h3 id="damuInfoTitle" style="margin:0 0 8px;color:#d6336c;font-size:19px"></h3><div id="damuInfoBody" style="font-size:15px;line-height:1.6"></div><div style="margin-top:14px"><button type="button" onclick="damuInfoClose()" style="background:#ff5c8a;color:#fff;border:none;padding:12px 18px;border-radius:999px;font-weight:700;font-size:15px;cursor:pointer">Đóng</button></div></div></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -3624,6 +3624,7 @@ async function gradeLean(q,part,tr,wpm,secs){
 async function gradeNow(){if(aiGrading)return;var tr=$('transcript').value.trim();
   if(wordCount(tr)<3){$('chatBox').innerHTML=damuMsg('🩷 Ê, chưa nói gì mà đòi chấm? Ghi âm trả lời câu hỏi ở trên trước đi, nói ít nhất vài câu tiếng Anh vào!')+ $('chatBox').innerHTML;return;}
   if(recording)stopRecord();
+  try{var _pvSeen=null;try{_pvSeen=localStorage.getItem('damuPrivacyNotice.v1');}catch(e){}if(!_pvSeen){try{localStorage.setItem('damuPrivacyNotice.v1','1');}catch(e){}var _pvBtn=document.getElementById('gradeBtn');if(_pvBtn&&!document.getElementById('damuPrivacyOnce')){var _pvP=document.createElement('p');_pvP.id='damuPrivacyOnce';_pvP.className='small';_pvP.textContent='🔒 Riêng tư (chỉ nhắc lần này): transcript bài này được gửi qua Cloudflare Worker damu-bot.ntai200508.workers.dev tới AI bên ngoài (Groq) để chấm; damu không lưu transcript trên máy chủ của mình. Đừng đọc nội dung nhạy cảm vào bài luyện.';_pvBtn.parentNode.insertBefore(_pvP,_pvBtn.nextSibling);}}}catch(e){}
   /* WHISPER + NGAN SACH (B4): nghe Whisper chay O DAY — TRUOC khi mo phien cham
      (gradeSessionStart chi gan tai st.t0 o duoi) nen thoi gian nghe Whisper KHONG
      bi tinh vao ngan sach cham 30s; xong moi doc lai ban ghi + tinh WPM theo thoi
@@ -5460,5 +5461,11 @@ document.addEventListener('DOMContentLoaded', function(){
 })();
 </script>
 
+<script>
+var DAMU_FB_URL='https://docs.google.com/forms/d/e/1FAIpQLSdZu3Oc_R1aMgZqDlj0SQhuG2Zwip3y-C5BkEaucsfG-gbkNA/viewform';
+var DAMU_INFO={about:{t:'Giới thiệu damu',b:'<p style="margin:0 0 10px">damu là dự án cá nhân: app học tiếng Anh mỗi ngày — ôn từ vựng ngắt quãng (SRS) và luyện nói IELTS.</p>'+'<p style="margin:0 0 10px">Liên hệ và góp ý qua form Feedback: <a href="'+DAMU_FB_URL+'" target="_blank" rel="noopener">Mở form Feedback</a>. damu không công khai email hay số điện thoại liên hệ ở đây.</p>'},privacy:{t:'Bảo mật',b:'<p style=\"margin:0 0 10px\">Tiến độ học và bài đã chấm lưu trong trình duyệt của bạn (localStorage), không nằm trên máy chủ của damu — trừ khi bạn đã đăng nhập (xem dưới).</p>'+'<p style=\"margin:0 0 10px\">Khi bấm Chấm bài, transcript bài nói được gửi qua Cloudflare Worker damu-bot.ntai200508.workers.dev tới API AI bên ngoài (Groq) để chấm; damu không lưu transcript trên máy chủ của mình. Bên AI xử lý theo chính sách của họ.</p>'+'<p style=\"margin:0 0 10px\">Đồng bộ Firebase: chỉ khi bạn đăng nhập bằng Google thì lịch sử (kèm transcript cắt tối đa 1200 ký tự/bài, tối đa 100 bài, tổng dữ liệu đồng bộ tối đa 900KB), streak, tiến độ Forecast, chiến thuật, band tự nhận và ngôn ngữ mới đồng bộ qua Firebase sang thiết bị khác; chưa đăng nhập thì chỉ lưu trên máy này. Câu hỏi tự đặt chỉ lưu trên trình duyệt này, không đồng bộ cloud.</p>'+'<p style=\"margin:0 0 10px\">Đừng đọc nội dung nhạy cảm (mật khẩu, thông tin cá nhân, sức khỏe, tài chính) vào bài luyện nói.</p>'},terms:{t:'Điều khoản',b:'<p style="margin:0 0 10px">damu là dự án cá nhân, làm ra để học tập. Điểm chấm trong app là ước tính để luyện tập, không phải điểm thi chính thức.</p>'+'<p style="margin:0 0 10px">Nội dung do AI tạo có thể sai — hãy đối chiếu trước khi tin hoàn toàn. Vui lòng không dùng app cho nội dung vi phạm pháp luật.</p>'+'<p style="margin:0 0 10px">Góp ý và báo lỗi qua form Feedback: <a href="'+DAMU_FB_URL+'" target="_blank" rel="noopener">Mở form Feedback</a>.</p>'}};
+function showDamuInfo(k){var d=DAMU_INFO[k];if(!d)return;var t=document.getElementById('damuInfoTitle');var b=document.getElementById('damuInfoBody');var m=document.getElementById('damuInfoModal');if(t)t.textContent=d.t;if(b)b.innerHTML=d.b;if(m)m.style.display='flex';}
+function damuInfoClose(){var m=document.getElementById('damuInfoModal');if(m)m.style.display='none';}
+</script>
 </body>
 </html>
